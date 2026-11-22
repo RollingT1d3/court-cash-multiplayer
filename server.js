@@ -6,6 +6,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
+import { illegalScreenChance, passingOutChance, interceptionChance, onBallStealChance, screenStrengthBonus, passFlightMs, OFFENSE_ANCHORS, passingLaneDefenders } from './court-rules-v05.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PLAYERS = JSON.parse(readFileSync(path.join(ROOT, 'data/players.json'), 'utf8'));
@@ -268,24 +269,73 @@ function simulatePlay(room){
   // searches across defenders for favorable size/scoring mismatches using off-ball screens.
   const zoneTargets=dscheme==='3-2 Zone'?(inPaint?defenders.slice(3):defenders.slice(0,3)):defenders;
   // Screen execution is influenced by role specialists, their Teamwork and energy.
-  const screen=(chaos&&rnd()<.18+.72*adherence)||
+  const screenRequested=(chaos&&rnd()<.18+.72*adherence)||
     (runGun&&rnd()<clamp(.47+.35*teamAdherence+(screenQuality-70)*.002,.2,.94))||
     (oldSchool&&rnd()<clamp(.42+.40*teamAdherence+(screenQuality-70)*.002,.2,.94));
+  // Every real screen has a specific setter: strength impacts shot quality;
+  // IQ sets the exact personal-offensive-foul odds for THAT screen.
+  const availableScreeners=screeners.filter(id=>id!==shooter);
+  const screen=screenRequested&&availableScreeners.length>0;
+  const screenSetterId=screen?weightedId(availableScreeners,id=>Math.max(1,rating(id,'strength'))*planDiscipline(id)):null;
+  const screenBonus=screen?screenStrengthBonus(rating(screenSetterId,'strength')):0;
   const huntMismatch=chaos&&screen&&rnd()<.25+.62*adherence;
   const defender=(process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1')?defenders[0]:huntMismatch?weightedId(defenders,id=>.15+shotMismatch(shooter,id,type)*120):
     weightedId(zoneTargets,id=>1+rating(id,inPaint?'paintDef':'perimeterDef')/200);
   const mismatchBonus=huntMismatch?shotMismatch(shooter,defender,type):0;
-  const defSteal=effective(defender,dt,effectiveOnCourt(room,def,defender,'steal'));
+  // A possession may include a real pass before the chosen shot, unless a
+  // dribble/isolation play is called. A passer is an actual on-court teammate.
+  const passAttempt=shooters.length>1 && rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
+  const passerCandidates=shooters.filter(id=>id!==shooter);
+  const passerId=passAttempt?weightedId(passerCandidates,id=>rating(id,'passing')*planDiscipline(id)*
+    (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1)):null;
+  const passerRating=passerId?rating(passerId,'passing'):null; // raw listed Passing: 90+ always immune
+  const passDurationMs=passerId?passFlightMs(passerRating):0;
+  const passFrom=passerId?OFFENSE_ANCHORS[shooters.indexOf(passerId)]:null;
+  const passTo=passerId?OFFENSE_ANCHORS[shooters.indexOf(shooter)]:null;
+  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone'):[];
+  let interceptorId=null,interceptionAt=null,passOutcome=null;
   let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false;
-  let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null;
+  let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null,fouledOutSide=null;
   fatigue(room,seconds);
   // Constant motion and screening cost slightly more energy, especially when teamwork is low.
   if(chaos){for(const id of shooters)ot.energy[id]=clamp(ot.energy[id]-(.20+.30*(1-planDiscipline(id)))*(seconds/17),0,100);}
   if(runGun||oldSchool){for(const id of screeners)ot.energy[id]=clamp(ot.energy[id]-(.09+.22*(1-planDiscipline(id)))*(seconds/17),0,100);}
-  const stealChance=clamp(.017+(defSteal-70)*.0011-(screen?.004:0),.005,.08);
-  if(rnd()<stealChance){
-    stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;event='steal';
-  }else{
+  // Resolution order prevents a single action triggering multiple turnovers:
+  // illegal screen -> errant pass -> in-lane interception -> on-ball steal -> shot.
+  // 90+ passers cannot be intercepted regardless of defenders' Steal attributes.
+  const illegalScreen=screen && rnd()<illegalScreenChance(rating(screenSetterId,'iq'));
+  if(illegalScreen){
+    event='illegal-screen';g.stats[screenSetterId].pf++;g.stats[screenSetterId].tov++;
+    if(g.stats[screenSetterId].pf>=6){
+      g.fouledOut.push(screenSetterId);fouledOutPlayer=screenSetterId;fouledOutSide=offense;
+    }
+  } else if(passerId && rnd()<passingOutChance(passerRating)){
+    event='pass-out-of-bounds';passOutcome='out-of-bounds';g.stats[passerId].tov++;
+  } else {
+    if(passerId && passerRating<90){
+      // Only defenders geometrically in the pass lane can attempt this type
+      // of steal. The server uses actual, scheme-dependent court coordinates.
+      for(const lanePlayer of inLane){
+        if(rnd()<interceptionChance(rating(lanePlayer.id,'steal'),passerRating,true)){
+          interceptorId=lanePlayer.id;interceptionAt=lanePlayer.at;
+          break;
+        }
+      }
+    }
+    if(interceptorId){
+      event='interception';passOutcome='intercepted';stealId=interceptorId;
+      g.stats[interceptorId].stl++;g.stats[passerId].tov++;
+    } else {
+      if(passerId)passOutcome='complete';
+      // On-ball defender is matched with the shooter/handler; Steal chance
+      // is the exact Steal bracket minus the handler's Dribbling deduction.
+      const ballSteal=onBallStealChance(rating(defender,'steal'),rating(shooter,'dribbling'));
+      if(rnd()<ballSteal){
+        event='steal';stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;
+      }
+    }
+  }
+  if(!['illegal-screen','pass-out-of-bounds','interception','steal'].includes(event)){
     let value=isThree?effectiveOnCourt(room,offense,shooter,'three'):
       inPaint?(.44*effectiveOnCourt(room,offense,shooter,'layup')+.46*effectiveOnCourt(room,offense,shooter,'dunk')+.1*effectiveOnCourt(room,offense,shooter,'post')):
       effectiveOnCourt(room,offense,shooter,'mid');
@@ -297,7 +347,7 @@ function simulatePlay(room){
     if(dscheme===DEFENSE[1]&&shooter===high[0])defenseBump+=.11;
     if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
     const base=isThree?.365:inPaint?.61:.43;
-    const screensBonus=screen?.032*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
+    const screensBonus=screen?.018*adherence+screenBonus*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
     let chance=clamp(base+(value-80)*.0075-defenseBump+screensBonus+mismatchQuality-
       (isThree?longThreePenalty(shotDistanceFt):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0),.035,.83);
@@ -321,7 +371,7 @@ function simulatePlay(room){
       points=trips.made;
       if(g.stats[defender].pf>=6){
         g.fouledOut.push(defender);
-        fouledOutPlayer=defender;
+        fouledOutPlayer=defender;fouledOutSide=def;
       }
     } else {
       g.stats[shooter].fga++;if(isThree)g.stats[shooter].threeA++;
@@ -332,13 +382,13 @@ function simulatePlay(room){
       // A contested made dunk can trigger a short dual-player poster animation.
       posterDunk=type==='dunk'&&rating(defender,'paintDef')>=60&&
         rnd()<clamp(.18+(rating(shooter,'dunk')-75)*.005,.08,.46);
+      // Assists belong to the real successful passer, not a fabricated
+      // after-the-fact teammate. Solo scoring plays earn no assist.
       const passerCompliance=shooters.reduce((v,id)=>v+planDiscipline(id),0)/shooters.length;
       const assistChance=clamp(.40+.25*passerCompliance+(scheme===OFFENSE[2]?.12:0)+(chaos&&screen?.10:0)+
         (runGun&&screen?.16:0)+(oldSchool?.18:0),.35,.94);
-      if(rnd()<assistChance){
-        const passers=shooters.filter(x=>x!==shooter);
-        if(passers.length){assistId=weightedId(passers,id=>rating(id,'passing')*planDiscipline(id)*
-          (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1));g.stats[assistId].ast++;}
+      if(passerId && passOutcome==='complete' && rnd()<assistChance){
+        assistId=passerId;g.stats[assistId].ast++;
       }
       }else event='miss';
     }
@@ -359,15 +409,22 @@ function simulatePlay(room){
     runGun&&screen?'Run & Gun screens spring a scorer! ':
     oldSchool&&kickout?'Old-School kickout to the arc! ':
     oldSchool&&screen?'Old-School cuts create an opening! ':'';
-  if(foul)log(room,`WHISTLE! ${getPlayer(fouler).name} fouls ${shooterName} on a ${type==='three'?'three-pointer':type==='mid'?'mid-range jumper':type}. ${freeThrowsMade}/${freeThrowsAttempted} free throws made. ${getPlayer(fouler).name} has ${g.stats[fouler].pf} personal foul(s).`);
-  else if(event==='steal')log(room,`${getPlayer(defender).name} steals the ball from ${shooterName}!`);
+  if(event==='illegal-screen')log(room,`🚫 ILLEGAL SCREEN! ${getPlayer(screenSetterId).name} is called for an offensive foul (${g.stats[screenSetterId].pf} PF). Turnover.`);
+  else if(event==='pass-out-of-bounds')log(room,`🏀 OUT OF BOUNDS! ${getPlayer(passerId).name}'s pass sails out. Turnover.`);
+  else if(event==='interception')log(room,`✋ INTERCEPTION! ${getPlayer(interceptorId).name} reads the passing lane and picks off ${getPlayer(passerId).name}'s pass!`);
+  else if(foul)log(room,`WHISTLE! ${getPlayer(fouler).name} fouls ${shooterName} on a ${type==='three'?'three-pointer':type==='mid'?'mid-range jumper':type}. ${freeThrowsMade}/${freeThrowsAttempted} free throws made. ${getPlayer(fouler).name} has ${g.stats[fouler].pf} personal foul(s).`);
+  else if(event==='steal')log(room,`✋ ON-BALL STEAL! ${getPlayer(defender).name} strips ${shooterName}!`);
   else if(event==='block')log(room,`${getPlayer(defender).name} blocks ${shooterName}!`);
   else if(posterDunk)log(room,`🔥 POSTER DUNK! ${shooterName} dunks on ${getPlayer(defender).name}!`);
   else if(deepThree)log(room,`🔥 FROM DEEP! 🔥 ${shooterName} drains a ${shotDistanceFt}-foot three-pointer!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else if(made)log(room,`${actionPrefix}${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
   g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,deepThree,shotDistanceFt,shotClockRemaining,
-    screen,mismatch:huntMismatch,kickout,screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
+    screen,screenSetterId,screenBonus,illegalScreen,mismatch:huntMismatch&&!illegalScreen,kickout,
+    passerId:illegalScreen?null:passerId,passFrom:illegalScreen?null:passFrom,
+    passTo:illegalScreen?null:passTo,passDurationMs:illegalScreen?0:passDurationMs,
+    passOutcome,interceptorId,interceptionAt,
+    screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
     oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
   if(!fouledOutPlayer)automaticSubs(room);
@@ -378,7 +435,7 @@ function simulatePlay(room){
     else {completeGame(room);return;}
   }
   if(fouledOutPlayer){
-    const side=def,slot=g.active[side].indexOf(fouledOutPlayer);
+    const side=fouledOutSide,slot=g.active[side].indexOf(fouledOutPlayer);
     const reserve=eligibleBench(room.teams[side].roster,g.active[side],g.fouledOut);
     if(!reserve.length){
       // Edge case: the team no longer has five eligible players to field.

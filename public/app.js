@@ -405,12 +405,22 @@
           if(isOldSchool&&id===event?.arcShooter){x=.67*W;y=.24*H;}
           if(isRunGun&&event?.arcShooters?.includes(id)){x=.66*W;y=(id===event.arcShooters[0]?.27:.73)*H;}
         }
-        if(event?.shooter===id&&attacking){
+        // During a pass, show passer and receiver at their actual lane anchors.
+        // For a turnover, don't teleport the intended receiver to a shot location.
+        if(event?.passerId===id&&attacking&&eventAge<event.passDurationMs+220){
+          x=event.passFrom.x*W;y=event.passFrom.y*H;
+        }
+        if(event?.shooter===id&&attacking&&event.passerId&&eventAge<event.passDurationMs+220){
+          x=event.passTo.x*W;y=event.passTo.y*H;
+        } else if(event?.shooter===id&&attacking&&!['illegal-screen','pass-out-of-bounds','interception'].includes(event.displayEvent)){
           // From ordinary paint attempts to 60-foot heaves, draw the actual shot position.
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
           x=Math.max(.14*W,.943*W-feet*9.3);y=H*.50;
         }
-        if(event?.defender===id&&!attacking){x=.85*W;y=H*.53;}
+        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'){x=.85*W;y=H*.53;}
+        if(event?.interceptorId===id&&!attacking&&event.interceptionAt){
+          x=event.interceptionAt.x*W;y=event.interceptionAt.y*H;
+        }
         if(event?.reboundId===id){x=.88*W;y=H*.58;}
         if(!attackRight)x=W-x;
         const prev=canvasPositions.get(id)||{x,y};
@@ -458,16 +468,43 @@
     }
     for(const id of [...canvasPositions.keys()])if(!present.has(id))canvasPositions.delete(id);
     if(event&&canvasPositions.has(event.shooter)){
-      const d=canvasPositions.get(event.shooter);const t=eventAge;
+      const d=canvasPositions.get(event.shooter),t=eventAge;
       let bx=d.x+28,by=d.y+14;
-      if(event.assistId&&canvasPositions.has(event.assistId)&&t<200){const src=canvasPositions.get(event.assistId),progress=t/200;bx=src.x+(d.x-src.x)*progress;by=src.y+(d.y-src.y)*progress;}
-      else if(t>200&&t<600&&event.displayEvent!=='steal'){
-        const t2=(t-200)/400;bx=d.x+(targetGoal-d.x)*t2;by=d.y+(H/2-d.y)*t2-65*4*t2*(1-t2);
+      const turnover=['illegal-screen','pass-out-of-bounds','interception','steal'].includes(event.displayEvent);
+      if(event.passerId&&event.passFrom&&event.passTo&&t<event.passDurationMs){
+        const from=event.passFrom,to=event.passOutcome==='intercepted'&&event.interceptionAt?event.interceptionAt:event.passTo;
+        const progress=Math.min(1,t/Math.max(1,event.passDurationMs));
+        const fx=attackRight?from.x*W:(1-from.x)*W,tx=attackRight?to.x*W:(1-to.x)*W;
+        bx=fx+(tx-fx)*progress;
+        by=from.y*H+(to.y-from.y)*H*progress;
+        if(event.passOutcome==='out-of-bounds'){
+          // Errant passes visibly travel off the sideline, not into the hoop.
+          const edgeY=event.passTo.y>.5?H+18:-18;
+          by=from.y*H+(edgeY-from.y*H)*progress;
+        }
+      } else if(!turnover&&t>=event.passDurationMs&&t<event.passDurationMs+470){
+        const flight=(t-event.passDurationMs)/470;
+        bx=d.x+(targetGoal-d.x)*flight;
+        by=d.y+(H/2-d.y)*flight-65*4*flight*(1-flight);
+      } else if(event.passOutcome==='intercepted'&&event.interceptorId&&canvasPositions.has(event.interceptorId)){
+        const interceptor=canvasPositions.get(event.interceptorId);bx=interceptor.x;by=interceptor.y;
       }
       ctx.beginPath();ctx.fillStyle='#fc8c2f';ctx.strokeStyle='#45290e';ctx.lineWidth=2;ctx.arc(bx,by,9,0,2*Math.PI);ctx.fill();ctx.stroke();
       ctx.beginPath();ctx.moveTo(bx-9,by);ctx.lineTo(bx+9,by);ctx.moveTo(bx,by-9);ctx.lineTo(bx,by+9);ctx.stroke();
     }
-    if(event?.screen&&eventAge<1500&&state.phase==='sim'){
+    const turnoverBanner={
+      'illegal-screen':'🚫 ILLEGAL SCREEN • OFFENSIVE FOUL',
+      'pass-out-of-bounds':'🏀 ERRANT PASS • OUT OF BOUNDS',
+      'interception':'✋ PASS INTERCEPTED!',
+      'steal':'✋ BALL STOLEN!'
+    }[event?.displayEvent];
+    if(turnoverBanner&&eventAge<1900&&state.phase==='sim'){
+      ctx.save();ctx.globalAlpha=Math.min(1,(1900-eventAge)/300);
+      ctx.fillStyle='#101824e5';ctx.fillRect(W/2-230,H*.14,460,48);
+      ctx.font='900 22px system-ui';ctx.fillStyle='#ffdb84';ctx.textAlign='center';
+      ctx.fillText(turnoverBanner,W/2,H*.14+31);ctx.restore();
+    }
+    if(event?.screen&&!event?.illegalScreen&&eventAge<1500&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/350);
       ctx.fillStyle='#112236da';ctx.fillRect(W/2-148,30,296,34);
       ctx.fillStyle='#d0ff62';ctx.font='900 19px system-ui';ctx.textAlign='center';
