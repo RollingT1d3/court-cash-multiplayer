@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Court Cash • Basketball Auction Showdown</title>
+  <meta name="description" content="Live two-player basketball auction draft and animated simulation." />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-icon">🏀</span> COURT <b>CASH</b> <small>ALPHA</small></div>
+      <div class="status"><span id="status-dot" class="dot"></span><span id="status-label">Not in a room</span></div>
+    </header>
+    <main id="app">
+      <section id="welcome" class="welcome">
+        <div class="hero-eyebrow">BASKETBALL AUCTION SHOWDOWN</div>
+        <h1>Draft big.<br /><em>Play bigger.</em></h1>
+        <p class="lead">Two friends. Fifty dollars each. Eight-man teams. One animated showdown.</p>
+        <div class="onboarding">
+          <form id="create-form" class="card">
+            <h2>Create a room</h2>
+            <label>YOUR TEAM NAME <input id="create-name" maxlength="28" required placeholder="e.g. The Rim Reapers" /></label>
+            <label>MATCH FORMAT <select id="format"><option value="1">One game</option><option value="7">Best of 7</option></select></label>
+            <button class="primary full" type="submit">CREATE PRIVATE ROOM →</button>
+          </form>
+          <form id="join-form" class="card">
+            <h2>Join your friend</h2>
+            <label>YOUR TEAM NAME <input id="join-name" maxlength="28" required placeholder="e.g. The Splash Kings" /></label>
+            <label>ROOM CODE <input id="join-code" maxlength="6" minlength="6" required placeholder="6-LETTER CODE" autocapitalize="characters" /></label>
+            <button class="secondary full" type="submit">JOIN ROOM →</button>
+          </form>
+        </div>
+        <p class="tip">Development build: temporary players and placeholder portraits. Real custom players can be added later.</p>
+      </section>
+      <section id="gameview" class="hide" aria-live="polite">
+        <div id="room-header" class="room-header"></div>
+        <div id="phase-banner" class="phase-banner"></div>
+        <div id="draft-view" class="hide">
+          <div class="draft-layout">
+            <aside id="team-left" class="team-panel"></aside>
+            <section id="auction-center" class="auction-center"></section>
+            <aside id="team-right" class="team-panel"></aside>
+          </div>
+        </div>
+        <div id="setup-view" class="hide">
+          <div class="setup-layout">
+            <section id="setup-team-left" class="team-panel"></section>
+            <section id="schemes-center" class="card scheme-center"></section>
+            <section id="setup-team-right" class="team-panel"></section>
+          </div>
+        </div>
+        <div id="sim-view" class="hide">
+          <div id="scoreboard" class="scoreboard"></div>
+          <div class="sim-layout">
+            <div class="court-wrap"><canvas id="court" width="940" height="500" aria-label="Animated basketball court showing players as portrait markers"></canvas><p class="court-hint">Click a player on the court for live statistics. Full 48-minute game, condensed to about 2 minutes.</p></div>
+            <aside class="sim-sidebar"><section id="player-focus" class="card compact"></section><section id="sim-events" class="card compact events"></section></aside>
+          </div>
+          <div id="timeout-panel" class="hide"></div>
+        </div>
+        <div id="end-view" class="hide"></div>
+      </section>
+    </main>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
