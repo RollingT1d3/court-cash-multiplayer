@@ -1,4 +1,4 @@
-# Court Cash — multiplayer basketball auction prototype (v0.1.1, deploy-ready)
+# Court Cash — multiplayer basketball auction prototype (v0.3.0, deploy-ready)
 
 A working **desktop-first, two-browser, real-time** basketball auction and condensed 2D basketball simulation proof of concept. The game server, not the browsers, owns the coin flip, weighted wheel, budgets, turns, roster assignments, timeout rules, and game results.
 
@@ -29,10 +29,10 @@ For a friend on another computer on the **same home network**, they can open `ht
 - When either team cannot afford the $1 minimum, the other team gets free Select/Pass choices. With a full roster on one side, the remaining side receives players automatically. With neither side able to bid, assignments alternate to eligible slots.
 - Eight players per roster, five named starting positions plus sixth and two bench slots; slot assignment and swapping by drag or click. Listed positions are penalty-free; other positions incur dynamically calculated penalties influenced by attribute suitability and size.
 - OVR badges by tier; role-adjusted OVR on roster slots. Expandable weighted category ratings and individual attributes during bidding.
-- Five offensive schemes, four defensive schemes; each affects the possession model.
+- Six offensive schemes (including **Pure Chaos**) and five defensive schemes (including **3-2 Zone**); each affects the possession model. Plan adherence depends strongly on individual **Teamwork**.
 - Single-game or best-of-seven series, with scheme changes between games.
-- Condensed simulation with a full-court 2D display, ten player markers, basketball ball movement, scoreboard, player statistics, stamina, fatigue effects, automatic substitutions, play-by-play, and a final box score.
-- Four 30-second timeouts **per game per team**. Only the caller may manually substitute, but **both** teams may edit schemes. Caller can resume early.
+- 48-minute game simulated at approximately 8 minutes of real time (plus timeouts and overtime), with a full-court 2D display, ten player markers, basketball ball movement, scoreboard, player statistics, stamina, fatigue effects, automatic substitutions, play-by-play, poster-dunk fire effects over both involved players, and a final box score.
+- Five 30-second timeouts **per game per team**. Only the caller may manually substitute, but **both** teams may edit schemes. Caller can resume early.
 - No injuries, no home-court advantage. Overtime if tied.
 
 ## Adding custom players and pictures
@@ -87,3 +87,20 @@ Run `npm test`. Automated integration tests exercise a real two-player game serv
 - `public/app.js`: synchronized client rendering, player stats, wheel, roster drag/click interactions, and animated full-court canvas.
 - `data/players.json`: temporary player roster, attributes, weights and image references.
 - `test/game.test.js`: full-match integration test.
+
+## November 2026 gameplay update (v0.2)
+
+- **5 timeouts per team, per game**, reset for each game of a best-of-seven series; only the calling team can manually substitute during its timeout, while both sides can update schemes.
+- **Simulation pacing:** Full 48-minute regulation over roughly 8 real minutes (with the default 3,250 ms possession interval); timeouts and overtime extend real duration. Fast automated tests can still override `SIM_MS`.
+- **Offensive discipline:** Individual Teamwork changes how strongly a player follows the selected shot distribution, star prioritization, ball movement and screen/mismatch plays. Low-Teamwork players are less likely to follow a play as called.
+- **Pure Chaos:** Extra screen actions, animated off-ball cutting, mismatch hunting using defensive ratings/height/strength, small shot-creation bonuses when executed, and modest stamina cost.
+- **3-2 Zone:** Three defenders high, two inside; improved outside contesting, weak inside protection and defensive rebounding.
+- **Strategy explanations:** All schemes describe what they do when selected in pregame, between-game preparation and either team's timeout.
+- **Poster dunk:** On some contested made dunks, both the dunker and the defender briefly show a fire emoji on the court.
+- This remains a **prototype simulation**, not full physics; the display is event-driven and results depend probabilistically on attributes.
+
+
+
+## v0.3 foul and substitution rules
+
+See `FOUL_UPDATE_NOTES.md` for shooting foul odds, FT scoring, six-foul ejections, mandatory substitutions, portrait treatments, and tests.

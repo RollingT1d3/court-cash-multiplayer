@@ -2,8 +2,24 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash'];
-  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured'];
+  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos'];
+  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone'];
+  const OFFENSE_INFO = {
+    'Play Through Superstar':'The highest-rated player becomes your primary option. Higher Teamwork means teammates reliably feed the star, space the floor and follow the play call.',
+    'Play Through Stars':'Prioritizes your two best players while everyone else supplies complementary touches. Teamwork controls how reliably players stick to their roles.',
+    'Team Ball':'Shares possessions, rewards good passing and creates more assisted shots. High-Teamwork players run the system more faithfully.',
+    'Live By the 3, Die by the 3':'Emphasizes three-point attempts, especially from your best shooters. It can produce scoring bursts or cold stretches; Teamwork improves shot selection.',
+    'Paint Mash':'Emphasizes drives, dunks, post play and inside looks, with occasional mid-range attempts. Teamwork helps cutters and finishers follow the game plan.',
+    'Pure Chaos':'Heavy off-ball movement and frequent screens. Hunts favorable mismatches (a big against a small defender or a scorer against a weak defender), creating chances at the cost of extra stamina. Teamwork strongly affects execution.'
+  };
+  const DEFENSE_INFO = {
+    'Man-to-Man':'Each defender tracks an opposing player. Balanced coverage without major tactical bonuses or vulnerabilities.',
+    'Double the Star':'Sends extra pressure at the opponent’s best scorer, reducing their shot quality while taking attention away from other threats.',
+    'Protect the Paint':'Loads defenders near the basket to reduce dunks and layups, leaving more space for outside jumpers.',
+    'Perimeter Secured':'Prioritizes contesting three-pointers, giving opponents more chances to attack inside.',
+    '3-2 Zone':'Three defenders patrol the perimeter and two defend near the rim. Helps challenge outside looks, but is more vulnerable to interior attacks and offensive rebounds.'
+  };
+  function strategyInfo(name,kind){return `<div class="strategy-info"><strong>${esc(name)}</strong><p>${esc((kind==='offense'?OFFENSE_INFO:DEFENSE_INFO)[name]||'')}</p></div>`;}
   const CAT = {
     'FINISHING': [['Layup','layup',.4],['Dunking','dunk',.4],['Post Moves','post',.2]],
     'SHOOTING': [['Free Throw','ft',.10],['Mid-Range','mid',.29],['3PT','three',.46],['Fades','fades',.15]],
@@ -68,7 +84,8 @@
   function portrait(p,size='sm',side='blue'){
     if(!p)return `<span class="portrait ${size} ${side}">?</span>`;
     const initials=p.name.split(/\s+/).map(a=>a[0]).slice(0,2).join('').toUpperCase();
-    return `<span class="portrait ${size} ${side}">${p.image?`<img src="${esc(p.image)}" alt="" onerror="this.style.display='none'">`:''}<span>${esc(initials)}</span></span>`;
+    const out=state?.game?.fouledOut?.includes(p.id);
+    return `<span class="portrait ${size} ${side} ${out?'fouled-out':''}" ${out?'title="FOULED OUT — INELIGIBLE"':''}>${p.image?`<img src="${esc(p.image)}" alt="" onerror="this.style.display='none'">`:''}<span>${esc(initials)}</span></span>`;
   }
   function rosterDisplaySlots(i){
     const t=state.teams[i];if(!t)return {};
@@ -86,7 +103,7 @@
       const id=roster[s],p=player(id);
       const selected=currentPicked===id&&change?'selected-slot':'';
       return `<button class="slot ${side} ${id?'owned':''} ${selected}" type="button" data-slot="${esc(s)}" data-team="${i}" ${change?'':'disabled'} aria-label="${esc(s)}: ${p?esc(p.name):'Empty'}">
-        <span class="slot-label">${esc(s)}</span>${p?`${portrait(p,'sm',i?'red':'blue')}<span class="slot-center"><b>${esc(p.name)}</b><small>${esc(p.positions.join('/'))}</small></span>${badge(p,s)}`:'<span class="slot-center"><small>EMPTY • DROP HERE</small></span>'}
+        <span class="slot-label">${esc(s)}</span>${p?`${portrait(p,'sm',i?'red':'blue')}<span class="slot-center"><b>${esc(p.name)}</b><small>${esc(p.positions.join('/'))}${state?.game?.fouledOut?.includes(id)?' • FOULED OUT':''}</small></span>${badge(p,s)}`:'<span class="slot-center"><small>EMPTY • DROP HERE</small></span>'}
       </button>`;
     }).join('');
     return `<div class="team-title"><strong>${esc(t.name)}</strong><span class="team-money">${money(t.budget)}</span></div>
@@ -222,12 +239,12 @@
       <p class="subtle">${state.phase==='intermission'?'Both teams may change offensive and defensive schemes. The next game begins when both are ready.':'Arrange your eight players and choose your game plans. Click a rostered player, then click the destination slot—or drag and drop.'}</p>
       <label>OFFENSIVE SCHEME<select id="offense-select">${OFFENSE.map(o=>`<option value="${esc(o)}" ${o===my().offense?'selected':''}>${esc(o)}</option>`).join('')}</select></label>
       <label>DEFENSIVE SCHEME<select id="defense-select">${DEFENSE.map(o=>`<option value="${esc(o)}" ${o===my().defense?'selected':''}>${esc(o)}</option>`).join('')}</select></label>
-      <div class="scheme-explainer"><b>Offense:</b> Your shooting choices and ball distribution follow your chosen scheme.<br /><br />
-      <b>Defense:</b> Man-to-Man • Double the Star • Protect the Paint • Perimeter Secured.<br /><br />
-      ${state.phase==='lineup'?'Position suitability will affect simulation outcomes. Listed positions incur no penalty.':''}</div>
+      <div class="scheme-explainer" aria-live="polite"><span class="smallcaps">YOUR OFFENSIVE GAME PLAN</span><div id="offense-description">${strategyInfo(my().offense,'offense')}</div>
+      <span class="smallcaps">YOUR DEFENSIVE GAME PLAN</span><div id="defense-description">${strategyInfo(my().defense,'defense')}</div>
+      <p class="tiny">Players with higher Teamwork execute the chosen offense more reliably. ${state.phase==='lineup'?'Listed positions have no OVR penalty; other positions are matchup-adjusted.':''}</p></div>
       <button class="primary full" id="ready-btn" ${my().ready?'disabled':''}>${my().ready?'✓ WAITING FOR OPPONENT': 'READY TO PLAY →'}</button>`;
-    $('offense-select')?.addEventListener('change',e=>act('scheme',{offense:e.target.value}));
-    $('defense-select')?.addEventListener('change',e=>act('scheme',{defense:e.target.value}));
+    $('offense-select')?.addEventListener('change',e=>{$('offense-description').innerHTML=strategyInfo(e.target.value,'offense');act('scheme',{offense:e.target.value});});
+    $('defense-select')?.addEventListener('change',e=>{$('defense-description').innerHTML=strategyInfo(e.target.value,'defense');act('scheme',{defense:e.target.value});});
     $('ready-btn')?.addEventListener('click',()=>act('ready'));
     if(!canChange) $('ready-btn').disabled=true;
   }
@@ -235,7 +252,7 @@
     const g=state.game;if(!g)return;
     $('scoreboard').innerHTML=`<div class="score-side"><span class="score-team">${esc(state.teams[0].name)}</span><span class="score-number">${g.score[0]}</span><span class="tiny">${state.teams[0].wins} SERIES WINS • ${state.teams[0].timeouts} TIMEOUTS</span></div>
       <div class="score-meta"><span>GAME ${state.gameNumber}${state.format===7?' • BEST OF 7':''}</span><strong>${esc(g.period)} ${secs(g.secondsLeft)}</strong>
-      ${state.phase==='sim'?'<button id="call-timeout" class="primary">⏸ CALL TIMEOUT</button>':'<span class="smallcaps">⏸ TIMEOUT IN PROGRESS</span>'}</div>
+      ${state.phase==='sim'?'<button id="call-timeout" class="primary">⏸ CALL TIMEOUT</button>':state.phase==='foulout'?'<span class="smallcaps" style="color:var(--red)">🚫 FOUL-OUT • SUB REQUIRED</span>':'<span class="smallcaps">⏸ TIMEOUT IN PROGRESS</span>'}</div>
       <div class="score-side end"><span class="score-team">${esc(state.teams[1].name)}</span><span class="score-number">${g.score[1]}</span><span class="tiny">${state.teams[1].timeouts} TIMEOUTS • ${state.teams[1].wins} SERIES WINS</span></div>`;
     $('call-timeout')?.addEventListener('click',()=>act('timeout'));
     if($('call-timeout')&&!my().timeouts)$('call-timeout').disabled=true;
@@ -247,7 +264,7 @@
     const p=player(id),stats=g.stats[id];const owner=state.teams.findIndex(t=>t.roster.includes(id));
     $('player-focus').innerHTML=`<div class="smallcaps">CLICK ANY PLAYER TO INSPECT</div>
       <div style="display:flex;align-items:center;gap:12px;margin:10px 0">${portrait(p,'med',owner?'red':'blue')}<div><b>${esc(p.name)}</b><p class="tiny">${esc(p.positions.join('/'))} • ${p.overall} OVR</p><p class="tiny">💦 Energy: ${Math.round(state.teams[owner].energy[id]??100)}%</p></div></div>
-      <div class="data-grid">${[['PTS',stats.pts],['REB',stats.reb],['AST',stats.ast],['STL',stats.stl],['BLK',stats.blk],['TOV',stats.tov],['FG',stats.fgm+'/'+stats.fga],['3PT',stats.threeM+'/'+stats.threeA],['MIN',Math.round(stats.seconds/60)]].map(([k,v])=>`<div class="data-cell"><b>${esc(v)}</b><span>${k}</span></div>`).join('')}</div>`;
+      <div class="data-grid">${[['PTS',stats.pts],['REB',stats.reb],['AST',stats.ast],['STL',stats.stl],['BLK',stats.blk],['PF',stats.pf],['FT',stats.ftm+'/'+stats.fta],['TOV',stats.tov],['FG',stats.fgm+'/'+stats.fga],['3PT',stats.threeM+'/'+stats.threeA],['MIN',Math.round(stats.seconds/60)]].map(([k,v])=>`<div class="data-cell"><b>${esc(v)}</b><span>${k}</span></div>`).join('')}</div>`;
     $('sim-events').innerHTML=`<h3>LIVE PLAY-BY-PLAY</h3>${[...state.log].reverse().slice(0,12).map(x=>`<p>${esc(x)}</p>`).join('')}`;
   }
   function timeoutPanel(){
@@ -261,18 +278,34 @@
       <label>DEFENSE <select id="timeout-defense">${DEFENSE.map(x=>`<option ${my().defense===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
       ${caller===state.you?'<button id="resume-game" class="primary">RESUME GAME →</button>':''}
     </div>
+    <div class="timeout-strategies" aria-live="polite"><div><span class="smallcaps">OFFENSE</span><div id="timeout-offense-description">${strategyInfo(my().offense,'offense')}</div></div>
+    <div><span class="smallcaps">DEFENSE</span><div id="timeout-defense-description">${strategyInfo(my().defense,'defense')}</div></div></div>
     ${caller===state.you?`<p class="subtle" style="margin-top:15px">Your active five and three bench players are below. Click a player and then the destination slot to substitute or change position.</p><div id="timeout-team" class="team-panel"></div>`:''}
     </div>`;
-    $('timeout-offense')?.addEventListener('change',e=>act('scheme',{offense:e.target.value}));
-    $('timeout-defense')?.addEventListener('change',e=>act('scheme',{defense:e.target.value}));
+    $('timeout-offense')?.addEventListener('change',e=>{$('timeout-offense-description').innerHTML=strategyInfo(e.target.value,'offense');act('scheme',{offense:e.target.value});});
+    $('timeout-defense')?.addEventListener('change',e=>{$('timeout-defense-description').innerHTML=strategyInfo(e.target.value,'defense');act('scheme',{defense:e.target.value});});
     $('resume-game')?.addEventListener('click',()=>act('resume'));
     if(caller===state.you){$('timeout-team').innerHTML=teamPanel(state.you);bindRoster($('timeout-team'));}
   }
-  function renderSim(){showScore();focusPanel();timeoutPanel();startCourtAnimation();}
+  function fouloutPanel(){
+    const panel=$('foulout-panel');
+    if(state.phase!=='foulout'||!state.foulout){panel.classList.add('hide');return;}
+    const f=state.foulout,team=state.teams[f.side],ejected=player(f.playerId);
+    const bench=team.roster.filter(id=>!state.game.active[f.side].includes(id)&&!state.game.fouledOut.includes(id));
+    const mine=f.side===state.you;
+    panel.classList.remove('hide');
+    panel.innerHTML=`<div class="foulout-card" role="alert" aria-live="assertive">
+      <div class="foulout-title">🚫 SIX PERSONAL FOULS — PLAYER FOULED OUT</div>
+      <div class="foulout-identity">${portrait(ejected,'med',f.side?'red':'blue')}<div><strong>${esc(ejected?.name||'Player')} is OUT for the rest of this game.</strong><p class="subtle">${esc(team.name)} must replace the player at ${esc(SLOTS[f.slot])}. Game clock and simulation are paused. No timeout is spent.</p></div></div>
+      ${mine?`<h3>SELECT A BENCH REPLACEMENT</h3><div class="foulout-options">${bench.map(id=>{const p=player(id);return `<button class="foulout-option" type="button" data-foulout-sub="${esc(id)}">${portrait(p,'med',f.side?'red':'blue')}<span><b>${esc(p.name)}</b><small>${esc(p.positions.join('/'))} • ${p.overall} OVR</small></span></button>`;}).join('')}</div>`:`<p class="foulout-wait">Waiting for ${esc(team.name)} to select a bench replacement…</p>`}
+    </div>`;
+    panel.querySelectorAll('[data-foulout-sub]').forEach(btn=>btn.addEventListener('click',()=>act('fouloutSub',{playerId:btn.dataset.fouloutSub})));
+  }
+  function renderSim(){showScore();focusPanel();timeoutPanel();fouloutPanel();startCourtAnimation();}
   function boxTable(i){
     const t=state.teams[i];const g=state.game;if(!g)return '';
-    return `<h3>${esc(t.name)} — ${g.score[i]} PTS</h3><div style="overflow:auto"><table class="box-table"><thead><tr>${['PLAYER','PTS','REB','AST','STL','BLK','TOV','FG','3PT','MIN'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>
-      ${t.roster.map(id=>{const p=player(id),s=g.stats[id];return `<tr><td>${esc(p.name)}</td><td>${s.pts}</td><td>${s.reb}</td><td>${s.ast}</td><td>${s.stl}</td><td>${s.blk}</td><td>${s.tov}</td><td>${s.fgm}/${s.fga}</td><td>${s.threeM}/${s.threeA}</td><td>${Math.round(s.seconds/60)}</td></tr>`;}).join('')}
+    return `<h3>${esc(t.name)} — ${g.score[i]} PTS</h3><div style="overflow:auto"><table class="box-table"><thead><tr>${['PLAYER','PTS','REB','AST','STL','BLK','PF','FT','TOV','FG','3PT','MIN'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>
+      ${t.roster.map(id=>{const p=player(id),s=g.stats[id];return `<tr><td><div class="box-player">${portrait(p,'sm',i?'red':'blue')}<span>${esc(p.name)}${g.fouledOut.includes(id)?'<small class="fouled-out-label">FOULED OUT</small>':''}</span></div></td><td>${s.pts}</td><td>${s.reb}</td><td>${s.ast}</td><td>${s.stl}</td><td>${s.blk}</td><td>${s.pf}</td><td>${s.ftm}/${s.fta}</td><td>${s.tov}</td><td>${s.fgm}/${s.fga}</td><td>${s.threeM}/${s.threeA}</td><td>${Math.round(s.seconds/60)}</td></tr>`;}).join('')}
     </tbody></table></div>`;
   }
   function renderEnd(){
@@ -292,17 +325,17 @@
     $('room-header').innerHTML=`<span class="room-title">PRIVATE ROOM <span class="room-code" title="Share this code with your friend">${esc(state.code)}</span></span>
       <div class="room-versus"><span>${esc(state.teams[0]?.name)}</span><span class="vs">VS</span><span>${esc(state.teams[1]?.name||'WAITING...')}</span></div>
       <span class="smallcaps">${state.format===7?'BEST OF 7':'SINGLE GAME'} • ${state.teams.filter(Boolean).length}/2 PLAYERS</span>`;
-    const banners={lobby:'Share your room code with your friend. The game starts once they join.',coinflip:'🪙 The coin determines who places the first opening bid.',wheel:'🎡 Spinning the weighted player wheel…',auction:'💰 Bid in $0.50 increments. Your turn lasts 30 seconds and resets after each new bid.',placement:'🃏 The drafted player can be placed into any roster slot, then the next spin begins.',lineup:'🧠 Set both game plans and organize your team before clicking Ready.',sim:'🏀 Live game • each marker is a player • the ball and sweat icons reflect gameplay.',timeout:'⏸ Timeout • both teams may change schemes, but only the caller may substitute.',intermission:'🔁 Series break • both teams may adjust their schemes before the next game.',finished:'🏆 Final results.'};
+    const banners={lobby:'Share your room code with your friend. The game starts once they join.',coinflip:'🪙 The coin determines who places the first opening bid.',wheel:'🎡 Spinning the weighted player wheel…',auction:'💰 Bid in $0.50 increments. Your turn lasts 30 seconds and resets after each new bid.',placement:'🃏 The drafted player can be placed into any roster slot, then the next spin begins.',lineup:'🧠 Set both game plans and organize your team before clicking Ready.',sim:'🏀 Live game • each marker is a player • the ball and sweat icons reflect gameplay.',timeout:'⏸ Timeout • both teams may change schemes, but only the caller may substitute.',foulout:'🚫 SIX FOULS • Game paused until the affected team selects an eligible bench replacement.',intermission:'🔁 Series break • both teams may adjust their schemes before the next game.',finished:'🏆 Final results.'};
     $('phase-banner').textContent=banners[state.phase]||'';
     const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
-      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,focus:selectedFocus,picked:currentPicked});
+      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked});
     if(!force&&sig===lastRenderKey){updateClocks();return;}
     lastRenderKey=sig;
     for(const id of ['draft-view','setup-view','sim-view','end-view'])$(id).classList.add('hide');
     if(['lobby','coinflip','wheel','auction','placement'].includes(state.phase)){$('draft-view').classList.remove('hide');renderDraft();}
     if(['lineup','intermission'].includes(state.phase)){$('setup-view').classList.remove('hide');renderPrep();}
-    if(['sim','timeout'].includes(state.phase)){$('sim-view').classList.remove('hide');renderSim();}
+    if(['sim','timeout','foulout'].includes(state.phase)){$('sim-view').classList.remove('hide');renderSim();}
     if(state.phase==='finished'){$('end-view').classList.remove('hide');renderEnd();}
     lastRoomPhase=state.phase;updateClocks();
   }
@@ -345,13 +378,23 @@
     const targetGoal=attackRight?886:54;
     const anchors=[{x:.66,y:.5},{x:.74,y:.20},{x:.71,y:.82},{x:.84,y:.33},{x:.84,y:.64}];
     const defenseAnchors=[{x:.73,y:.50},{x:.81,y:.20},{x:.81,y:.82},{x:.87,y:.38},{x:.87,y:.65}];
+    const zoneAnchors=[{x:.72,y:.19},{x:.74,y:.50},{x:.72,y:.81},{x:.86,y:.33},{x:.86,y:.67}];
+    const isChaos=state.teams[offense].offense==='Pure Chaos';
+    const isZone=state.teams[1-offense].defense==='3-2 Zone';
+    const eventAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
     const present=new Set();
     for(let side=0;side<2;side++){
       for(let pos=0;pos<5;pos++){
         const id=game.active[side][pos];if(!id)continue;present.add(id);
         const attacking=side===offense;
-        const anchor=(attacking?anchors:defenseAnchors)[pos];
+        const anchor=attacking?anchors:(isZone?zoneAnchors:defenseAnchors)[pos];
         let x=anchor.x*W,y=anchor.y*H;
+        // Heavy off-ball motion/screen cuts while Pure Chaos is active.
+        if(attacking&&isChaos&&eventAge<3500){
+          const wave=(Date.now()/330)+(pos*1.7);
+          x+=Math.sin(wave)*31;
+          y+=Math.cos(wave*.85)*25;
+        }
         if(event?.shooter===id&&attacking){x=.83*W;y=H*.50;}
         if(event?.defender===id&&!attacking){x=.85*W;y=H*.53;}
         if(event?.reboundId===id){x=.88*W;y=H*.58;}
@@ -373,11 +416,17 @@
         const first=p.name.split(' ')[0];ctx.strokeText(first,prev.x,prev.y+39);ctx.fillText(first,prev.x,prev.y+39);
         const e=state.teams[side].energy[id]??100;
         if(e<80){ctx.font=e<40?'21px system-ui':'15px system-ui';ctx.fillText(e<40?'🥵':'💦',prev.x+20,prev.y-20);}
+        if(event?.posterDunk&&eventAge<1100&&(id===event.shooter||id===event.defender)){
+          // One 🔥 above the dunker and one above the defender, briefly.
+          ctx.save();ctx.globalAlpha=Math.min(1,(1100-eventAge)/240);
+          ctx.font='32px system-ui';ctx.textAlign='center';ctx.fillText('🔥',prev.x,prev.y-35);
+          ctx.restore();
+        }
       }
     }
     for(const id of [...canvasPositions.keys()])if(!present.has(id))canvasPositions.delete(id);
     if(event&&canvasPositions.has(event.shooter)){
-      const d=canvasPositions.get(event.shooter);const t=Date.now()-event.at;
+      const d=canvasPositions.get(event.shooter);const t=eventAge;
       let bx=d.x+28,by=d.y+14;
       if(event.assistId&&canvasPositions.has(event.assistId)&&t<200){const src=canvasPositions.get(event.assistId),progress=t/200;bx=src.x+(d.x-src.x)*progress;by=src.y+(d.y-src.y)*progress;}
       else if(t>200&&t<600&&event.displayEvent!=='steal'){
@@ -386,11 +435,32 @@
       ctx.beginPath();ctx.fillStyle='#fc8c2f';ctx.strokeStyle='#45290e';ctx.lineWidth=2;ctx.arc(bx,by,9,0,2*Math.PI);ctx.fill();ctx.stroke();
       ctx.beginPath();ctx.moveTo(bx-9,by);ctx.lineTo(bx+9,by);ctx.moveTo(bx,by-9);ctx.lineTo(bx,by+9);ctx.stroke();
     }
+    if(event?.screen&&eventAge<1500&&state.phase==='sim'){
+      ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/350);
+      ctx.fillStyle='#112236da';ctx.fillRect(W/2-148,30,296,34);
+      ctx.fillStyle='#d0ff62';ctx.font='900 19px system-ui';ctx.textAlign='center';
+      ctx.fillText(event.mismatch?'⚡ MISMATCH HUNT':'↗ OFF-BALL SCREEN',W/2,53);
+      ctx.restore();
+    }
+    if(event?.foul&&eventAge<2250){
+      ctx.save();ctx.globalAlpha=Math.min(1,(2250-eventAge)/450);
+      ctx.fillStyle='#0c1726e0';ctx.fillRect(W/2-190,16,380,42);
+      ctx.fillStyle='#ffcc58';ctx.font='900 21px system-ui';ctx.textAlign='center';
+      ctx.fillText(`📣 SHOOTING FOUL • ${event.freeThrowsMade}/${event.freeThrowsAttempted} FT`,W/2,45);
+      ctx.restore();
+    }
+    if(state?.phase==='foulout'){
+      ctx.fillStyle='#08101add';ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#ff7087';ctx.font='900 38px system-ui';ctx.textAlign='center';
+      ctx.fillText('🚫 PLAYER FOULED OUT',W/2,H/2-12);
+      ctx.fillStyle='#ffffff';ctx.font='bold 17px system-ui';
+      ctx.fillText('AWAITING MANDATORY SUBSTITUTION',W/2,H/2+28);
+    }
     if(state?.phase==='timeout'){
       ctx.fillStyle='#08101acc';ctx.fillRect(0,0,W,H);
       ctx.fillStyle='#ffdb84';ctx.font='900 44px system-ui';ctx.textAlign='center';ctx.fillText('⏸  TIMEOUT',W/2,H/2);
     }
-    if(['sim','timeout'].includes(state.phase))requestAnimationFrame(drawCourt);
+    if(['sim','timeout','foulout'].includes(state.phase))requestAnimationFrame(drawCourt);
     else frameRunning=false;
   }
   function drawInitials(ctx,p,x,y){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='900 17px system-ui';ctx.fillText(p.name.split(' ').map(a=>a[0]).slice(0,2).join(''),x,y+6);}

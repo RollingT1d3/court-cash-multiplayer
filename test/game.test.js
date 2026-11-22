@@ -61,9 +61,14 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     await action(a,'ready');await action(b,'ready');
     s=await until(async()=>{const x=await state(a);return x.phase==='sim'?x:null;});
     assert.equal(s.game.score.length,2);
+    assert.equal(s.teams[0].timeouts,5);
+    assert.equal(s.teams[1].timeouts,5);
     await action(a,'timeout');
-    s=await state(a);assert.equal(s.phase,'timeout');assert.equal(s.teams[0].timeouts,3);
-    await action(b,'scheme',{offense:'Live By the 3, Die by the 3'});
+    s=await state(a);assert.equal(s.phase,'timeout');assert.equal(s.teams[0].timeouts,4);
+    await action(b,'scheme',{offense:'Pure Chaos',defense:'3-2 Zone'});
+    s=await state(a);
+    assert.equal(s.teams[1].offense,'Pure Chaos');
+    assert.equal(s.teams[1].defense,'3-2 Zone');
     await assert.rejects(()=>action(b,'place',{playerId:s.teams[1].roster[0],slot:'PG'}),/Only the timeout caller/);
     const bench=s.teams[0].roster.find(x=>!s.game.active[0].includes(x));
     await action(a,'place',{playerId:bench,slot:'PG'});
@@ -71,10 +76,14 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     await action(a,'resume');
     s=await until(async()=>{const x=await state(a);return x.phase==='finished'?x:null;},15000);
     assert.equal(s.game.quarter>=4,true);
+    assert.equal(s.teams[0].timeouts,4);
+    assert.equal(s.teams[1].timeouts,5);
     assert.equal(s.result.forfeit,false);
     assert.equal(s.teams.reduce((n,t)=>n+t.wins,0),1);
     assert.equal(s.game.score.reduce((n,v)=>n+v,0)>0,true);
     assert.equal(s.game.possessions>100,true);
+    assert.equal(typeof s.game.event.posterDunk,'boolean');
+    assert.equal(typeof s.game.event.screen,'boolean');
     assert.equal(s.game.stats[s.teams[0].roster[0]].fga>=0,true);
   } finally {child.kill();}
 });

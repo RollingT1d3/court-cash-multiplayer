@@ -3,6 +3,7 @@ import { readFileSync, createReadStream, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
+import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PLAYERS = JSON.parse(readFileSync(path.join(ROOT, 'data/players.json'), 'utf8'));
@@ -10,13 +11,16 @@ const BY_ID = new Map(PLAYERS.map(p => [p.id, p]));
 if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 16) throw Error('Players need unique IDs; at least 16 required.');
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash'];
-const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured'];
+const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos'];
+const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone'];
 const BASE_SECONDS = 48*60;
+const TIMEOUTS_PER_GAME = 5;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
 const COIN_MS = Math.max(20,Number(process.env.COIN_MS)||3200);
 const SPIN_MS = Math.max(20,Number(process.env.SPIN_MS)||2600);
-const SIM_MS = Math.max(10,Number(process.env.SIM_MS)||750);
+// ~148 possessions at ~19.5 simulated seconds each; 3.25 seconds/play ≈ 8 real minutes per 48-minute game.
+// Timeouts and overtime add real time. For automated tests SIM_MS may be overridden.
+const SIM_MS = Math.max(10,Number(process.env.SIM_MS)||3250);
 const TICK_MS = Math.max(10,Number(process.env.TICK_MS)||150);
 const now = () => Date.now();
 const token = () => randomBytes(20).toString('hex');
@@ -37,12 +41,12 @@ const auth = (code,key) => {
   if (i<0) throw Error('Not authorized for this room.');
   return {room,i};
 };
-const teamNew = (name,key) => ({name:safeName(name),token:key,budget:5000,roster:[],slots:Object.fromEntries(SLOTS.map(s=>[s,null])),offense:OFFENSE[0],defense:DEFENSE[0],ready:false,wins:0,timeouts:4,connected:false,disconnectedAt:null,energy:{}});
+const teamNew = (name,key) => ({name:safeName(name),token:key,budget:5000,roster:[],slots:Object.fromEntries(SLOTS.map(s=>[s,null])),offense:OFFENSE[0],defense:DEFENSE[0],ready:false,wins:0,timeouts:TIMEOUTS_PER_GAME,connected:false,disconnectedAt:null,energy:{}});
 function create(name,format) {
   let code;
   do {code=randomBytes(4).toString('hex').slice(0,6).toUpperCase();} while(ROOMS.has(code));
   const key=token();
-  const room={code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,result:null};
+  const room={code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null};
   ROOMS.set(code,room);return {code,token:key,teamIndex:0};
 }
 function join(code,name){
@@ -57,7 +61,7 @@ function join(code,name){
 }
 function publicState(room,i){
   const removeSecret=t=>t?({name:t.name,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
-  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS,wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,result:room.result,serverTime:now()};
+  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS,wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}
 function log(room,msg){room.log.push(msg);if(room.log.length>120)room.log.shift();}
@@ -115,13 +119,13 @@ function finishDraft(room){
   room.teams.forEach(t=>{fillSlots(t);t.ready=false;});
   log(room,'Draft complete. Set lineups and schemes.');broadcast(room);
 }
-function freshStats(){return {pts:0,reb:0,ast:0,stl:0,blk:0,tov:0,fgm:0,fga:0,threeM:0,threeA:0,seconds:0};}
+function freshStats(){return {pts:0,reb:0,ast:0,stl:0,blk:0,tov:0,fgm:0,fga:0,threeM:0,threeA:0,ftm:0,fta:0,pf:0,seconds:0};}
 function startGame(room){
   room.gameNumber++;
-  for(const t of room.teams){t.timeouts=4;t.ready=false;t.energy=Object.fromEntries(t.roster.map(id=>[id,100]));}
+  for(const t of room.teams){t.timeouts=TIMEOUTS_PER_GAME;t.ready=false;t.energy=Object.fromEntries(t.roster.map(id=>[id,100]));}
   const stats=Object.fromEntries(room.teams.flatMap(t=>t.roster.map(id=>[id,freshStats()])));
-  room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:randomInt(2),active:room.teams.map(t=>SLOTS.slice(0,5).map(s=>t.slots[s])),stats,possessions:0,event:null,startedAt:now(),period:'Q1'};
-  room.phase='sim';room.play=null;room.log=[];room.timeout=null;
+  room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:randomInt(2),active:room.teams.map(t=>SLOTS.slice(0,5).map(s=>t.slots[s])),stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1'};
+  room.phase='sim';room.play=null;room.log=[];room.timeout=null;room.foulout=null;
   log(room,`Game ${room.gameNumber} has tipped off!`);broadcast(room);
 }
 const getPlayer = id=>BY_ID.get(id);
@@ -151,7 +155,7 @@ function automaticSubs(room){
   const g=room.game;
   for(let side=0;side<2;side++){
     const t=room.teams[side];
-    const bench=t.roster.filter(id=>!g.active[side].includes(id));
+    const bench=eligibleBench(t.roster,g.active[side],g.fouledOut);
     if(!bench.length)continue;
     const worst=g.active[side].reduce((a,b)=>t.energy[a]<t.energy[b]?a:b);
     const slot=g.active[side].indexOf(worst);const best=bench.reduce((a,b)=>((t.energy[a]??100)-positionPenalty(a,SLOTS[slot])*2)>((t.energy[b]??100)-positionPenalty(b,SLOTS[slot])*2)?a:b);
@@ -176,72 +180,173 @@ function fatigue(room,seconds){
     }
   }
 }
+// Player teamwork determines how reliably each player executes a selected offensive scheme.
+// 45 teamwork follows the called plan only ~15% of the time; 99 teamwork nearly always does.
+function planDiscipline(id){return clamp((rating(id,'teamwork')-45)/55,.15,1);}
+function shotMismatch(offenseId,defenderId,shotType){
+  const attacker=getPlayer(offenseId),guard=getPlayer(defenderId);
+  const isInterior=shotType==='dunk'||shotType==='layup';
+  const scoring=isInterior?(.55*rating(offenseId,'layup')+.45*rating(offenseId,'dunk')):
+    shotType==='three'?rating(offenseId,'three'):rating(offenseId,'mid');
+  const defense=rating(defenderId,isInterior?'paintDef':'perimeterDef');
+  const sizeEdge=isInterior?Math.max(0,(attacker.heightInches-guard.heightInches)*.003):0;
+  const strengthEdge=isInterior?Math.max(0,(rating(offenseId,'strength')-rating(defenderId,'strength'))*.0012):0;
+  return clamp((scoring-defense)*.0014+sizeEdge+strengthEdge,0,.08);
+}
 function simulatePlay(room){
   const g=room.game;if(!g)return;
   const offense=g.offense,def=other(offense),ot=room.teams[offense],dt=room.teams[def];
   const shooters=g.active[offense],defenders=g.active[def];
   const scheme=ot.offense,dscheme=dt.defense;
   const high=shooters.slice().sort((a,b)=>ov(b)-ov(a));
+  const chaos=scheme==='Pure Chaos';
   const shooter=weightedId(shooters,id=> {
-    if(scheme===OFFENSE[0])return id===high[0]?10:1;
-    if(scheme===OFFENSE[1])return high.slice(0,2).includes(id)?6:1;
-    if(scheme===OFFENSE[2])return Math.max(1,rating(id,'teamwork')/75);
-    if(scheme===OFFENSE[3])return Math.max(1,rating(id,'three')/70);
-    return Math.max(1,rating(id,'dunk')/75);
+    const discipline=planDiscipline(id);
+    const baseline=1;
+    let desired=baseline;
+    if(scheme===OFFENSE[0])desired=id===high[0]?13:1;
+    else if(scheme===OFFENSE[1])desired=high.slice(0,2).includes(id)?8:1;
+    else if(scheme===OFFENSE[2])desired=1.5+rating(id,'teamwork')/35;
+    else if(scheme===OFFENSE[3])desired=.65+rating(id,'three')/44;
+    else if(scheme===OFFENSE[4])desired=.65+(rating(id,'layup')+rating(id,'dunk')+rating(id,'post'))/110;
+    else if(chaos){
+      const bestMatch=defenders.reduce((best,d)=>Math.max(best,
+        shotMismatch(id,d,'layup'),shotMismatch(id,d,'three')),0);
+      desired=.6+bestMatch*75+(rating(id,'dribbling')+rating(id,'speed'))/120;
+    }
+    return Math.max(.2,baseline+discipline*(desired-baseline));
   });
-  const defender=weightedId(defenders,id=>1+rating(id,'perimeterDef')/200);
+  const discipline=planDiscipline(shooter);
+  const teamDiscipline=shooters.reduce((sum,id)=>sum+planDiscipline(id),0)/shooters.length;
+  const adherence=.65*discipline+.35*teamDiscipline;
+  const threeTarget=scheme===OFFENSE[3]?.68:scheme===OFFENSE[4]?.11:chaos?.36:scheme===OFFENSE[2]?.29:.32;
+  const isThree=rnd()<clamp(.32+adherence*(threeTarget-.32),.08,.75);
+  const paintTarget=scheme===OFFENSE[4]?.82:chaos?.60:scheme===OFFENSE[3]?.38:.56;
+  const inPaint=!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.18,.9);
+  const dunkSkill=rating(shooter,'dunk');
+  const dunkChance=clamp(.2+(dunkSkill-75)*.008,.02,.62);
+  const type=isThree?'three':inPaint?(rnd()<dunkChance?'dunk':'layup'):'mid';
+  // A zone keeps three defenders up top and two close to the rim. Pure Chaos deliberately
+  // searches across defenders for favorable size/scoring mismatches using off-ball screens.
+  const zoneTargets=dscheme==='3-2 Zone'?(inPaint?defenders.slice(3):defenders.slice(0,3)):defenders;
+  const screen=chaos&&rnd()<.18+.72*adherence;
+  const huntMismatch=chaos&&screen&&rnd()<.25+.62*adherence;
+  const defender=(process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1')?defenders[0]:huntMismatch?weightedId(defenders,id=>.15+shotMismatch(shooter,id,type)*120):
+    weightedId(zoneTargets,id=>1+rating(id,inPaint?'paintDef':'perimeterDef')/200);
+  const mismatchBonus=huntMismatch?shotMismatch(shooter,defender,type):0;
   const defSteal=effective(defender,dt,effectiveOnCourt(room,def,defender,'steal'));
-  let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null;
-  const isThree = rnd() < (scheme===OFFENSE[3]?.68:scheme===OFFENSE[4]?.12:.32);
-  const inPaint = !isThree && rnd()<(scheme===OFFENSE[4]?.78:.56);
-  const type=isThree?'three':inPaint?(rnd()<.38?'dunk':'layup'):'mid';
+  let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false;
+  let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null;
   const seconds=Math.min(g.secondsLeft,10+randomInt(20));
   fatigue(room,seconds);
-  for(const id of shooters.concat(defenders)){} // fatigue already updates all ten players.
-  if(rnd()<clamp(.017+(defSteal-70)*.0011,.01,.08)){
+  // Constant motion and screening cost slightly more energy, especially when teamwork is low.
+  if(chaos){for(const id of shooters)ot.energy[id]=clamp(ot.energy[id]-(.20+.30*(1-planDiscipline(id)))*(seconds/17),0,100);}
+  const stealChance=clamp(.017+(defSteal-70)*.0011-(screen?.004:0),.005,.08);
+  if(rnd()<stealChance){
     stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;event='steal';
   }else{
-    let value=isThree?effectiveOnCourt(room,offense,shooter,'three'):inPaint?(.44*effectiveOnCourt(room,offense,shooter,'layup')+.46*effectiveOnCourt(room,offense,shooter,'dunk')+.1*effectiveOnCourt(room,offense,shooter,'post')):effectiveOnCourt(room,offense,shooter,'mid');
+    let value=isThree?effectiveOnCourt(room,offense,shooter,'three'):
+      inPaint?(.44*effectiveOnCourt(room,offense,shooter,'layup')+.46*effectiveOnCourt(room,offense,shooter,'dunk')+.1*effectiveOnCourt(room,offense,shooter,'post')):
+      effectiveOnCourt(room,offense,shooter,'mid');
     value=effective(shooter,ot,value);
     const defensiveRating=inPaint?effectiveOnCourt(room,def,defender,'paintDef'):effectiveOnCourt(room,def,defender,'perimeterDef');
     let defenseBump=(defensiveRating-75)*.0018;
-    if(dscheme===DEFENSE[2]&&inPaint) defenseBump+=.11;
-    if(dscheme===DEFENSE[3]&&isThree) defenseBump+=.105;
-    if(dscheme===DEFENSE[1] && shooter===high[0]) defenseBump+=.11;
+    if(dscheme===DEFENSE[2]&&inPaint)defenseBump+=.11;
+    if(dscheme===DEFENSE[3]&&isThree)defenseBump+=.105;
+    if(dscheme===DEFENSE[1]&&shooter===high[0])defenseBump+=.11;
+    if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
     const base=isThree?.365:inPaint?.61:.43;
-    let chance=clamp(base+(value-80)*.0075-defenseBump,.12,.83);
-    const blocked=inPaint && rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14);
-    g.stats[shooter].fga++;if(isThree)g.stats[shooter].threeA++;
-    if(blocked){g.stats[defender].blk++;blockId=defender;event='block';}
-    else if(rnd()<chance){made=true;points=isThree?3:2;g.score[offense]+=points;g.stats[shooter].pts+=points;g.stats[shooter].fgm++;if(isThree)g.stats[shooter].threeM++;event=type;
-      if(rnd()< (scheme===OFFENSE[2]?.76:.57)){
-        const passers=shooters.filter(x=>x!==shooter);
-        if(passers.length){assistId=weightedId(passers,id=>rating(id,'passing'));g.stats[assistId].ast++;}
+    const screensBonus=screen?.032*adherence:0;
+    const mismatchQuality=huntMismatch?mismatchBonus:0;
+    let chance=clamp(base+(value-80)*.0075-defenseBump+screensBonus+mismatchQuality,.12,.83);
+    const blocked=inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14);
+    // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
+    // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
+    // This prototype does not generate and-one shots or technical/non-shooting fouls.
+    const foulChance=shootingFoulChance(type,rating(shooter,'ft'));
+    // Isolated test-server mode makes forced-substitution paths testable; never enabled in production.
+    const foulTestMode=process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1';
+    if(rnd()<(foulTestMode?1:foulChance)){
+      foul=true;fouler=defender;event='shooting-foul';
+      g.stats[defender].pf++;
+      freeThrowsAttempted=isThree?3:2;
+      const trips=shootFreeThrows(rating(shooter,'ft'),freeThrowsAttempted,rnd);
+      freeThrowsMade=trips.made;
+      g.stats[shooter].fta+=trips.attempts;
+      g.stats[shooter].ftm+=trips.made;
+      g.stats[shooter].pts+=trips.made;
+      g.score[offense]+=trips.made;
+      points=trips.made;
+      if(g.stats[defender].pf>=6){
+        g.fouledOut.push(defender);
+        fouledOutPlayer=defender;
       }
-    }else event='miss';
-    if(!made){
-      const rebTeam=rnd()<(inPaint?.74:.80)?def:offense;
+    } else {
+      g.stats[shooter].fga++;if(isThree)g.stats[shooter].threeA++;
+      if(blocked){g.stats[defender].blk++;blockId=defender;event='block';}
+      else if(rnd()<chance){
+      made=true;points=isThree?3:2;g.score[offense]+=points;g.stats[shooter].pts+=points;g.stats[shooter].fgm++;
+      if(isThree)g.stats[shooter].threeM++;event=type;
+      // A contested made dunk can trigger a short dual-player poster animation.
+      posterDunk=type==='dunk'&&rating(defender,'paintDef')>=60&&
+        rnd()<clamp(.18+(rating(shooter,'dunk')-75)*.005,.08,.46);
+      const passerCompliance=shooters.reduce((v,id)=>v+planDiscipline(id),0)/shooters.length;
+      const assistChance=clamp(.40+.25*passerCompliance+(scheme===OFFENSE[2]?.12:0)+(chaos&&screen?.10:0),.35,.87);
+      if(rnd()<assistChance){
+        const passers=shooters.filter(x=>x!==shooter);
+        if(passers.length){assistId=weightedId(passers,id=>rating(id,'passing')*planDiscipline(id));g.stats[assistId].ast++;}
+      }
+      }else event='miss';
+    }
+    if(!made&&!foul){
+      const zoneReboundPenalty=dscheme==='3-2 Zone'?.045:0;
+      const rebTeam=rnd()<(inPaint?.74:.80)-zoneReboundPenalty?def:offense;
       reboundId=weightedId(g.active[rebTeam],id=>effectiveOnCourt(room,rebTeam,id,'rebound')+effectiveOnCourt(room,rebTeam,id,'strength')*.16);
       g.stats[reboundId].reb++;
     }
   }
   const timeUsed=Math.min(seconds,g.secondsLeft);g.secondsLeft-=timeUsed;g.possessions++;
   const shooterName=getPlayer(shooter).name;
-  if(event==='steal')log(room,`${getPlayer(defender).name} steals the ball from ${shooterName}!`);
+  const actionPrefix=chaos&&screen?(huntMismatch?'Pure Chaos finds a mismatch! ':'Pure Chaos screen frees a scorer! '):'';
+  if(foul)log(room,`WHISTLE! ${getPlayer(fouler).name} fouls ${shooterName} on a ${type==='three'?'three-pointer':type==='mid'?'mid-range jumper':type}. ${freeThrowsMade}/${freeThrowsAttempted} free throws made. ${getPlayer(fouler).name} has ${g.stats[fouler].pf} personal foul(s).`);
+  else if(event==='steal')log(room,`${getPlayer(defender).name} steals the ball from ${shooterName}!`);
   else if(event==='block')log(room,`${getPlayer(defender).name} blocks ${shooterName}!`);
-  else if(made)log(room,`${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
-  else log(room,`${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
-  g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,at:now()};
-  automaticSubs(room);
-  // Offensive rebounds keep possession; otherwise possession changes hands.
+  else if(posterDunk)log(room,`🔥 POSTER DUNK! ${shooterName} dunks on ${getPlayer(defender).name}!`);
+  else if(made)log(room,`${actionPrefix}${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
+  else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
+  g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,screen,mismatch:huntMismatch,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
+  if(!fouledOutPlayer)automaticSubs(room);
   g.offense=reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){
     if(g.quarter<4){g.quarter++;g.secondsLeft=720;g.period='Q'+g.quarter;log(room,`Start of quarter ${g.quarter}.`);}
     else if(g.score[0]===g.score[1]){g.quarter++;g.period='OT'+(g.quarter-4);g.secondsLeft=300;log(room,'Overtime!');}
     else {completeGame(room);return;}
   }
+  if(fouledOutPlayer){
+    const side=def,slot=g.active[side].indexOf(fouledOutPlayer);
+    const reserve=eligibleBench(room.teams[side].roster,g.active[side],g.fouledOut);
+    if(!reserve.length){
+      // Edge case: the team no longer has five eligible players to field.
+      completeNoEligiblePlayers(room,side);return;
+    }
+    room.foulout={side,playerId:fouledOutPlayer,slot};
+    room.phase='foulout';
+    log(room,`🚫 ${getPlayer(fouledOutPlayer).name} FOULS OUT (6 PF). Game paused — ${room.teams[side].name} must choose a bench replacement.`);
+  }
   broadcast(room);
 }
+
+function completeNoEligiblePlayers(room,side){
+  const winner=other(side);
+  room.teams[winner].wins++;
+  room.result={winner,score:room.game.score.slice(),gameNumber:room.gameNumber,forfeit:true,reason:`${room.teams[side].name} has no eligible player to replace a fouled-out player.`};
+  log(room,room.result.reason);
+  room.foulout=null;
+  if(room.format===1||room.teams[winner].wins===4)room.phase='finished';
+  else {room.phase='intermission';room.teams.forEach(t=>t.ready=false);}
+  broadcast(room);
+}
+
 function completeGame(room){
   const g=room.game;const winner=g.score[0]>g.score[1]?0:1;room.teams[winner].wins++;
   room.result={winner,score:g.score.slice(),gameNumber:room.gameNumber,forfeit:false};
@@ -274,10 +379,11 @@ function action(room,i,data){
       if(!['placement','lineup','timeout'].includes(room.phase))throw Error('Lineup changes are not allowed now.');
       if(room.phase==='placement' && room.pending?.winner!==i)throw Error('Wait for the drafting team to place their player.');
       if(room.phase==='timeout' && room.timeout?.caller!==i)throw Error('Only the timeout caller can substitute.');
-      const id=String(data.playerId),slot=String(data.slot);
+      const id=t.roster.find(pid=>String(pid)===String(data.playerId)),slot=String(data.slot);
       if(room.phase==='timeout'){
         const g=room.game;
         if(!t.roster.includes(id) || !SLOTS.includes(slot))throw Error('Invalid lineup change.');
+        if(g.fouledOut.includes(id))throw Error('That player has fouled out and cannot return.');
         const slotIdx=SLOTS.indexOf(slot);
         // In timeout, slots PG–C represent active floor positions, bench slots represent inactive players.
         const onCourt=[...g.active[i]];
@@ -313,6 +419,18 @@ function action(room,i,data){
       if(room.phase!=='sim'||t.timeouts<1)throw Error('No timeouts available.');
       t.timeouts--;room.phase='timeout';room.timeout={caller:i,until:now()+30000};
       log(room,`${t.name} calls timeout. Both teams may adjust schemes; only ${t.name} may substitute.`);broadcast(room);break;
+    }
+    case 'fouloutSub':{
+      if(room.phase!=='foulout'||!room.foulout)throw Error('No foul-out substitution is pending.');
+      if(room.foulout.side!==i)throw Error('Only the affected team can make the mandatory substitution.');
+      const g=room.game,required=room.foulout;
+      const id=t.roster.find(pid=>String(pid)===String(data.playerId));
+      if(!eligibleBench(t.roster,g.active[i],g.fouledOut).includes(id))throw Error('Choose an eligible player from your bench.');
+      if(g.active[i][required.slot]!==required.playerId)throw Error('The required substitution slot changed unexpectedly.');
+      g.active[i][required.slot]=id;
+      log(room,`${getPlayer(id).name} replaces fouled-out ${getPlayer(required.playerId).name}. Play resumes.`);
+      room.foulout=null;
+      room.phase='sim';room.play={at:now()};broadcast(room);break;
     }
     case 'resume':{
       if(room.phase!=='timeout'||room.timeout.caller!==i)throw Error('Only the caller can resume early.');
