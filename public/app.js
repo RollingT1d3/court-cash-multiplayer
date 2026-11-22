@@ -418,12 +418,25 @@
         const p=player(id);if(!p)continue;
         ctx.beginPath();ctx.fillStyle='#101824';ctx.arc(prev.x,prev.y,26,0,2*Math.PI);ctx.fill();
         ctx.save();ctx.beginPath();ctx.arc(prev.x,prev.y,22,0,2*Math.PI);ctx.clip();
-        if(p.image){
-          let img=courtImages.get(id);
-          if(!img){img=new Image();img.src=p.image;courtImages.set(id,img);}
-          if(img.complete&&img.naturalWidth)ctx.drawImage(img,prev.x-22,prev.y-22,44,44);
-          else{ctx.fillStyle=side?'#b64e66':'#527baf';ctx.fillRect(prev.x-23,prev.y-23,46,46);drawInitials(ctx,p,prev.x,prev.y);}
-        }else{ctx.fillStyle=side?'#b64e66':'#527baf';ctx.fillRect(prev.x-23,prev.y-23,46,46);drawInitials(ctx,p,prev.x,prev.y);}
+        // The moving on-court circles show HEAD + HAIR, never the full-body art.
+        // Draft/player cards still use p.image in portrait() above.
+        const courtSrc=window.CourtHeadshots.imageSource(p);
+        let painted=false;
+        if(courtSrc){
+          let entry=courtImages.get(id);
+          if(!entry||entry.src!==courtSrc){
+            const img=new Image();img.src=courtSrc;
+            entry={src:courtSrc,img};courtImages.set(id,entry);
+          }
+          if(entry.img.complete&&entry.img.naturalWidth){
+            painted=window.CourtHeadshots.draw(ctx,entry.img,p,prev.x,prev.y,44);
+          }
+        }
+        if(!painted){
+          ctx.fillStyle=side?'#b64e66':'#527baf';
+          ctx.fillRect(prev.x-23,prev.y-23,46,46);
+          drawInitials(ctx,p,prev.x,prev.y);
+        }
         ctx.restore();
         ctx.lineWidth=4;ctx.strokeStyle=side?'#ff889e':'#91c9ff';ctx.beginPath();ctx.arc(prev.x,prev.y,24,0,2*Math.PI);ctx.stroke();
         ctx.textAlign='center';ctx.font='bold 12px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#122136';ctx.fillStyle='#fff';
