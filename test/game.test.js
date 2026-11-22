@@ -61,6 +61,13 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     await action(a,'ready');await action(b,'ready');
     s=await until(async()=>{const x=await state(a);return x.phase==='sim'?x:null;});
     assert.equal(s.game.score.length,2);
+    // Every new game jumps the two *starting centers*, not a coin flip.
+    const tip=s.game.tipoff;
+    assert.deepEqual(tip.centerIds,s.game.active.map(five=>five[4]));
+    assert.deepEqual(tip.centerHeights,tip.centerIds.map(id=>s.players.find(p=>p.id===id).heightInches));
+    assert.ok([0,1].includes(tip.winningTeam));
+    assert.ok(Math.abs(tip.probabilities.reduce((a,b)=>a+b,0)-1)<1e-12);
+    assert.equal(Math.abs(tip.centerHeights[0]-tip.centerHeights[1]),tip.heightDifference);
     assert.equal(s.teams[0].timeouts,5);
     assert.equal(s.teams[1].timeouts,5);
     await action(a,'timeout');

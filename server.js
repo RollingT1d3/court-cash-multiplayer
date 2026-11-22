@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, isDeepThree } from './offense-v04.js';
+import { determineTipoff } from './tipoff-v041.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PLAYERS = JSON.parse(readFileSync(path.join(ROOT, 'data/players.json'), 'utf8'));
@@ -125,9 +126,18 @@ function startGame(room){
   room.gameNumber++;
   for(const t of room.teams){t.timeouts=TIMEOUTS_PER_GAME;t.ready=false;t.energy=Object.fromEntries(t.roster.map(id=>[id,100]));}
   const stats=Object.fromEntries(room.teams.flatMap(t=>t.roster.map(id=>[id,freshStats()])));
-  room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:randomInt(2),active:room.teams.map(t=>SLOTS.slice(0,5).map(s=>t.slots[s])),stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1'};
-  room.phase='sim';room.play=null;room.log=[];room.timeout=null;room.foulout=null;
-  log(room,`Game ${room.gameNumber} has tipped off!`);broadcast(room);
+  const active=room.teams.map(t=>SLOTS.slice(0,5).map(s=>t.slots[s]));
+  // Both starting C-slot players contest the opening tip. Other stats have no effect.
+  const centerIds=active.map(five=>five[4]);
+  const centerHeights=centerIds.map(id=>getPlayer(id)?.heightInches);
+  const result=determineTipoff(centerHeights[0],centerHeights[1],rnd);
+  const tipoff={...result,centerIds,centerHeights,at:now()};
+  room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff};
+  room.phase='sim';room.play={at:now()};room.log=[];room.timeout=null;room.foulout=null;
+  const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
+  const favored=result.probabilities.map(p=>Math.round(p*100));
+  log(room,`🏀 TIP-OFF: ${getPlayer(centerIds[0]).name} (${heights[0]}) vs ${getPlayer(centerIds[1]).name} (${heights[1]}) — odds ${favored[0]}/${favored[1]}. ${room.teams[result.winningTeam].name} wins the tip and starts with possession!`);
+  broadcast(room);
 }
 const getPlayer = id=>BY_ID.get(id);
 const ov = (id) => getPlayer(id)?.overall||70;

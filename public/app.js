@@ -254,6 +254,7 @@
     const g=state.game;if(!g)return;
     $('scoreboard').innerHTML=`<div class="score-side"><span class="score-team">${esc(state.teams[0].name)}</span><span class="score-number">${g.score[0]}</span><span class="tiny">${state.teams[0].wins} SERIES WINS • ${state.teams[0].timeouts} TIMEOUTS</span></div>
       <div class="score-meta"><span>GAME ${state.gameNumber}${state.format===7?' • BEST OF 7':''}</span><strong>${esc(g.period)} ${secs(g.secondsLeft)}</strong>
+      ${g.tipoff&&Date.now()-syncOffset-g.tipoff.at<8500 ? `<div class="tipoff-notice">🏀 TIP-OFF WON: ${esc(state.teams[g.tipoff.winningTeam].name)} · ${Math.round(g.tipoff.probabilities[g.tipoff.winningTeam]*100)}% chance</div>` : ''}
       ${state.phase==='sim'?'<button id="call-timeout" class="primary">⏸ CALL TIMEOUT</button>':state.phase==='foulout'?'<span class="smallcaps" style="color:var(--red)">🚫 FOUL-OUT • SUB REQUIRED</span>':'<span class="smallcaps">⏸ TIMEOUT IN PROGRESS</span>'}</div>
       <div class="score-side end"><span class="score-team">${esc(state.teams[1].name)}</span><span class="score-number">${g.score[1]}</span><span class="tiny">${state.teams[1].timeouts} TIMEOUTS • ${state.teams[1].wins} SERIES WINS</span></div>`;
     $('call-timeout')?.addEventListener('click',()=>act('timeout'));
