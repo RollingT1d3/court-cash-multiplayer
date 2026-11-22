@@ -104,3 +104,7 @@ Run `npm test`. Automated integration tests exercise a real two-player game serv
 ## v0.3 foul and substitution rules
 
 See `FOUL_UPDATE_NOTES.md` for shooting foul odds, FT scoring, six-foul ejections, mandatory substitutions, portrait treatments, and tests.
+
+## v0.4 (no artwork changes)
+
+See [UPDATE_V04.md](UPDATE_V04.md) for the new Run & Gun and Old-School Buckets offensive strategies and the long-range three-pointer celebration. All player images and homepage artwork were left unchanged.

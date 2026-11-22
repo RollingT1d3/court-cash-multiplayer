@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
+import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, isDeepThree } from './offense-v04.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PLAYERS = JSON.parse(readFileSync(path.join(ROOT, 'data/players.json'), 'utf8'));
@@ -11,7 +12,7 @@ const BY_ID = new Map(PLAYERS.map(p => [p.id, p]));
 if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 16) throw Error('Players need unique IDs; at least 16 required.');
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos'];
+const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS];
 const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone'];
 const BASE_SECONDS = 48*60;
 const TIMEOUTS_PER_GAME = 5;
@@ -199,8 +200,19 @@ function simulatePlay(room){
   const shooters=g.active[offense],defenders=g.active[def];
   const scheme=ot.offense,dscheme=dt.defense;
   const high=shooters.slice().sort((a,b)=>ov(b)-ov(a));
-  const chaos=scheme==='Pure Chaos';
-  const shooter=weightedId(shooters,id=> {
+  const chaos=scheme==='Pure Chaos',runGun=scheme===RUN_AND_GUN,oldSchool=scheme===OLD_SCHOOL_BUCKETS;
+  const roles=offenseRoles(shooters,rating);
+  // Shot-clock pressure is modeled within each possession. A late or open kickout
+  // sends the ball to the designated arc specialist in Old-School Buckets.
+  const seconds=Math.min(g.secondsLeft,10+randomInt(20));
+  const shotClockRemaining=Math.max(1,24-Math.floor(seconds*24/29));
+  const teamAdherence=shooters.reduce((sum,id)=>sum+planDiscipline(id),0)/shooters.length;
+  const screeners=runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:shooters;
+  const screenQuality=screeners.reduce((sum,id)=>sum+(rating(id,'teamwork')*.65+rating(id,'strength')*.20+rating(id,'passing')*.15),0)/screeners.length;
+  const openLook=oldSchool && rnd()<clamp(.13+(screenQuality-65)*.004, .08,.32);
+  const kickout=oldSchool && (shotClockRemaining<=5||openLook) && rnd()<clamp(teamAdherence,.20,.98);
+  const candidates=runGun?shooters.filter(id=>!roles.screenOnly.includes(id)):shooters;
+  const shooter=weightedId(candidates,id=> {
     const discipline=planDiscipline(id);
     const baseline=1;
     let desired=baseline;
@@ -213,23 +225,42 @@ function simulatePlay(room){
       const bestMatch=defenders.reduce((best,d)=>Math.max(best,
         shotMismatch(id,d,'layup'),shotMismatch(id,d,'three')),0);
       desired=.6+bestMatch*75+(rating(id,'dribbling')+rating(id,'speed'))/120;
+    } else if(runGun){
+      // The two best 3PT shooters take nearly all shots; the third player seeks
+      // open mid-rangers only if their MID attribute is 80 or above.
+      desired=roles.runShooters.includes(id)?12+rating(id,'three')/16:
+        id===roles.runThird?(rating(id,'mid')>=80?3.7:.15):0;
+    } else if(oldSchool){
+      // The best three-point shooter camps at the arc for open/late kickouts.
+      // The remaining three move and cut; the big crashes the glass.
+      desired=id===roles.oldShooter?(kickout?38:1.2):
+        id===roles.oldRebounder?(kickout?.15:1.4):
+        kickout?.55:4+rating(id,'mid')/30+rating(id,'layup')/35;
     }
-    return Math.max(.2,baseline+discipline*(desired-baseline));
+    return Math.max(.05,baseline+discipline*(desired-baseline));
   });
   const discipline=planDiscipline(shooter);
   const teamDiscipline=shooters.reduce((sum,id)=>sum+planDiscipline(id),0)/shooters.length;
   const adherence=.65*discipline+.35*teamDiscipline;
-  const threeTarget=scheme===OFFENSE[3]?.68:scheme===OFFENSE[4]?.11:chaos?.36:scheme===OFFENSE[2]?.29:.32;
-  const isThree=rnd()<clamp(.32+adherence*(threeTarget-.32),.08,.75);
-  const paintTarget=scheme===OFFENSE[4]?.82:chaos?.60:scheme===OFFENSE[3]?.38:.56;
-  const inPaint=!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.18,.9);
+  const threeTarget=runGun?(roles.runShooters.includes(shooter)?.81:.10):
+    oldSchool?(shooter===roles.oldShooter?.98:.08):
+    scheme===OFFENSE[3]?.68:scheme===OFFENSE[4]?.11:chaos?.36:scheme===OFFENSE[2]?.29:.32;
+  const isThree=rnd()<clamp(.32+adherence*(threeTarget-.32),.05,.98);
+  const paintTarget=oldSchool?(shooter===roles.oldRebounder?.90:.58):
+    runGun?.13:scheme===OFFENSE[4]?.82:chaos?.60:scheme===OFFENSE[3]?.38:.56;
+  const inPaint=!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.07,.94);
   const dunkSkill=rating(shooter,'dunk');
   const dunkChance=clamp(.2+(dunkSkill-75)*.008,.02,.62);
   const type=isThree?'three':inPaint?(rnd()<dunkChance?'dunk':'layup'):'mid';
+  const shotDistanceFt=type==='three'?threeDistanceFeet(rating(shooter,'three'),shotClockRemaining,rnd):
+    type==='mid'?12+Math.floor(rnd()*11):3+Math.floor(rnd()*7);
   // A zone keeps three defenders up top and two close to the rim. Pure Chaos deliberately
   // searches across defenders for favorable size/scoring mismatches using off-ball screens.
   const zoneTargets=dscheme==='3-2 Zone'?(inPaint?defenders.slice(3):defenders.slice(0,3)):defenders;
-  const screen=chaos&&rnd()<.18+.72*adherence;
+  // Screen execution is influenced by role specialists, their Teamwork and energy.
+  const screen=(chaos&&rnd()<.18+.72*adherence)||
+    (runGun&&rnd()<clamp(.47+.35*teamAdherence+(screenQuality-70)*.002,.2,.94))||
+    (oldSchool&&rnd()<clamp(.42+.40*teamAdherence+(screenQuality-70)*.002,.2,.94));
   const huntMismatch=chaos&&screen&&rnd()<.25+.62*adherence;
   const defender=(process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1')?defenders[0]:huntMismatch?weightedId(defenders,id=>.15+shotMismatch(shooter,id,type)*120):
     weightedId(zoneTargets,id=>1+rating(id,inPaint?'paintDef':'perimeterDef')/200);
@@ -237,10 +268,10 @@ function simulatePlay(room){
   const defSteal=effective(defender,dt,effectiveOnCourt(room,def,defender,'steal'));
   let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false;
   let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null;
-  const seconds=Math.min(g.secondsLeft,10+randomInt(20));
   fatigue(room,seconds);
   // Constant motion and screening cost slightly more energy, especially when teamwork is low.
   if(chaos){for(const id of shooters)ot.energy[id]=clamp(ot.energy[id]-(.20+.30*(1-planDiscipline(id)))*(seconds/17),0,100);}
+  if(runGun||oldSchool){for(const id of screeners)ot.energy[id]=clamp(ot.energy[id]-(.09+.22*(1-planDiscipline(id)))*(seconds/17),0,100);}
   const stealChance=clamp(.017+(defSteal-70)*.0011-(screen?.004:0),.005,.08);
   if(rnd()<stealChance){
     stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;event='steal';
@@ -256,9 +287,10 @@ function simulatePlay(room){
     if(dscheme===DEFENSE[1]&&shooter===high[0])defenseBump+=.11;
     if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
     const base=isThree?.365:inPaint?.61:.43;
-    const screensBonus=screen?.032*adherence:0;
+    const screensBonus=screen?.032*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
-    let chance=clamp(base+(value-80)*.0075-defenseBump+screensBonus+mismatchQuality,.12,.83);
+    let chance=clamp(base+(value-80)*.0075-defenseBump+screensBonus+mismatchQuality-
+      (isThree?longThreePenalty(shotDistanceFt):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0),.035,.83);
     const blocked=inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14);
     // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
     // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
@@ -291,30 +323,43 @@ function simulatePlay(room){
       posterDunk=type==='dunk'&&rating(defender,'paintDef')>=60&&
         rnd()<clamp(.18+(rating(shooter,'dunk')-75)*.005,.08,.46);
       const passerCompliance=shooters.reduce((v,id)=>v+planDiscipline(id),0)/shooters.length;
-      const assistChance=clamp(.40+.25*passerCompliance+(scheme===OFFENSE[2]?.12:0)+(chaos&&screen?.10:0),.35,.87);
+      const assistChance=clamp(.40+.25*passerCompliance+(scheme===OFFENSE[2]?.12:0)+(chaos&&screen?.10:0)+
+        (runGun&&screen?.16:0)+(oldSchool?.18:0),.35,.94);
       if(rnd()<assistChance){
         const passers=shooters.filter(x=>x!==shooter);
-        if(passers.length){assistId=weightedId(passers,id=>rating(id,'passing')*planDiscipline(id));g.stats[assistId].ast++;}
+        if(passers.length){assistId=weightedId(passers,id=>rating(id,'passing')*planDiscipline(id)*
+          (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1));g.stats[assistId].ast++;}
       }
       }else event='miss';
     }
     if(!made&&!foul){
       const zoneReboundPenalty=dscheme==='3-2 Zone'?.045:0;
       const rebTeam=rnd()<(inPaint?.74:.80)-zoneReboundPenalty?def:offense;
-      reboundId=weightedId(g.active[rebTeam],id=>effectiveOnCourt(room,rebTeam,id,'rebound')+effectiveOnCourt(room,rebTeam,id,'strength')*.16);
+      const rebRoles=offenseRoles(g.active[rebTeam],rating);
+      reboundId=weightedId(g.active[rebTeam],id=>(effectiveOnCourt(room,rebTeam,id,'rebound')+effectiveOnCourt(room,rebTeam,id,'strength')*.16)*
+        (room.teams[rebTeam].offense===OLD_SCHOOL_BUCKETS&&id===rebRoles.oldRebounder?4.4:
+          room.teams[rebTeam].offense===RUN_AND_GUN&&rebRoles.screenOnly.includes(id)?2.3:1));
       g.stats[reboundId].reb++;
     }
   }
   const timeUsed=Math.min(seconds,g.secondsLeft);g.secondsLeft-=timeUsed;g.possessions++;
   const shooterName=getPlayer(shooter).name;
-  const actionPrefix=chaos&&screen?(huntMismatch?'Pure Chaos finds a mismatch! ':'Pure Chaos screen frees a scorer! '):'';
+  const deepThree=isDeepThree(type,made,shotDistanceFt);
+  const actionPrefix=chaos&&screen?(huntMismatch?'Pure Chaos finds a mismatch! ':'Pure Chaos screen frees a scorer! '):
+    runGun&&screen?'Run & Gun screens spring a scorer! ':
+    oldSchool&&kickout?'Old-School kickout to the arc! ':
+    oldSchool&&screen?'Old-School cuts create an opening! ':'';
   if(foul)log(room,`WHISTLE! ${getPlayer(fouler).name} fouls ${shooterName} on a ${type==='three'?'three-pointer':type==='mid'?'mid-range jumper':type}. ${freeThrowsMade}/${freeThrowsAttempted} free throws made. ${getPlayer(fouler).name} has ${g.stats[fouler].pf} personal foul(s).`);
   else if(event==='steal')log(room,`${getPlayer(defender).name} steals the ball from ${shooterName}!`);
   else if(event==='block')log(room,`${getPlayer(defender).name} blocks ${shooterName}!`);
   else if(posterDunk)log(room,`🔥 POSTER DUNK! ${shooterName} dunks on ${getPlayer(defender).name}!`);
+  else if(deepThree)log(room,`🔥 FROM DEEP! 🔥 ${shooterName} drains a ${shotDistanceFt}-foot three-pointer!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else if(made)log(room,`${actionPrefix}${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
-  g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,screen,mismatch:huntMismatch,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
+  g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,deepThree,shotDistanceFt,shotClockRemaining,
+    screen,mismatch:huntMismatch,kickout,screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
+    arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
+    oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
   if(!fouledOutPlayer)automaticSubs(room);
   g.offense=reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){

@@ -2,7 +2,7 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos'];
+  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets'];
   const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone'];
   const OFFENSE_INFO = {
     'Play Through Superstar':'The highest-rated player becomes your primary option. Higher Teamwork means teammates reliably feed the star, space the floor and follow the play call.',
@@ -10,7 +10,9 @@
     'Team Ball':'Shares possessions, rewards good passing and creates more assisted shots. High-Teamwork players run the system more faithfully.',
     'Live By the 3, Die by the 3':'Emphasizes three-point attempts, especially from your best shooters. It can produce scoring bursts or cold stretches; Teamwork improves shot selection.',
     'Paint Mash':'Emphasizes drives, dunks, post play and inside looks, with occasional mid-range attempts. Teamwork helps cutters and finishers follow the game plan.',
-    'Pure Chaos':'Heavy off-ball movement and frequent screens. Hunts favorable mismatches (a big against a small defender or a scorer against a weak defender), creating chances at the cost of extra stamina. Teamwork strongly affects execution.'
+    'Pure Chaos':'Heavy off-ball movement and frequent screens. Hunts favorable mismatches (a big against a small defender or a scorer against a weak defender), creating chances at the cost of extra stamina. Teamwork strongly affects execution.',
+    'Run & Gun':'The team works together to get the best possible shooters consistently open. Very perimeter-focused. The two best three-point shooters hunt threes, while the other three run and set screens; the two weakest combined mid/three shooters focus only on screens and rebounds. Any eligible 80+ mid-range shooter also works to get open.',
+    'Old-School Buckets':'A well-balanced, slightly interior-focused offense. The best three-point shooter stays at the arc and the strongest rebounder stays near the paint. The other three run, pass, cut and screen for open layups, dunks and mid-range shots. When the shot clock runs low or an opening appears, the ball kicks out to the three-point shooter.'
   };
   const DEFENSE_INFO = {
     'Man-to-Man':'Each defender tracks an opposing player. Balanced coverage without major tactical bonuses or vulnerabilities.',
@@ -379,7 +381,10 @@
     const anchors=[{x:.66,y:.5},{x:.74,y:.20},{x:.71,y:.82},{x:.84,y:.33},{x:.84,y:.64}];
     const defenseAnchors=[{x:.73,y:.50},{x:.81,y:.20},{x:.81,y:.82},{x:.87,y:.38},{x:.87,y:.65}];
     const zoneAnchors=[{x:.72,y:.19},{x:.74,y:.50},{x:.72,y:.81},{x:.86,y:.33},{x:.86,y:.67}];
-    const isChaos=state.teams[offense].offense==='Pure Chaos';
+    const scheme=state.teams[offense].offense;
+    const isChaos=scheme==='Pure Chaos';
+    const isRunGun=scheme==='Run & Gun';
+    const isOldSchool=scheme==='Old-School Buckets';
     const isZone=state.teams[1-offense].defense==='3-2 Zone';
     const eventAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
     const present=new Set();
@@ -389,13 +394,21 @@
         const attacking=side===offense;
         const anchor=attacking?anchors:(isZone?zoneAnchors:defenseAnchors)[pos];
         let x=anchor.x*W,y=anchor.y*H;
-        // Heavy off-ball motion/screen cuts while Pure Chaos is active.
-        if(attacking&&isChaos&&eventAge<3500){
-          const wave=(Date.now()/330)+(pos*1.7);
-          x+=Math.sin(wave)*31;
-          y+=Math.cos(wave*.85)*25;
+        // Different offensive roles are visible: perimeter screening, cuts and paint anchors.
+        if(attacking&&(isChaos||isRunGun||isOldSchool)&&eventAge<3500){
+          const wave=(Date.now()/(isRunGun?260:isOldSchool?410:330))+(pos*1.7);
+          const isScreener=event?.screeners?.includes(id);
+          x+=Math.sin(wave)*(isScreener?42:isChaos?31:20);
+          y+=Math.cos(wave*.85)*(isScreener?31:isChaos?25:18);
+          if(isOldSchool&&id===event?.oldRebounder){x=.86*W;y=.52*H;}
+          if(isOldSchool&&id===event?.arcShooter){x=.67*W;y=.24*H;}
+          if(isRunGun&&event?.arcShooters?.includes(id)){x=.66*W;y=(id===event.arcShooters[0]?.27:.73)*H;}
         }
-        if(event?.shooter===id&&attacking){x=.83*W;y=H*.50;}
+        if(event?.shooter===id&&attacking){
+          // From ordinary paint attempts to 60-foot heaves, draw the actual shot position.
+          const feet=event.shotDistanceFt??(event.type==='three'?25:12);
+          x=Math.max(.14*W,.943*W-feet*9.3);y=H*.50;
+        }
         if(event?.defender===id&&!attacking){x=.85*W;y=H*.53;}
         if(event?.reboundId===id){x=.88*W;y=H*.58;}
         if(!attackRight)x=W-x;
@@ -416,6 +429,11 @@
         const first=p.name.split(' ')[0];ctx.strokeText(first,prev.x,prev.y+39);ctx.fillText(first,prev.x,prev.y+39);
         const e=state.teams[side].energy[id]??100;
         if(e<80){ctx.font=e<40?'21px system-ui':'15px system-ui';ctx.fillText(e<40?'🥵':'💦',prev.x+20,prev.y-20);}
+        if(event?.deepThree&&eventAge<1650&&id===event.shooter){
+          ctx.save();ctx.globalAlpha=Math.min(1,(1650-eventAge)/350);
+          ctx.font='36px system-ui';ctx.textAlign='center';ctx.fillText('🔥',prev.x,prev.y-45);
+          ctx.restore();
+        }
         if(event?.posterDunk&&eventAge<1100&&(id===event.shooter||id===event.defender)){
           // One 🔥 above the dunker and one above the defender, briefly.
           ctx.save();ctx.globalAlpha=Math.min(1,(1100-eventAge)/240);
@@ -439,7 +457,19 @@
       ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/350);
       ctx.fillStyle='#112236da';ctx.fillRect(W/2-148,30,296,34);
       ctx.fillStyle='#d0ff62';ctx.font='900 19px system-ui';ctx.textAlign='center';
-      ctx.fillText(event.mismatch?'⚡ MISMATCH HUNT':'↗ OFF-BALL SCREEN',W/2,53);
+      ctx.fillText(event.mismatch?'⚡ MISMATCH HUNT':
+        isRunGun?'🏀 RUN & GUN SCREEN':isOldSchool?(event.kickout?'↗ KICKOUT PASS':'↗ OLD-SCHOOL CUT'):'↗ OFF-BALL SCREEN',W/2,53);
+      ctx.restore();
+    }
+    if(event?.deepThree&&eventAge<1650){
+      // Flames over the scoring rim and a short glowing red/orange center-screen banner.
+      ctx.save();ctx.globalAlpha=Math.min(1,(1650-eventAge)/320);
+      ctx.font='40px system-ui';ctx.textAlign='center';ctx.fillText('🔥',targetGoal,H/2-40);
+      ctx.shadowColor='#ff3b15';ctx.shadowBlur=32;
+      ctx.lineWidth=8;ctx.strokeStyle='#7e150e';ctx.fillStyle='#ff8624';
+      ctx.font='900 48px system-ui';ctx.textAlign='center';
+      ctx.strokeText('🔥FROM DEEP!🔥',W/2,H*.43);
+      ctx.fillText('🔥FROM DEEP!🔥',W/2,H*.43);
       ctx.restore();
     }
     if(event?.foul&&eventAge<2250){

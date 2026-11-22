@@ -56,8 +56,8 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     assert.equal(s.teams[initialChooser].budget,0);
     assert.equal(new Set(s.teams.flatMap(t=>t.roster)).size,16);
     assert.equal(s.remaining.length,16);
-    await action(a,'scheme',{offense:'Team Ball',defense:'Perimeter Secured'});
-    await action(b,'scheme',{offense:'Paint Mash',defense:'Protect the Paint'});
+    await action(a,'scheme',{offense:'Run & Gun',defense:'Perimeter Secured'});
+    await action(b,'scheme',{offense:'Old-School Buckets',defense:'Protect the Paint'});
     await action(a,'ready');await action(b,'ready');
     s=await until(async()=>{const x=await state(a);return x.phase==='sim'?x:null;});
     assert.equal(s.game.score.length,2);
@@ -84,6 +84,9 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     assert.equal(s.game.possessions>100,true);
     assert.equal(typeof s.game.event.posterDunk,'boolean');
     assert.equal(typeof s.game.event.screen,'boolean');
+    assert.equal(typeof s.game.event.deepThree,'boolean');
+    assert.ok(s.game.event.shotDistanceFt>=3);
+    assert.ok(s.game.event.shotClockRemaining>=1&&s.game.event.shotClockRemaining<=24);
     assert.equal(s.game.stats[s.teams[0].roster[0]].fga>=0,true);
   } finally {child.kill();}
 });
