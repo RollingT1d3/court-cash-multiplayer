@@ -44,23 +44,24 @@ test('four named courts selected in exact equal 25% probability brackets',()=>{
 test('3-point line is a single continuous court-accurate path for BOTH baskets',()=>{
   for(const side of [0,1]){
     const {ctx,calls}=recordingContext();
-    const g=traceThreePoint(ctx,side,940,500);
+    const g=traceThreePoint(ctx,side,940,525);
     const path=calls.filter(x=>['begin','moveTo','lineTo','arc','stroke'].includes(x.type));
     assert.deepEqual(path.map(x=>x.type),['begin','moveTo','lineTo','arc','lineTo','stroke']);
-    near(g.topY,30); near(g.bottomY,470); near(g.radius,237.5);
+    near(g.topY,40); near(g.bottomY,485); near(g.radius,231.5);
+    assert.ok(g.xJoin>(side===0?110:790)&&g.xJoin<(side===0?150:830), 'corner line moved toward basket');
     const baseline=side===0?17:923;
-    near(path[1].args[0],baseline); near(path[1].args[1],30);
-    near(path[2].args[0],g.xJoin); near(path[2].args[1],30);
-    near(path[4].args[0],baseline); near(path[4].args[1],470);
+    near(path[1].args[0],baseline); near(path[1].args[1],40);
+    near(path[2].args[0],g.xJoin); near(path[2].args[1],40);
+    near(path[4].args[0],baseline); near(path[4].args[1],485);
     const [cx,cy,r,start,end,ccw]=path[3].args;
-    near(cx,side===0?69.5:870.5);near(cy,250);near(r,237.5);
+    near(cx,side===0?69.5:870.5);near(cy,262.5);near(r,231.5);
     near(cx+r*Math.cos(start),g.xJoin);
-    near(cy+r*Math.sin(start),30);
+    near(cy+r*Math.sin(start),40);
     near(cx+r*Math.cos(end),g.xJoin);
-    near(cy+r*Math.sin(end),470);
+    near(cy+r*Math.sin(end),485);
     assert.equal(ccw,side===1,'right arc must travel around basket toward midcourt');
     // The arc reaches the correct maximum depth toward half court.
-    near(side===0?cx+r:cx-r,side===0?307:633);
+    near(side===0?cx+r:cx-r,side===0?301:639);
   }
 });
 

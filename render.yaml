@@ -3,6 +3,7 @@ services:
     name: court-cash-multiplayer
     runtime: node
     plan: free
+    autoDeployTrigger: commit
     buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /health

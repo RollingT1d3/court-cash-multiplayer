@@ -89,14 +89,14 @@ export const ZONE_ANCHORS=Object.freeze([
 export function laneProximity(from,to,guard,radius=.078){
   if(!from||!to||!guard)return null;
   // scale x/y into actual pixels so the threshold represents screen-space distance.
-  const dx=(to.x-from.x)*940,dy=(to.y-from.y)*500;
+  const dx=(to.x-from.x)*940,dy=(to.y-from.y)*525;
   const len2=dx*dx+dy*dy;
   if(len2<250)return null;
-  const gx=(guard.x-from.x)*940,gy=(guard.y-from.y)*500;
+  const gx=(guard.x-from.x)*940,gy=(guard.y-from.y)*525;
   const t=(gx*dx+gy*dy)/len2;
   if(t<.08||t>.96)return null; // not beside the sender or far beyond the receiver
   const dist=Math.hypot(gx-t*dx,gy-t*dy);
-  return dist<=radius*500?{distance:dist,progress:t}:null;
+  return dist<=radius*525?{distance:dist,progress:t}:null;
 }
 export function passingLaneDefenders(from,to,defenders,isZone=false){
   const anchors=isZone?ZONE_ANCHORS:DEFENSE_ANCHORS;

@@ -11,6 +11,7 @@ import { illegalScreenChance, passingOutChance, interceptionChance, onBallStealC
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PLAYERS = JSON.parse(readFileSync(path.join(ROOT, 'data/players.json'), 'utf8'));
+const BUILD_VERSION = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const BY_ID = new Map(PLAYERS.map(p => [p.id, p]));
 if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 16) throw Error('Players need unique IDs; at least 16 required.');
 const ROOMS = new Map();
@@ -593,7 +594,7 @@ async function body(req){let chunks=[],total=0;for await(const part of req){tota
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
   try{
-    if(req.method==='GET'&&url.pathname==='/health')return json(res,200,{ok:true,rooms:ROOMS.size,players:PLAYERS.length});
+    if(req.method==='GET'&&url.pathname==='/health')return json(res,200,{ok:true,rooms:ROOMS.size,players:PLAYERS.length,version:BUILD_VERSION,gitCommit:process.env.RENDER_GIT_COMMIT||null});
     if(req.method==='POST'&&url.pathname==='/api/create'){const v=await body(req);return json(res,200,create(v.name,v.format));}
     if(req.method==='POST'&&url.pathname==='/api/join'){const v=await body(req);return json(res,200,join(v.code,v.name));}
     if(req.method==='POST'&&url.pathname==='/api/action'){
@@ -614,7 +615,10 @@ const server=http.createServer(async(req,res)=>{
     if(file!==pub && !file.startsWith(pub+path.sep))return json(res,403,{error:'Forbidden.'});
     let stat;try{stat=statSync(file);}catch{return json(res,404,{error:'Not found.'});}
     if(!stat.isFile())return json(res,404,{error:'Not found.'});
-    res.writeHead(200,{'Content-Type':contentTypes[path.extname(file)]||'application/octet-stream','Cache-Control':'public,max-age=60'});
+    // Never serve stale gameplay code or HTML after a new deployment.
+    const ext=path.extname(file);
+    const fresh=ext==='.js'||ext==='.css'||ext==='.html';
+    res.writeHead(200,{'Content-Type':contentTypes[ext]||'application/octet-stream','Cache-Control':fresh?'no-store':'public,max-age=3600'});
     createReadStream(file).pipe(res);
   }catch(error){json(res,400,{error:error.message||'Unexpected error.'});}
 });

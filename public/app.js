@@ -358,7 +358,7 @@
   function startCourtAnimation(){if(frameRunning)return;frameRunning=true;requestAnimationFrame(drawCourt);}
   function drawCourt(ms){
     if(!state?.game){frameRunning=false;return;}
-    const el=$('court');const ctx=el.getContext('2d');const W=940,H=500;
+    const el=$('court');const ctx=el.getContext('2d');const W=940,H=525;
     ctx.clearRect(0,0,W,H);
     // Server picks one of four equally likely courts when each game starts.
     // The geometry includes fully connected NBA-style three-point arcs and corners.
@@ -535,7 +535,7 @@
   function drawInitials(ctx,p,x,y){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='900 17px system-ui';ctx.fillText(p.name.split(' ').map(a=>a[0]).slice(0,2).join(''),x,y+6);}
   $('court').addEventListener('click',e=>{
     if(!state?.game)return;
-    const rect=e.currentTarget.getBoundingClientRect();const x=(e.clientX-rect.left)*940/rect.width,y=(e.clientY-rect.top)*500/rect.height;
+    const rect=e.currentTarget.getBoundingClientRect();const x=(e.clientX-rect.left)*940/rect.width,y=(e.clientY-rect.top)*525/rect.height;
     const closest=[...canvasPositions.entries()].map(([id,pos])=>({id,d:Math.hypot(pos.x-x,pos.y-y)})).sort((a,b)=>a.d-b.d)[0];
     if(closest?.d<35){selectedFocus=closest.id;render(true);}
   });

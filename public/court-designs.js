@@ -33,16 +33,18 @@
   // Draw a SINGLE CONNECTED path: baseline --> horizontal corner three -->
   // circular arc around the basket --> horizontal opposite corner --> baseline.
   // Court is 94 x 50 ft, drawn at approximately 10 px per foot.
-  // NBA dimensions used: rim = 5.25 ft beyond baseline (playable-court edge);
-  // corner line = 3 ft from sideline; arc radius = 23 ft 9 in.
-  function traceThreePoint(ctx, side, width = 940, height = 500) {
+  // Stylized NBA-like dimensions: rims 5.25 ft inside each baseline,
+  // with slightly tightened corner lines and a 23.15-ft three-point arc.
+  function traceThreePoint(ctx, side, width = 940, height = 525) {
     const scale = width / 94;
     const baselineX = side === 0 ? 17 : width - 17;
     const basketOffset = 17 + 5.25 * scale;
     const basketX = side === 0 ? basketOffset : width - basketOffset;
     const centerY = height / 2;
-    const topY = 3*scale, bottomY = height - topY;
-    const radius = 23.75*scale;
+    // Stylized: the corner lines sit a little nearer the basket than v0.5.1.
+    // The court is also 5% taller, with arcs still joined to both corners.
+    const topY = 40*(height/525), bottomY = height - topY;
+    const radius = 23.15*scale;
     const vertical = centerY - topY;
     if (vertical >= radius) throw new Error('Court too narrow for continuous 3-point line');
     const horizontal = Math.sqrt(radius*radius - vertical*vertical);
@@ -58,7 +60,7 @@
     return Object.freeze({ baselineX, basketX, centerY, topY, bottomY, radius, xJoin, angle });
   }
 
-  function drawCourt(ctx, style, width = 940, height = 500) {
+  function drawCourt(ctx, style, width = 940, height = 525) {
     const p = PALETTES[style] || PALETTES['dark-brown'];
     const W=width,H=height,margin=17;
     ctx.save();
@@ -80,8 +82,8 @@
     // Paint is sky blue on the blue court; otherwise matches the floor.
     if (style==='blue-sky') {
       ctx.fillStyle=p.paint;
-      ctx.fillRect(margin,H/2-94,172,188);
-      ctx.fillRect(W-189,H/2-94,172,188);
+      ctx.fillRect(margin,H/2-99,172,198);
+      ctx.fillRect(W-189,H/2-99,172,198);
     }
     ctx.strokeStyle=p.line;ctx.lineWidth=4;
     ctx.strokeRect(margin,margin,W-2*margin,H-2*margin);
@@ -91,7 +93,7 @@
       const paintX=side===0?margin:W-189;
       const basketX=side===0?margin+5.25*(W/94):W-margin-5.25*(W/94);
       const freeThrowX=side===0?189:W-189;
-      ctx.beginPath();ctx.rect(paintX,H/2-94,172,188);ctx.stroke();
+      ctx.beginPath();ctx.rect(paintX,H/2-99,172,198);ctx.stroke();
       ctx.beginPath();ctx.arc(freeThrowX,H/2,65,0,Math.PI*2);ctx.stroke();
       // The small restricted-area arc under the basket.
       ctx.beginPath();
