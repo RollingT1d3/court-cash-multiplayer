@@ -124,3 +124,7 @@ See [UPDATE_V082.md](UPDATE_V082.md) for the new 3PT rating-to-accuracy brackets
 ## v0.8.3 — height-based contests and interior blocks
 
 See [UPDATE_V083.md](UPDATE_V083.md) for height-adjusted three-point, mid-range, layup and dunk contests, plus modest interior block modifiers. The update preserves v0.8.2 three-point balancing and prevents the old Pure Chaos height bonus from stacking twice.
+
+## v0.8.4 — fatigue rebalance and player-controlled substitutions
+
+See [UPDATE_V084.md](UPDATE_V084.md). Shooting fatigue caps at 18%, finishing at 12% and defense at 10%; playmaking remains unaffected. Timeouts restore +4 energy for both on-court teams, voluntary subs are timeout-only (with forced foul-out replacements preserved), and the small fatigue emoji now appears in the top-right of player circles at below 60% / below 25% energy. No new energy bars in the substitution UI.
