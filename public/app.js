@@ -360,25 +360,13 @@
     if(!state?.game){frameRunning=false;return;}
     const el=$('court');const ctx=el.getContext('2d');const W=940,H=500;
     ctx.clearRect(0,0,W,H);
-    ctx.fillStyle='#b78347';ctx.fillRect(0,0,W,H);
-    for(let i=0;i<17;i++){ctx.fillStyle=i%2?'#ae7946':'#b9844c';ctx.fillRect(i*W/17,0,W/17,H);}
-    ctx.strokeStyle='#fff6e9';ctx.lineWidth=4;ctx.strokeRect(17,17,W-34,H-34);
-    ctx.beginPath();ctx.moveTo(W/2,17);ctx.lineTo(W/2,H-17);ctx.stroke();
-    ctx.beginPath();ctx.arc(W/2,H/2,67,0,2*Math.PI);ctx.stroke();
-    for(const s of [0,1]){
-      ctx.beginPath();ctx.rect(s===0?17:W-189,H/2-94,172,188);ctx.stroke();
-      ctx.beginPath();ctx.arc(s===0?189:W-189,H/2,65,0,2*Math.PI);ctx.stroke();
-      ctx.beginPath();ctx.arc(s===0?54:W-54,H/2,24,0,2*Math.PI);ctx.stroke();
-      ctx.beginPath();
-      const basket=s===0?54:W-54;
-      ctx.arc(basket,H/2,224,s===0?-Math.PI*.44:Math.PI*.56,s===0?Math.PI*.44:Math.PI*1.44);
-      ctx.stroke();ctx.fillStyle='#fff';ctx.fillRect(s===0?39:W-45,H/2-19,6,38);
-      ctx.beginPath();ctx.strokeStyle='#ed593c';ctx.lineWidth=5;ctx.arc(basket,H/2,11,0,Math.PI*2);ctx.stroke();ctx.lineWidth=4;ctx.strokeStyle='#fff6e9';
-    }
+    // Server picks one of four equally likely courts when each game starts.
+    // The geometry includes fully connected NBA-style three-point arcs and corners.
+    window.CourtDesigns.drawCourt(ctx,state.game.courtStyle,W,H);
     const game=state.game,event=game.event;
     const offense=event?.offense??game.offense;
     const attackRight=offense===0?(game.quarter<=2):!(game.quarter<=2);
-    const targetGoal=attackRight?886:54;
+    const targetGoal=attackRight?W-(17+5.25*(W/94)):(17+5.25*(W/94));
     const anchors=[{x:.66,y:.5},{x:.74,y:.20},{x:.71,y:.82},{x:.84,y:.33},{x:.84,y:.64}];
     const defenseAnchors=[{x:.73,y:.50},{x:.81,y:.20},{x:.81,y:.82},{x:.87,y:.38},{x:.87,y:.65}];
     const zoneAnchors=[{x:.72,y:.19},{x:.74,y:.50},{x:.72,y:.81},{x:.86,y:.33},{x:.86,y:.67}];
@@ -415,7 +403,7 @@
         } else if(event?.shooter===id&&attacking&&!['illegal-screen','pass-out-of-bounds','interception'].includes(event.displayEvent)){
           // From ordinary paint attempts to 60-foot heaves, draw the actual shot position.
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
-          x=Math.max(.14*W,.943*W-feet*9.3);y=H*.50;
+          x=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*.50;
         }
         if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'){x=.85*W;y=H*.53;}
         if(event?.interceptorId===id&&!attacking&&event.interceptionAt){

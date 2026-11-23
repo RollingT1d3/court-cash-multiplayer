@@ -6,6 +6,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
+import { chooseCourtStyle } from './court-styles.js';
 import { illegalScreenChance, passingOutChance, interceptionChance, onBallStealChance, screenStrengthBonus, passFlightMs, OFFENSE_ANCHORS, passingLaneDefenders } from './court-rules-v05.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -133,7 +134,9 @@ function startGame(room){
   const centerHeights=centerIds.map(id=>getPlayer(id)?.heightInches);
   const result=determineTipoff(centerHeights[0],centerHeights[1],rnd);
   const tipoff={...result,centerIds,centerHeights,at:now()};
-  room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff};
+  // Exactly one uniform 25%-each court selection per game, shared by both browsers.
+  const courtStyle=chooseCourtStyle(rnd);
+  room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
   room.phase='sim';room.play={at:now()};room.log=[];room.timeout=null;room.foulout=null;
   const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
   const favored=result.probabilities.map(p=>Math.round(p*100));

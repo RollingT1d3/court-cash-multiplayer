@@ -61,6 +61,10 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     await action(a,'ready');await action(b,'ready');
     s=await until(async()=>{const x=await state(a);return x.phase==='sim'?x:null;});
     assert.equal(s.game.score.length,2);
+    // One server-authoritative 25%-per-style selection, shared by both clients.
+    assert.ok(['midnight-stars','dark-brown','blue-sky','whiteout'].includes(s.game.courtStyle));
+    const otherScreen=await state(b);
+    assert.equal(otherScreen.game.courtStyle,s.game.courtStyle);
     // Every new game jumps the two *starting centers*, not a coin flip.
     const tip=s.game.tipoff;
     assert.deepEqual(tip.centerIds,s.game.active.map(five=>five[4]));
@@ -81,7 +85,17 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     await action(a,'place',{playerId:bench,slot:'PG'});
     s=await state(a);assert.equal(s.game.active[0][0],bench);
     await action(a,'resume');
-    s=await until(async()=>{const x=await state(a);return x.phase==='finished'?x:null;},15000);
+    s=await until(async()=>{
+      const x=await state(a);
+      // A fast simulation can trigger a legitimate six-foul pause. Complete
+      // its mandatory bench substitution rather than leaving the test frozen.
+      if(x.phase==='foulout'&&x.foulout){
+        const side=x.foulout.side,team=x.teams[side];
+        const bench=team.roster.find(id=>!x.game.active[side].includes(id)&&!x.game.fouledOut.includes(id));
+        if(bench)await action(side===0?a:b,'fouloutSub',{playerId:bench});
+      }
+      return x.phase==='finished'?x:null;
+    },15000);
     assert.equal(s.game.quarter>=4,true);
     assert.equal(s.teams[0].timeouts,4);
     assert.equal(s.teams[1].timeouts,5);
