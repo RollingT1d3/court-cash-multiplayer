@@ -16,6 +16,7 @@ test('v0.8.41 shows original player art on left and right of homepage only',()=>
   assert.match(welcome,/class="welcome-figure welcome-figure-left" src="\/home-left\.avif"/);
   assert.match(welcome,/class="welcome-figure welcome-figure-right" src="\/home-right\.avif"/);
   assert.match(welcome,/aria-hidden="true" draggable="false"/);
+  assert.match(read('server.js'),/\.avif':'image\/avif'/);
   assert.match(css,/\.welcome-figure-left\s*\{/);
   assert.match(css,/\.welcome-figure-right\s*\{/);
   assert.match(css,/\.welcome-figure\s*\{[\s\S]*?pointer-events: none;/);
