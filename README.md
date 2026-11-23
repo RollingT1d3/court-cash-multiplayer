@@ -116,3 +116,7 @@ See [UPDATE_V07.md](UPDATE_V07.md) for exact Dribbling/Perimeter Defense crossov
 ## v0.8.0 — new strategies, end-game awards, rematches
 
 Read [UPDATE_V08.md](UPDATE_V08.md) for **Play Through Point**, **Clog The Lanes**, SWISH!/3PTS! shot captions, the MVP and DPOG score formulas, team Offense/Defense grades and the mutual-rematch winner screen.
+
+## v0.8.2 — global three-point accuracy and distance rebalance
+
+See [UPDATE_V082.md](UPDATE_V082.md) for the new 3PT rating-to-accuracy brackets and the standard, elite (95–99), and perfect (100) distance-penalty schedules. These apply to **every offensive strategy** and preserve fatigue, positional and defensive effects.
