@@ -293,7 +293,7 @@
     selectedFocus=id;
     const p=player(id),stats=g.stats[id];const owner=state.teams.findIndex(t=>t.roster.includes(id));
     $('player-focus').innerHTML=`<div class="smallcaps">CLICK ANY PLAYER TO INSPECT</div>
-      <div style="display:flex;align-items:center;gap:12px;margin:10px 0">${portrait(p,'med',owner?'red':'blue')}<div><b>${esc(p.name)}</b><p class="tiny">${esc(p.positions.join('/'))} • ${p.overall} OVR</p><p class="tiny">💦 Energy: ${Math.round(state.teams[owner].energy[id]??100)}%</p></div></div>
+      <div style="display:flex;align-items:center;gap:12px;margin:10px 0">${portrait(p,'med',owner?'red':'blue')}<div><b>${esc(p.name)}</b><p class="tiny">${esc(p.positions.join('/'))} • ${p.overall} OVR</p><p class="tiny">⚡ Energy: ${Math.round(state.teams[owner].energy[id]??100)}%</p></div></div>
       <div class="data-grid">${[['PTS',stats.pts],['REB',stats.reb],['AST',stats.ast],['STL',stats.stl],['AB',stats.ankleBreaks??0],['BLK',stats.blk],['PF',stats.pf],['FT',stats.ftm+'/'+stats.fta],['TOV',stats.tov],['FG',stats.fgm+'/'+stats.fga],['3PT',stats.threeM+'/'+stats.threeA],['MIN',Math.round(stats.seconds/60)]].map(([k,v])=>`<div class="data-cell"><b>${esc(v)}</b><span>${k}</span></div>`).join('')}</div>`;
     $('sim-events').innerHTML=`<h3>LIVE PLAY-BY-PLAY</h3>${[...state.log].reverse().slice(0,12).map(x=>`<p>${esc(x)}</p>`).join('')}`;
   }
@@ -570,7 +570,18 @@
         ctx.textAlign='center';ctx.font='bold 12px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#122136';ctx.fillStyle='#fff';
         const first=p.name.split(' ')[0];ctx.strokeText(first,prev.x,prev.y+39);ctx.fillText(first,prev.x,prev.y+39);
         const e=state.teams[side].energy[id]??100;
-        if(e<80){ctx.font=e<40?'21px system-ui':'15px system-ui';ctx.fillText(e<40?'🥵':'💦',prev.x+20,prev.y-20);}
+        if(e<60){
+          // Tiny upper-right badge straddles the circular portrait border.
+          // The headshot remains visible; no extra substitution-menu bars.
+          ctx.save();
+          const badgeX=prev.x+16,badgeY=prev.y-16;
+          ctx.beginPath();ctx.arc(badgeX,badgeY,9,0,Math.PI*2);
+          ctx.fillStyle='rgba(16,24,36,.82)';ctx.fill();
+          ctx.lineWidth=1;ctx.strokeStyle='#fff9';ctx.stroke();
+          ctx.font='12px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+          ctx.fillText(e<25?'🥵':'💦',badgeX,badgeY+1);
+          ctx.restore();
+        }
         if(event?.deepThree&&eventAge<1650&&id===event.shooter){
           ctx.save();ctx.globalAlpha=Math.min(1,(1650-eventAge)/350);
           ctx.font='36px system-ui';ctx.textAlign='center';ctx.fillText('🔥',prev.x,prev.y-45);
