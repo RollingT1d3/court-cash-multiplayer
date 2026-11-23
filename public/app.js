@@ -35,6 +35,27 @@
   let lastRoomPhase=null, wheelSize=390, noticeTimer=null;
   let canvasPositions = new Map(), courtImages = new Map(), frameRunning=false;
   let syncOffset=0;
+  const ANKLE_STUMBLE_MS=1050, ANKLE_REACTIONS_MS=1150, POSTER_REACTIONS_MS=1250;
+  // Fixed normalized positions for short comic reactions along the sidelines;
+  // no random redraw flicker and never obscure the player names or main action.
+  const COURT_REACTION_POSITIONS=[
+    [.075,.11],[.245,.08],[.43,.085],[.63,.08],[.83,.1],[.94,.27],
+    [.94,.76],[.82,.92],[.61,.91],[.39,.92],[.18,.9],[.055,.68]
+  ];
+  function courtReactionBurst(ctx,W,H,emojis,eventAge,duration){
+    if(!(eventAge>=0&&eventAge<duration))return;
+    ctx.save();
+    const strength=Math.min(1,eventAge/110,(duration-eventAge)/260);
+    ctx.globalAlpha=Math.max(0,strength);
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='25px system-ui';
+    for(let i=0;i<COURT_REACTION_POSITIONS.length;i++){
+      const [xp,yp]=COURT_REACTION_POSITIONS[i];
+      const wobble=Math.sin(eventAge/150+i*1.8)*4;
+      ctx.fillText(emojis[i%emojis.length],xp*W,yp*H+wobble);
+    }
+    ctx.restore();
+  }
+
   const esc = x => String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = cents => '$'+((cents||0)/100).toFixed(2);
   const player = id => state?.players?.find(p=>p.id===id);
@@ -257,10 +278,10 @@
     $('scoreboard').innerHTML=`<div class="score-side"><span class="score-team">${esc(state.teams[0].name)}</span><span class="score-number">${g.score[0]}</span><span class="tiny">${state.teams[0].wins} SERIES WINS • ${state.teams[0].timeouts} TIMEOUTS</span></div>
       <div class="score-meta"><span>GAME ${state.gameNumber}${state.format===7?' • BEST OF 7':''}</span><strong>${esc(g.period)} ${secs(g.secondsLeft)}</strong>
       ${g.tipoff&&Date.now()-syncOffset-g.tipoff.at<8500 ? `<div class="tipoff-notice">🏀 TIP-OFF WON: ${esc(state.teams[g.tipoff.winningTeam].name)} · ${Math.round(g.tipoff.probabilities[g.tipoff.winningTeam]*100)}% chance</div>` : ''}
-      ${state.phase==='sim'?'<button id="call-timeout" class="primary">⏸ CALL TIMEOUT</button>':state.phase==='foulout'?'<span class="smallcaps" style="color:var(--red)">🚫 FOUL-OUT • SUB REQUIRED</span>':'<span class="smallcaps">⏸ TIMEOUT IN PROGRESS</span>'}</div>
+      ${state.phase==='sim'?`<button id="call-timeout" class="primary" ${state.game.offense!==state.you||!my().timeouts?'disabled title="Only the team with possession may call timeout"':''}>⏸ CALL TIMEOUT</button><div class="tiny">${state.game.offense===state.you?'🏀 YOUR POSSESSION':'🏀 OPPONENT POSSESSION'}</div>`:state.phase==='foulout'?'<span class="smallcaps" style="color:var(--red)">🚫 FOUL-OUT • SUB REQUIRED</span>':'<span class="smallcaps">⏸ TIMEOUT IN PROGRESS</span>'}</div>
       <div class="score-side end"><span class="score-team">${esc(state.teams[1].name)}</span><span class="score-number">${g.score[1]}</span><span class="tiny">${state.teams[1].timeouts} TIMEOUTS • ${state.teams[1].wins} SERIES WINS</span></div>`;
     $('call-timeout')?.addEventListener('click',()=>act('timeout'));
-    if($('call-timeout')&&!my().timeouts)$('call-timeout').disabled=true;
+    if($('call-timeout')&&(!my().timeouts||state.game.offense!==state.you))$('call-timeout').disabled=true;
   }
   function focusPanel(){
     const g=state.game;const id=selectedFocus&&g.stats[selectedFocus]?selectedFocus:g.active[state.you][0];
@@ -269,7 +290,7 @@
     const p=player(id),stats=g.stats[id];const owner=state.teams.findIndex(t=>t.roster.includes(id));
     $('player-focus').innerHTML=`<div class="smallcaps">CLICK ANY PLAYER TO INSPECT</div>
       <div style="display:flex;align-items:center;gap:12px;margin:10px 0">${portrait(p,'med',owner?'red':'blue')}<div><b>${esc(p.name)}</b><p class="tiny">${esc(p.positions.join('/'))} • ${p.overall} OVR</p><p class="tiny">💦 Energy: ${Math.round(state.teams[owner].energy[id]??100)}%</p></div></div>
-      <div class="data-grid">${[['PTS',stats.pts],['REB',stats.reb],['AST',stats.ast],['STL',stats.stl],['BLK',stats.blk],['PF',stats.pf],['FT',stats.ftm+'/'+stats.fta],['TOV',stats.tov],['FG',stats.fgm+'/'+stats.fga],['3PT',stats.threeM+'/'+stats.threeA],['MIN',Math.round(stats.seconds/60)]].map(([k,v])=>`<div class="data-cell"><b>${esc(v)}</b><span>${k}</span></div>`).join('')}</div>`;
+      <div class="data-grid">${[['PTS',stats.pts],['REB',stats.reb],['AST',stats.ast],['STL',stats.stl],['AB',stats.ankleBreaks??0],['BLK',stats.blk],['PF',stats.pf],['FT',stats.ftm+'/'+stats.fta],['TOV',stats.tov],['FG',stats.fgm+'/'+stats.fga],['3PT',stats.threeM+'/'+stats.threeA],['MIN',Math.round(stats.seconds/60)]].map(([k,v])=>`<div class="data-cell"><b>${esc(v)}</b><span>${k}</span></div>`).join('')}</div>`;
     $('sim-events').innerHTML=`<h3>LIVE PLAY-BY-PLAY</h3>${[...state.log].reverse().slice(0,12).map(x=>`<p>${esc(x)}</p>`).join('')}`;
   }
   function timeoutPanel(){
@@ -427,10 +448,24 @@
           x=event.interceptionAt.x*W;y=event.interceptionAt.y*H;
         }
         if(event?.reboundId===id){x=.88*W;y=H*.58;}
+        // Defender stumbles out of their assignment on a successful crossover.
+        const ankleStumble=event?.ankleBreaker&&event?.defender===id&&!attacking&&eventAge<ANKLE_STUMBLE_MS;
+        if(ankleStumble){
+          const sway=Math.sin(Math.PI*eventAge/ANKLE_STUMBLE_MS);
+          x+=((pos%2)?1:-1)*23*sway;y+=14*sway;
+        }
         if(!attackRight)x=W-x;
         const prev=canvasPositions.get(id)||{x,y};
         const v=isHills&&attacking?.072:isPress&&!attacking?.075:.060;prev.x+=(x-prev.x)*v;prev.y+=(y-prev.y)*v;canvasPositions.set(id,prev);
         const p=player(id);if(!p)continue;
+        ctx.save();
+        if(ankleStumble){
+          // Brief visible spin/stagger of the circular player portrait.
+          const spin=Math.sin(Math.PI*eventAge/ANKLE_STUMBLE_MS);
+          ctx.translate(prev.x,prev.y);
+          ctx.rotate((pos%2?1:-1)*.32*spin);
+          ctx.translate(-prev.x,-prev.y);
+        }
         ctx.beginPath();ctx.fillStyle='#101824';ctx.arc(prev.x,prev.y,26,0,2*Math.PI);ctx.fill();
         ctx.save();ctx.beginPath();ctx.arc(prev.x,prev.y,22,0,2*Math.PI);ctx.clip();
         // The moving on-court circles show HEAD + HAIR, never the full-body art.
@@ -454,6 +489,7 @@
         }
         ctx.restore();
         ctx.lineWidth=4;ctx.strokeStyle=side?'#ff889e':'#91c9ff';ctx.beginPath();ctx.arc(prev.x,prev.y,24,0,2*Math.PI);ctx.stroke();
+        ctx.restore(); // keep names and comic reaction emojis upright
         ctx.textAlign='center';ctx.font='bold 12px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#122136';ctx.fillStyle='#fff';
         const first=p.name.split(' ')[0];ctx.strokeText(first,prev.x,prev.y+39);ctx.fillText(first,prev.x,prev.y+39);
         const e=state.teams[side].energy[id]??100;
@@ -463,10 +499,16 @@
           ctx.font='36px system-ui';ctx.textAlign='center';ctx.fillText('🔥',prev.x,prev.y-45);
           ctx.restore();
         }
-        if(event?.posterDunk&&eventAge<1100&&(id===event.shooter||id===event.defender)){
-          // One 🔥 above the dunker and one above the defender, briefly.
-          ctx.save();ctx.globalAlpha=Math.min(1,(1100-eventAge)/240);
-          ctx.font='32px system-ui';ctx.textAlign='center';ctx.fillText('🔥',prev.x,prev.y-35);
+        if(event?.ankleBreaker&&eventAge<ANKLE_STUMBLE_MS&&id===event.defender){
+          ctx.save();ctx.globalAlpha=Math.min(1,(ANKLE_STUMBLE_MS-eventAge)/240);
+          ctx.font='29px system-ui';ctx.textAlign='center';
+          ctx.fillText('😵‍💫',prev.x,prev.y-44);ctx.restore();
+        }
+        if(event?.posterDunk&&eventAge<POSTER_REACTIONS_MS){
+          ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-eventAge)/290);
+          ctx.font='27px system-ui';ctx.textAlign='center';
+          if(id===event.shooter)ctx.fillText('🗣️',prev.x,prev.y-44);
+          if(id===event.defender)ctx.fillText('😢',prev.x+31,prev.y+3);
           ctx.restore();
         }
       }
@@ -497,6 +539,17 @@
       ctx.beginPath();ctx.fillStyle='#fc8c2f';ctx.strokeStyle='#45290e';ctx.lineWidth=2;ctx.arc(bx,by,9,0,2*Math.PI);ctx.fill();ctx.stroke();
       ctx.beginPath();ctx.moveTo(bx-9,by);ctx.lineTo(bx+9,by);ctx.moveTo(bx,by-9);ctx.lineTo(bx,by+9);ctx.stroke();
     }
+    if(event?.ankleBreaker&&state.phase==='sim'){
+      courtReactionBurst(ctx,W,H,['🫪','😱','😯'],eventAge,ANKLE_REACTIONS_MS);
+    }
+    if(event?.posterDunk&&state.phase==='sim'){
+      courtReactionBurst(ctx,W,H,['📸😯','📸','🫪'],eventAge,POSTER_REACTIONS_MS);
+      if(eventAge<POSTER_REACTIONS_MS){
+        ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-eventAge)/260);
+        ctx.font='28px system-ui';ctx.textAlign='center';
+        ctx.fillText('💪',targetGoal,H/2-41);ctx.restore();
+      }
+    }
     const turnoverBanner={
       'illegal-screen':'🚫 ILLEGAL SCREEN • OFFENSIVE FOUL',
       'pass-out-of-bounds':'🏀 ERRANT PASS • OUT OF BOUNDS',
@@ -509,6 +562,12 @@
       ctx.fillStyle='#101824e5';ctx.fillRect(W/2-230,H*.14,460,48);
       ctx.font='900 22px system-ui';ctx.fillStyle='#ffdb84';ctx.textAlign='center';
       ctx.fillText(turnoverBanner,W/2,H*.14+31);ctx.restore();
+    }
+    if(event?.inboundAfterTimeout&&eventAge<1500&&state.phase==='sim'){
+      ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/260);
+      ctx.fillStyle='#091b2cce';ctx.fillRect(W/2-175,H*.78,350,34);
+      ctx.fillStyle='#fff3ab';ctx.font='900 18px system-ui';ctx.textAlign='center';
+      ctx.fillText('🏀 INBOUND AFTER TIMEOUT',W/2,H*.78+24);ctx.restore();
     }
     if(event?.hillsMode&&eventAge<1750&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1750-eventAge)/350);

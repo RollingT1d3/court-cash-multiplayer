@@ -7,6 +7,7 @@ import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
+import { ankleBreaks, ANKLE_OPEN_SHOT_BONUS } from './ankle-rules-v07.js';
 import { RUN_FOR_THE_HILLS, FULL_COURT_PRESS, hillsInbounder, hillsRoutes,
   HILLS_SPEED_MULTIPLIER, HILLS_STAMINA_MULTIPLIER,
   PRESS_DEFENSE_STAMINA_MULTIPLIER, PRESS_OFFENSE_STAMINA_MULTIPLIER,
@@ -128,7 +129,7 @@ function finishDraft(room){
   room.teams.forEach(t=>{fillSlots(t);t.ready=false;});
   log(room,'Draft complete. Set lineups and schemes.');broadcast(room);
 }
-function freshStats(){return {pts:0,reb:0,ast:0,stl:0,blk:0,tov:0,fgm:0,fga:0,threeM:0,threeA:0,ftm:0,fta:0,pf:0,seconds:0};}
+function freshStats(){return {pts:0,reb:0,ast:0,stl:0,blk:0,tov:0,fga:0,fgm:0,threeM:0,threeA:0,ftm:0,fta:0,pf:0,ankleBreaks:0,seconds:0};}
 function startGame(room){
   room.gameNumber++;
   for(const t of room.teams){t.timeouts=TIMEOUTS_PER_GAME;t.ready=false;t.energy=Object.fromEntries(t.roster.map(id=>[id,100]));}
@@ -219,6 +220,10 @@ function shotMismatch(offenseId,defenderId,shotType){
 function simulatePlay(room){
   const g=room.game;if(!g)return;
   const offense=g.offense,def=other(offense),ot=room.teams[offense],dt=room.teams[def];
+  // A team that legally called timeout retains possession and must inbound
+  // when play resumes. Clear the flag only as that next possession begins.
+  const inboundAfterTimeout=g.timeoutInboundSide===offense;
+  g.timeoutInboundSide=null;
   const shooters=g.active[offense],defenders=g.active[def];
   const scheme=ot.offense,dscheme=dt.defense;
   const high=shooters.slice().sort((a,b)=>ov(b)-ov(a));
@@ -298,17 +303,17 @@ function simulatePlay(room){
   const mismatchBonus=huntMismatch?shotMismatch(shooter,defender,type):0;
   // A possession may include a real pass before the chosen shot, unless a
   // dribble/isolation play is called. A passer is an actual on-court teammate.
-  const passAttempt=hills||shooters.length>1&&rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
+  const passAttempt=inboundAfterTimeout||hills||shooters.length>1&&rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
   const passerCandidates=shooters.filter(id=>id!==shooter);
   const passerId=hills?hillsPlay.inbounder:passAttempt?weightedId(passerCandidates,id=>rating(id,'passing')*planDiscipline(id)*
     (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1)):null;
   const passerRating=passerId?rating(passerId,'passing'):null; // raw listed Passing: 90+ always immune
   const passDurationMs=passerId?passFlightMs(passerRating):0;
-  const passFrom=passerId?(hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
+  const passFrom=passerId?(inboundAfterTimeout?{x:.12,y:.5}:hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
   const passTo=passerId?(hills?hillsPlay.targets[shooter]:OFFENSE_ANCHORS[shooters.indexOf(shooter)]):null;
   const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress):[];
   let interceptorId=null,interceptionAt=null,passOutcome=null;
-  let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false;
+  let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false,ankleBreaker=false;
   let putbackAttempt=false,putbackMade=false,putbackShooter=null;
   const eightSecondViolation=fullCourtPress&&pressForcesEightSeconds(rnd);
   if(eightSecondViolation)seconds=Math.min(g.secondsLeft,8);
@@ -318,7 +323,7 @@ function simulatePlay(room){
   if(chaos){for(const id of shooters)ot.energy[id]=clamp(ot.energy[id]-(.20+.30*(1-planDiscipline(id)))*(seconds/17),0,100);}
   if(runGun||oldSchool){for(const id of screeners)ot.energy[id]=clamp(ot.energy[id]-(.09+.22*(1-planDiscipline(id)))*(seconds/17),0,100);}
   // Resolution order prevents a single action triggering multiple turnovers:
-  // illegal screen -> errant pass -> in-lane interception -> on-ball steal -> shot.
+  // illegal screen -> errant pass -> in-lane interception -> on-ball steal -> dribble ankle break -> shot.
   // 90+ passers cannot be intercepted regardless of defenders' Steal attributes.
   const illegalScreen=!eightSecondViolation&&screen&&rnd()<illegalScreenChance(rating(screenSetterId,'iq'));
   if(eightSecondViolation){
@@ -352,6 +357,13 @@ function simulatePlay(room){
       const ballSteal=pressOnBallChance(onBallStealChance(rating(defender,'steal'),rating(shooter,'dribbling')),fullCourtPress);
       if(rnd()<ballSteal){
         event='steal';stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;
+      } else {
+        // Only a genuine ball handler with control after the inbound/pass can
+        // break the matched defender. Use LISTED ratings, never fatigue/OVR.
+        const testForce=process.env.NODE_ENV==='test'&&process.env.CC_TEST_FORCE_ANKLE==='1';
+        ankleBreaker=(testForce&&rating(defender,'perimeterDef')<99)||
+          ankleBreaks(rating(shooter,'dribbling'),rating(defender,'perimeterDef'),rnd);
+        if(ankleBreaker)g.stats[shooter].ankleBreaks++;
       }
     }
   }
@@ -371,12 +383,14 @@ function simulatePlay(room){
     const mismatchQuality=huntMismatch?mismatchBonus:0;
     let chance=clamp(base+(value-80)*.0075-defenseBump+screensBonus+mismatchQuality-
       (isThree?longThreePenalty(shotDistanceFt):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0)+
-      (hills&&inPaint?(HILLS_SPEED_MULTIPLIER-1)*.20:0),.035,.83);
-    const blocked=inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14);
+      (hills&&inPaint?(HILLS_SPEED_MULTIPLIER-1)*.20:0)+
+      (ankleBreaker?ANKLE_OPEN_SHOT_BONUS:0),.035,ankleBreaker?.89:.83);
+    // A stumbling guard temporarily cannot recover in time to block the shot.
+    const blocked=!ankleBreaker&&inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14);
     // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
     // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
     // This prototype does not generate and-one shots or technical/non-shooting fouls.
-    const foulChance=shootingFoulChance(type,rating(shooter,'ft'));
+    const foulChance=ankleBreaker?0:shootingFoulChance(type,rating(shooter,'ft'));
     // Isolated test-server mode makes forced-substitution paths testable; never enabled in production.
     const foulTestMode=process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1';
     if(rnd()<(foulTestMode?1:foulChance)){
@@ -445,6 +459,8 @@ function simulatePlay(room){
     runGun&&screen?'Run & Gun screens spring a scorer! ':
     oldSchool&&kickout?'Old-School kickout to the arc! ':
     oldSchool&&screen?'Old-School cuts create an opening! ':'';
+  if(ankleBreaker)log(room,`😵‍💫 ANKLE BREAKER! ${shooterName} makes ${getPlayer(defender).name} stumble — wide open!`);
+  if(inboundAfterTimeout)log(room,`🏀 ${ot.name} inbounds after its timeout and keeps possession.`);
   if(event==='eight-second-violation')log(room,`⏱️ FULL COURT PRESS! ${ot.name} cannot cross half court in 8 seconds. Turnover!`);
   else if(event==='illegal-screen')log(room,`🚫 ILLEGAL SCREEN! ${getPlayer(screenSetterId).name} is called for an offensive foul (${g.stats[screenSetterId].pf} PF). Turnover.`);
   else if(event==='pass-out-of-bounds')log(room,`🏀 OUT OF BOUNDS! ${getPlayer(passerId).name}'s pass sails out. Turnover.`);
@@ -453,11 +469,11 @@ function simulatePlay(room){
   else if(event==='putback')log(room,`🏀 RUN FOR THE HILLS! ${getPlayer(putbackShooter).name} scores a crashing putback after an offensive rebound!`);
   else if(event==='steal')log(room,`✋ ON-BALL STEAL! ${getPlayer(defender).name} strips ${shooterName}!`);
   else if(event==='block')log(room,`${getPlayer(defender).name} blocks ${shooterName}!`);
-  else if(posterDunk)log(room,`🔥 POSTER DUNK! ${shooterName} dunks on ${getPlayer(defender).name}!`);
+  else if(posterDunk)log(room,`💪 POSTER DUNK! ${shooterName} dunks on ${getPlayer(defender).name}!`);
   else if(deepThree)log(room,`🔥 FROM DEEP! 🔥 ${shooterName} drains a ${shotDistanceFt}-foot three-pointer!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else if(made)log(room,`${actionPrefix}${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
-  g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,deepThree,shotDistanceFt,shotClockRemaining,
+  g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,ankleBreaker,ankleBreakerHandler:ankleBreaker?shooter:null,ankleBreakerDefender:ankleBreaker?defender:null,deepThree,shotDistanceFt,shotClockRemaining,inboundAfterTimeout,
     screen,screenSetterId,screenBonus,illegalScreen,mismatch:huntMismatch&&!illegalScreen,kickout,
     passerId:illegalScreen||eightSecondViolation?null:passerId,passFrom:illegalScreen||eightSecondViolation?null:passFrom,
     passTo:illegalScreen||eightSecondViolation?null:passTo,passDurationMs:illegalScreen||eightSecondViolation?0:passDurationMs,
@@ -571,7 +587,11 @@ function action(room,i,data){
     }
     case 'timeout':{
       if(room.phase!=='sim'||t.timeouts<1)throw Error('No timeouts available.');
-      t.timeouts--;room.phase='timeout';room.timeout={caller:i,until:now()+30000};
+      // Possession is server-authoritative; a defending team cannot steal a
+      // pause by pressing the API directly, even if its browser is stale.
+      if(room.game?.offense!==i)throw Error('Your team must have the ball to call timeout.');
+      t.timeouts--;room.phase='timeout';room.timeout={caller:i,possession:i,until:now()+30000};
+      room.game.timeoutInboundSide=i;
       log(room,`${t.name} calls timeout. Both teams may adjust schemes; only ${t.name} may substitute.`);broadcast(room);break;
     }
     case 'fouloutSub':{
@@ -588,7 +608,10 @@ function action(room,i,data){
     }
     case 'resume':{
       if(room.phase!=='timeout'||room.timeout.caller!==i)throw Error('Only the caller can resume early.');
-      room.phase='sim';room.timeout=null;broadcast(room);break;
+      // Do not advance or switch possession during the timeout.
+      room.game.offense=room.timeout.possession;
+      room.game.timeoutInboundSide=room.timeout.possession;
+      room.phase='sim';room.play={at:now()};room.timeout=null;broadcast(room);break;
     }
     default:throw Error('Unknown action.');
   }
@@ -611,7 +634,9 @@ setInterval(()=>{
       }
     }
     if(room.phase==='timeout'&&ms>=room.timeout.until){
-      room.phase='sim';room.timeout=null;broadcast(room);
+      room.game.offense=room.timeout.possession;
+      room.game.timeoutInboundSide=room.timeout.possession;
+      room.phase='sim';room.play={at:ms};room.timeout=null;broadcast(room);
     }
     if(room.phase==='sim'&&ms-(room.play?.at||0)>=SIM_MS){
       room.play={at:ms};simulatePlay(room);

@@ -88,7 +88,7 @@ test('six personal fouls pause the live game until a legal manual bench substitu
     assert.equal(resumed.teams[0].timeouts,5);
     assert.equal(resumed.teams[1].timeouts,5);
     // Immediately during simulation, a timeout must not allow the disqualified player to return.
-    const caller=f.side===0?a:b;
+    const caller=resumed.game.offense===0?a:b;
     await action(caller,'timeout');
     await assert.rejects(()=>action(caller,'place',{playerId:f.playerId,slot:'PG'}),/fouled out/);
   } finally {child.kill();}

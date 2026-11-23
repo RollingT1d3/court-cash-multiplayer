@@ -10,7 +10,7 @@ const randomPort = async () => new Promise((res,rej)=>{
 
 test('two clients can join, coin-flip, draft, set schemes, time out and finish one game', {timeout:60000}, async () => {
   const port=await randomPort();
-  const child=spawn(process.execPath,['server.js'],{cwd:process.cwd(),env:{...process.env,PORT:String(port),COIN_MS:'35',SPIN_MS:'35',SIM_MS:'10',TICK_MS:'10'},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['server.js'],{cwd:process.cwd(),env:{...process.env,PORT:String(port),COIN_MS:'35',SPIN_MS:'35',SIM_MS:'50',TICK_MS:'10'},stdio:['ignore','pipe','pipe']});
   const base=`http://127.0.0.1:${port}`;
   let output=''; child.stderr.on('data',d=>output+=d);
   const req=async(route,body)=>{const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const json=await res.json();if(!res.ok)throw Error(json.error);return json;};
@@ -74,17 +74,37 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     assert.equal(Math.abs(tip.centerHeights[0]-tip.centerHeights[1]),tip.heightDifference);
     assert.equal(s.teams[0].timeouts,5);
     assert.equal(s.teams[1].timeouts,5);
-    await action(a,'timeout');
-    s=await state(a);assert.equal(s.phase,'timeout');assert.equal(s.teams[0].timeouts,4);
-    await action(b,'scheme',{offense:'Pure Chaos',defense:'3-2 Zone'});
+    // Only the team currently possessing the ball may call timeout.
+    let callerIdx,caller,opponent;
+    await until(async()=>{
+      const x=await state(a);
+      if(x.phase!=='sim')return false;
+      callerIdx=x.game.offense;caller=callerIdx===0?a:b;opponent=callerIdx===0?b:a;
+      try{await action(caller,'timeout');return true;}
+      catch(e){if(/must have the ball/.test(String(e)))return false;throw e;}
+    },1800);
+    s=await state(a);assert.equal(s.phase,'timeout');
+    assert.equal(s.teams[callerIdx].timeouts,4);
+    assert.equal(s.timeout.possession,callerIdx);
+    await action(opponent,'scheme',{offense:'Pure Chaos',defense:'3-2 Zone'});
     s=await state(a);
-    assert.equal(s.teams[1].offense,'Pure Chaos');
-    assert.equal(s.teams[1].defense,'3-2 Zone');
-    await assert.rejects(()=>action(b,'place',{playerId:s.teams[1].roster[0],slot:'PG'}),/Only the timeout caller/);
-    const bench=s.teams[0].roster.find(x=>!s.game.active[0].includes(x));
-    await action(a,'place',{playerId:bench,slot:'PG'});
-    s=await state(a);assert.equal(s.game.active[0][0],bench);
-    await action(a,'resume');
+    assert.equal(s.teams[1-callerIdx].offense,'Pure Chaos');
+    assert.equal(s.teams[1-callerIdx].defense,'3-2 Zone');
+    await assert.rejects(()=>action(opponent,'place',{playerId:s.teams[1-callerIdx].roster[0],slot:'PG'}),/Only the timeout caller/);
+    const bench=s.teams[callerIdx].roster.find(x=>!s.game.active[callerIdx].includes(x));
+    await action(caller,'place',{playerId:bench,slot:'PG'});
+    s=await state(a);assert.equal(s.game.active[callerIdx][0],bench);
+    const frozenPossessions=s.game.possessions;
+    await action(caller,'resume');
+    s=await state(a);
+    assert.equal(s.game.offense,callerIdx);
+    assert.equal(s.game.timeoutInboundSide,callerIdx);
+    const inbound=await until(async()=>{
+      const x=await state(a);
+      return x.game?.possessions>frozenPossessions?x:null;
+    },2000);
+    assert.equal(inbound.game.event.inboundAfterTimeout,true);
+    assert.equal(inbound.game.event.offense,callerIdx);
     s=await until(async()=>{
       const x=await state(a);
       // A fast simulation can trigger a legitimate six-foul pause. Complete
@@ -97,8 +117,8 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
       return x.phase==='finished'?x:null;
     },15000);
     assert.equal(s.game.quarter>=4,true);
-    assert.equal(s.teams[0].timeouts,4);
-    assert.equal(s.teams[1].timeouts,5);
+    assert.equal(s.teams[callerIdx].timeouts,4);
+    assert.equal(s.teams[1-callerIdx].timeouts,5);
     assert.equal(s.result.forfeit,false);
     assert.equal(s.teams.reduce((n,t)=>n+t.wins,0),1);
     assert.equal(s.game.score.reduce((n,v)=>n+v,0)>0,true);
