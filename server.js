@@ -700,7 +700,7 @@ setInterval(()=>{
   if(ms-lastBroadcastAt>=1000)lastBroadcastAt=ms;
 },TICK_MS);
 
-const contentTypes={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon'};
+const contentTypes={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.avif':'image/avif','.svg':'image/svg+xml','.ico':'image/x-icon'};
 function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value));}
 async function body(req){let chunks=[],total=0;for await(const part of req){total+=part.length;if(total>1e5)throw Error('Request too large.');chunks.push(part);}return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}
 const server=http.createServer(async(req,res)=>{
