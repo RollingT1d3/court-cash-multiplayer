@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
+import { heightContestAdjustment, heightBlockAdjustment } from './height-rules-v083.js';
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, threePointBaseChance, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
@@ -223,9 +224,10 @@ function shotMismatch(offenseId,defenderId,shotType){
   const scoring=isInterior?(.55*rating(offenseId,'layup')+.45*rating(offenseId,'dunk')):
     shotType==='three'?rating(offenseId,'three'):rating(offenseId,'mid');
   const defense=rating(defenderId,isInterior?'paintDef':'perimeterDef');
-  const sizeEdge=isInterior?Math.max(0,(attacker.heightInches-guard.heightInches)*.003):0;
+  // Height is already applied to every shot below, so Pure Chaos must not
+  // add its former interior height bonus a second time.
   const strengthEdge=isInterior?Math.max(0,(rating(offenseId,'strength')-rating(defenderId,'strength'))*.0012):0;
-  return clamp((scoring-defense)*.0014+sizeEdge+strengthEdge,0,.08);
+  return clamp((scoring-defense)*.0014+strengthEdge,0,.08);
 }
 function simulatePlay(room){
   const g=room.game;if(!g)return;
@@ -408,12 +410,16 @@ function simulatePlay(room){
     const skillAdjustment=(value-(isThree?rawThree:80))*.0075;
     const screensBonus=screen?.018*adherence+screenBonus*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
-    let chance=clamp(base+skillAdjustment-defenseBump+screensBonus+mismatchQuality-
+    const heightContest=heightContestAdjustment(getPlayer(shooter).heightInches,getPlayer(defender).heightInches,type);
+    let chance=clamp(base+skillAdjustment+heightContest-defenseBump+screensBonus+mismatchQuality-
       (isThree?longThreePenalty(shotDistanceFt,rawThree):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0)+
       (hills&&inPaint?(HILLS_SPEED_MULTIPLIER-1)*.20:0)+
       (ankleBreaker?ANKLE_OPEN_SHOT_BONUS:0),.035,ankleBreaker?.89:.83);
     // A stumbling guard temporarily cannot recover in time to block the shot.
-    const blocked=!ankleBreaker&&inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14)*(clog?CLOG_BLOCK_FACTOR:1);
+    const heightBlock=inPaint?heightBlockAdjustment(getPlayer(shooter).heightInches,getPlayer(defender).heightInches):0;
+    const blocked=!ankleBreaker&&inPaint&&rnd()<
+      clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+
+        (dscheme===DEFENSE[2]?.025:0)+heightBlock,.006,.14)*(clog?CLOG_BLOCK_FACTOR:1);
     // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
     // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
     // This prototype does not generate and-one shots or technical/non-shooting fouls.
