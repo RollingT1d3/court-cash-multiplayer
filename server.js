@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
-import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, isDeepThree } from './offense-v04.js';
+import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, threePointBaseChance, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
 import { ankleBreaks, ANKLE_OPEN_SHOT_BONUS } from './ankle-rules-v07.js';
@@ -402,11 +402,14 @@ function simulatePlay(room){
     if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
     if(clog&&inPaint)defenseBump-=CLOG_PAINT_SHOT_BONUS;
     defenseBump+=zoneShotDefenseAdjustment(dscheme,type);
-    const base=isThree?.365:inPaint?.61:.43;
+    const rawThree=isThree?rating(shooter,'three'):0;
+    const base=isThree?threePointBaseChance(rawThree):inPaint?.61:.43;
+    // Preserve fatigue and out-of-position penalties without tier-cliff effects.
+    const skillAdjustment=(value-(isThree?rawThree:80))*.0075;
     const screensBonus=screen?.018*adherence+screenBonus*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
-    let chance=clamp(base+(value-80)*.0075-defenseBump+screensBonus+mismatchQuality-
-      (isThree?longThreePenalty(shotDistanceFt):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0)+
+    let chance=clamp(base+skillAdjustment-defenseBump+screensBonus+mismatchQuality-
+      (isThree?longThreePenalty(shotDistanceFt,rawThree):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0)+
       (hills&&inPaint?(HILLS_SPEED_MULTIPLIER-1)*.20:0)+
       (ankleBreaker?ANKLE_OPEN_SHOT_BONUS:0),.035,ankleBreaker?.89:.83);
     // A stumbling guard temporarily cannot recover in time to block the shot.
