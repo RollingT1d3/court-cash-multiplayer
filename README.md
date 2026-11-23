@@ -128,7 +128,3 @@ See [UPDATE_V083.md](UPDATE_V083.md) for height-adjusted three-point, mid-range,
 ## v0.8.4 — fatigue rebalance and player-controlled substitutions
 
 See [UPDATE_V084.md](UPDATE_V084.md). Shooting fatigue caps at 18%, finishing at 12% and defense at 10%; playmaking remains unaffected. Timeouts restore +4 energy for both on-court teams, voluntary subs are timeout-only (with forced foul-out replacements preserved), and the small fatigue emoji now appears in the top-right of player circles at below 60% / below 25% energy. No new energy bars in the substitution UI.
-
-## V0.8.41 — Homepage visual refresh
-
-See [UPDATE_V0841.md](UPDATE_V0841.md). The main menu now has two narrower, fully functional room forms centered between the original transparent player illustrations (purple-pants player on the left, basketball-spinning afro player on the right). The decorative artwork is desktop-only and hidden on smaller screens. The previously proposed peeking-head character is excluded. All gameplay mechanics remain at V0.8.4.
