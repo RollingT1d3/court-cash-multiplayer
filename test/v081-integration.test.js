@@ -19,7 +19,7 @@ test('v0.8.2 two-player game: each new zone defends live plays, awards and remat
  const until=async(fn,ms=11000)=>{const start=Date.now();while(Date.now()-start<ms){const val=await fn();if(val)return val;await delay(11);}throw Error('Timed out. '+err);};
  try{
   const health=await until(async()=>{try{const r=await fetch(root+'/health');return r.ok?await r.json():null;}catch{return null;}},2500);
-  assert.equal(health.version,'0.8.4');
+  assert.equal(health.version,'0.8.41');
   const a=await req('/api/create',{name:'Golden Guards',format:1});
   const b=await req('/api/join',{code:a.code,name:'Block City'});
   let snapshot;
