@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
 import { heightContestAdjustment, heightBlockAdjustment } from './height-rules-v083.js';
+import { fatiguedSkill, timeoutRecovery } from './fatigue-v084.js';
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, threePointBaseChance, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
@@ -179,23 +180,12 @@ function effectiveOnCourt(room,side,id,key){
   return Math.max(25,rating(id,key)-penalty);
 }
 
-function effective(id,t,defSkill){let val=defSkill;return val * (0.72+0.28*(t.energy[id]??100)/100);}
-function weightedId(ids,fun){const weights=ids.map(id=>Math.max(.01,fun(id)));let r=rnd()*weights.reduce((a,b)=>a+b,0);for(let i=0;i<ids.length;i++){r-=weights[i];if(r<=0)return ids[i];}return ids.at(-1);}
-function automaticSubs(room){
-  const g=room.game;
-  for(let side=0;side<2;side++){
-    const t=room.teams[side];
-    const bench=eligibleBench(t.roster,g.active[side],g.fouledOut);
-    if(!bench.length)continue;
-    const worst=g.active[side].reduce((a,b)=>t.energy[a]<t.energy[b]?a:b);
-    const slot=g.active[side].indexOf(worst);const best=bench.reduce((a,b)=>((t.energy[a]??100)-positionPenalty(a,SLOTS[slot])*2)>((t.energy[b]??100)-positionPenalty(b,SLOTS[slot])*2)?a:b);
-    if((t.energy[worst]??100)<58 && (t.energy[best]??100)>(t.energy[worst]??100)+14){
-      const ix=g.active[side].indexOf(worst);
-      g.active[side][ix]=best;
-      log(room,`${getPlayer(best).name} checks in for ${getPlayer(worst).name}.`);
-    }
-  }
+// Only shot creation and finishing incur offensive fatigue penalties.
+function effective(id,team,skill,category){return fatiguedSkill(skill,team.energy[id]??100,category);}
+function defensiveSkill(room,side,id,key){
+  return fatiguedSkill(effectiveOnCourt(room,side,id,key),room.teams[side].energy[id]??100,'defense');
 }
+function weightedId(ids,fun){const weights=ids.map(id=>Math.max(.01,fun(id)));let r=rnd()*weights.reduce((a,b)=>a+b,0);for(let i=0;i<ids.length;i++){r-=weights[i];if(r<=0)return ids[i];}return ids.at(-1);}
 function fatigue(room,seconds){
   const g=room.game;
   for(let i=0;i<2;i++){
@@ -361,7 +351,7 @@ function simulatePlay(room){
       // Only defenders geometrically in the pass lane can attempt this type
       // of steal. The server uses actual, scheme-dependent court coordinates.
       for(const lanePlayer of inLane){
-        const baseLaneChance=interceptionChance(rating(lanePlayer.id,'steal'),passerRating,true);
+        const baseLaneChance=interceptionChance(fatiguedSkill(rating(lanePlayer.id,'steal'),dt.energy[lanePlayer.id]??100,'defense'),passerRating,true);
         const interceptChance=clog?clogInterceptionChance(baseLaneChance,passerRating):
           zoneLaneInterceptionChance(baseLaneChance,passerRating,dscheme);
         if(rnd()<interceptChance){
@@ -378,7 +368,7 @@ function simulatePlay(room){
       // On-ball defender is matched with the shooter/handler; Steal chance
       // is the exact Steal bracket minus the handler's Dribbling deduction.
       const ballSteal=zoneOnBallStealChance(
-        pressOnBallChance(onBallStealChance(rating(defender,'steal'),rating(shooter,'dribbling')),fullCourtPress),dscheme);
+        pressOnBallChance(onBallStealChance(fatiguedSkill(rating(defender,'steal'),dt.energy[defender]??100,'defense'),rating(shooter,'dribbling')),fullCourtPress),dscheme);
       if(rnd()<ballSteal){
         event='steal';stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;
       } else {
@@ -395,8 +385,8 @@ function simulatePlay(room){
     let value=isThree?effectiveOnCourt(room,offense,shooter,'three'):
       inPaint?(.44*effectiveOnCourt(room,offense,shooter,'layup')+.46*effectiveOnCourt(room,offense,shooter,'dunk')+.1*effectiveOnCourt(room,offense,shooter,'post')):
       effectiveOnCourt(room,offense,shooter,'mid');
-    value=effective(shooter,ot,value);
-    const defensiveRating=inPaint?effectiveOnCourt(room,def,defender,'paintDef'):effectiveOnCourt(room,def,defender,'perimeterDef');
+    value=effective(shooter,ot,value,inPaint?'finishing':'shooting');
+    const defensiveRating=defensiveSkill(room,def,defender,inPaint?'paintDef':'perimeterDef');
     let defenseBump=(defensiveRating-75)*.0018;
     if(dscheme===DEFENSE[2]&&inPaint)defenseBump+=.11;
     if(dscheme===DEFENSE[3]&&isThree)defenseBump+=.105;
@@ -418,7 +408,7 @@ function simulatePlay(room){
     // A stumbling guard temporarily cannot recover in time to block the shot.
     const heightBlock=inPaint?heightBlockAdjustment(getPlayer(shooter).heightInches,getPlayer(defender).heightInches):0;
     const blocked=!ankleBreaker&&inPaint&&rnd()<
-      clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+
+      clamp(.028+(defensiveSkill(room,def,defender,'block')-75)*.0018+
         (dscheme===DEFENSE[2]?.025:0)+heightBlock,.006,.14)*(clog?CLOG_BLOCK_FACTOR:1);
     // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
     // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
@@ -525,7 +515,7 @@ function simulatePlay(room){
     screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
     oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
-  if(!fouledOutPlayer)automaticSubs(room);
+  // All voluntary substitutions are manual and require a timeout.
   g.offense=!putbackMade&&reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){
     if(g.quarter<4){g.quarter++;g.secondsLeft=720;g.period='Q'+g.quarter;log(room,`Start of quarter ${g.quarter}.`);}
@@ -642,7 +632,14 @@ function action(room,i,data){
       // Possession is server-authoritative; a defending team cannot steal a
       // pause by pressing the API directly, even if its browser is stale.
       if(room.game?.offense!==i)throw Error('Your team must have the ball to call timeout.');
-      t.timeouts--;room.phase='timeout';room.timeout={caller:i,possession:i,until:now()+30000};
+      // Rest all ten on-court players exactly once, when the timeout starts.
+        for(let side=0;side<2;side++){
+          const team=room.teams[side];
+          for(const id of room.game.active[side]){
+            team.energy[id]=timeoutRecovery(team.energy[id]??100);
+          }
+        }
+        t.timeouts--;room.phase='timeout';room.timeout={caller:i,possession:i,until:now()+30000};
       room.game.timeoutInboundSide=i;
       log(room,`${t.name} calls timeout. Both teams may adjust schemes; only ${t.name} may substitute.`);broadcast(room);break;
     }
