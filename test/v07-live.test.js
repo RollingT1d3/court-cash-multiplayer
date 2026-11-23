@@ -27,7 +27,7 @@ test('real two-client game: defending timeout rejected, offense inbounds after p
     const until=async(fn,ms=8000)=>{const start=Date.now();while(Date.now()-start<ms){const r=await fn();if(r)return r;await sleep(12);}throw Error('Timeout '+error);};
     try{
       const health=await until(async()=>{try{const r=await fetch(url+'/health');return r.ok?r.json():null;}catch{return null;}},2500);
-      assert.equal(health.version,'0.8.0');
+      assert.equal(health.version,'0.8.1');
       const a=await req('/api/create',{name:'Home',format:1});
       const b=await req('/api/join',{code:a.code,name:'Away'});
       let s;

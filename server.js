@@ -12,6 +12,10 @@ import { PLAY_THROUGH_POINT, CLOG_THE_LANES, pointPlay, clogPositions,
   clogInterceptionChance, CLOG_PAINT_SHOT_BONUS, CLOG_PAINT_REBOUND_BONUS,
   CLOG_BLOCK_FACTOR } from './strategy-v08.js';
 import { gameAwards } from './awards-v08.js';
+import { FOUR_ONE_ZONE, TWO_TWO_ONE_ZONE, FOUR_ONE_OFFENSIVE_REBOUND_BONUS,
+  TWO_TWO_ONE_DEFENDER_FATIGUE_FACTOR, TWO_TWO_ONE_ATTACKER_FATIGUE_FACTOR,
+  zoneShotDefenseAdjustment, zoneDefendersForShot, twoTwoOneEightSecond,
+  zoneLaneInterceptionChance, zoneOnBallStealChance, zoneAnchorOverrides } from './defense-v081.js';
 import { RUN_FOR_THE_HILLS, FULL_COURT_PRESS, hillsInbounder, hillsRoutes,
   HILLS_SPEED_MULTIPLIER, HILLS_STAMINA_MULTIPLIER,
   PRESS_DEFENSE_STAMINA_MULTIPLIER, PRESS_OFFENSE_STAMINA_MULTIPLIER,
@@ -26,7 +30,7 @@ if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
 const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT];
-const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS,CLOG_THE_LANES];
+const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS,CLOG_THE_LANES,FOUR_ONE_ZONE,TWO_TWO_ONE_ZONE];
 const BASE_SECONDS = 48*60;
 const TIMEOUTS_PER_GAME = 5;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
@@ -202,6 +206,8 @@ function fatigue(room,seconds){
         if(t.defense===FULL_COURT_PRESS)drain*=PRESS_DEFENSE_STAMINA_MULTIPLIER;
         if(room.teams[other(i)].defense===FULL_COURT_PRESS)drain*=PRESS_OFFENSE_STAMINA_MULTIPLIER;
         if(i===g.offense&&t.offense===RUN_FOR_THE_HILLS)drain*=HILLS_STAMINA_MULTIPLIER;
+        if(i!==g.offense&&t.defense===TWO_TWO_ONE_ZONE)drain*=TWO_TWO_ONE_DEFENDER_FATIGUE_FACTOR;
+        if(i===g.offense&&room.teams[other(i)].defense===TWO_TWO_ONE_ZONE)drain*=TWO_TWO_ONE_ATTACKER_FATIGUE_FACTOR;
         t.energy[id]=clamp((t.energy[id]??100)-drain,0,100);
         g.stats[id].seconds+=seconds;
       }else t.energy[id]=clamp((t.energy[id]??100)+1.3*(seconds/17),0,100);
@@ -234,6 +240,7 @@ function simulatePlay(room){
   const chaos=scheme==='Pure Chaos',runGun=scheme===RUN_AND_GUN,oldSchool=scheme===OLD_SCHOOL_BUCKETS;
   const hills=scheme===RUN_FOR_THE_HILLS,fullCourtPress=dscheme===FULL_COURT_PRESS;
   const point=scheme===PLAY_THROUGH_POINT,clog=dscheme===CLOG_THE_LANES;
+  const fourOne=dscheme===FOUR_ONE_ZONE,twoTwoOne=dscheme===TWO_TWO_ONE_ZONE;
   const pointAction=point?pointPlay(shooters,rating,rnd):null;
   const hillsPlay=hills?hillsRoutes(shooters,hillsInbounder(shooters,rating),rating,rnd):null;
   const roles=offenseRoles(shooters,rating);
@@ -292,7 +299,8 @@ function simulatePlay(room){
     type==='mid'?12+Math.floor(rnd()*11):3+Math.floor(rnd()*7);
   // A zone keeps three defenders up top and two close to the rim. Pure Chaos deliberately
   // searches across defenders for favorable size/scoring mismatches using off-ball screens.
-  const zoneTargets=dscheme==='3-2 Zone'?(inPaint?defenders.slice(3):defenders.slice(0,3)):defenders;
+  const zoneTargets=dscheme==='3-2 Zone'?(inPaint?defenders.slice(3):defenders.slice(0,3)):
+    zoneDefendersForShot(dscheme,defenders,inPaint);
   // Screen execution is influenced by role specialists, their Teamwork and energy.
   const screenRequested=(chaos&&rnd()<.18+.72*adherence)||
     (runGun&&rnd()<clamp(.47+.35*teamAdherence+(screenQuality-70)*.002,.2,.94))||
@@ -319,11 +327,13 @@ function simulatePlay(room){
   const passFrom=passerId?(inboundAfterTimeout?{x:.12,y:.5}:point?pointAction.targets[passerId]:hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
   const passTo=passerId?(point?pointAction.targets[shooter]:hills?hillsPlay.targets[shooter]:OFFENSE_ANCHORS[shooters.indexOf(shooter)]):null;
   const clogTargets=clog?clogPositions(passFrom,passTo,defenders):null;
-  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress,clogTargets):[];
+  const zonePositions=zoneAnchorOverrides(dscheme,defenders);
+  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress,clogTargets||zonePositions):[];
   let interceptorId=null,interceptionAt=null,passOutcome=null;
   let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false,ankleBreaker=false;
   let putbackAttempt=false,putbackMade=false,putbackShooter=null;
-  const eightSecondViolation=fullCourtPress&&pressForcesEightSeconds(rnd);
+  const eightSecondViolation=fullCourtPress?pressForcesEightSeconds(rnd):
+    twoTwoOne&&twoTwoOneEightSecond(rnd);
   if(eightSecondViolation)seconds=Math.min(g.secondsLeft,8);
   let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null,fouledOutSide=null;
   fatigue(room,seconds);
@@ -350,7 +360,9 @@ function simulatePlay(room){
       // of steal. The server uses actual, scheme-dependent court coordinates.
       for(const lanePlayer of inLane){
         const baseLaneChance=interceptionChance(rating(lanePlayer.id,'steal'),passerRating,true);
-        if(rnd()<(clog?clogInterceptionChance(baseLaneChance,passerRating):baseLaneChance)){
+        const interceptChance=clog?clogInterceptionChance(baseLaneChance,passerRating):
+          zoneLaneInterceptionChance(baseLaneChance,passerRating,dscheme);
+        if(rnd()<interceptChance){
           interceptorId=lanePlayer.id;interceptionAt=lanePlayer.at;
           break;
         }
@@ -363,7 +375,8 @@ function simulatePlay(room){
       if(passerId)passOutcome='complete';
       // On-ball defender is matched with the shooter/handler; Steal chance
       // is the exact Steal bracket minus the handler's Dribbling deduction.
-      const ballSteal=pressOnBallChance(onBallStealChance(rating(defender,'steal'),rating(shooter,'dribbling')),fullCourtPress);
+      const ballSteal=zoneOnBallStealChance(
+        pressOnBallChance(onBallStealChance(rating(defender,'steal'),rating(shooter,'dribbling')),fullCourtPress),dscheme);
       if(rnd()<ballSteal){
         event='steal';stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;
       } else {
@@ -388,6 +401,7 @@ function simulatePlay(room){
     if(dscheme===DEFENSE[1]&&shooter===high[0])defenseBump+=.11;
     if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
     if(clog&&inPaint)defenseBump-=CLOG_PAINT_SHOT_BONUS;
+    defenseBump+=zoneShotDefenseAdjustment(dscheme,type);
     const base=isThree?.365:inPaint?.61:.43;
     const screensBonus=screen?.018*adherence+screenBonus*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
@@ -440,7 +454,8 @@ function simulatePlay(room){
     if(!made&&!foul){
       const zoneReboundPenalty=dscheme==='3-2 Zone'?.045:0;
       const reboundBase=1-((inPaint?.74:.80)-zoneReboundPenalty);
-      const offenseReboundChance=clamp(hills?hillsOffensiveReboundChance(reboundBase,hillsPlay.perimeterShot):reboundBase+(clog?CLOG_PAINT_REBOUND_BONUS:0),0,.95);
+      const offenseReboundChance=clamp(hills?hillsOffensiveReboundChance(reboundBase,hillsPlay.perimeterShot):
+        reboundBase+(clog?CLOG_PAINT_REBOUND_BONUS:0)+(fourOne?FOUR_ONE_OFFENSIVE_REBOUND_BONUS:0),0,.95);
       const rebTeam=rnd()<offenseReboundChance?offense:def;
       const rebRoles=offenseRoles(g.active[rebTeam],rating);
       reboundId=weightedId(g.active[rebTeam],id=>(effectiveOnCourt(room,rebTeam,id,'rebound')+effectiveOnCourt(room,rebTeam,id,'strength')*.16)*
@@ -471,7 +486,7 @@ function simulatePlay(room){
     oldSchool&&screen?'Old-School cuts create an opening! ':'';
   if(ankleBreaker)log(room,`😵‍💫 ANKLE BREAKER! ${shooterName} makes ${getPlayer(defender).name} stumble — wide open!`);
   if(inboundAfterTimeout)log(room,`🏀 ${ot.name} inbounds after its timeout and keeps possession.`);
-  if(event==='eight-second-violation')log(room,`⏱️ FULL COURT PRESS! ${ot.name} cannot cross half court in 8 seconds. Turnover!`);
+  if(event==='eight-second-violation')log(room,`⏱️ ${twoTwoOne?'2-2-1 ZONE PRESS':'FULL COURT PRESS'}! ${ot.name} cannot cross half court in 8 seconds. Turnover!`);
   else if(event==='illegal-screen')log(room,`🚫 ILLEGAL SCREEN! ${getPlayer(screenSetterId).name} is called for an offensive foul (${g.stats[screenSetterId].pf} PF). Turnover.`);
   else if(event==='pass-out-of-bounds')log(room,`🏀 OUT OF BOUNDS! ${getPlayer(passerId).name}'s pass sails out. Turnover.`);
   else if(event==='interception')log(room,`✋ INTERCEPTION! ${getPlayer(interceptorId).name} ${clog?'clogs the passing lane':'reads the passing lane'} and picks off ${getPlayer(passerId).name}'s pass!`);
@@ -496,7 +511,8 @@ function simulatePlay(room){
     pointPG:point?pointAction.pg:null,pointCenter:point?pointAction.center:null,
     pointCorners:point?pointAction.corners:[],pointWingCut:point?pointAction.wingCut:null,
     pointCutReturned:point?pointAction.cutReturned:false,
-    clogPositions:clogTargets,clog,attackRight:offense===0?g.quarter<=2:g.quarter>2,
+    clogPositions:clogTargets,clog,zoneDefense:fourOne?FOUR_ONE_ZONE:twoTwoOne?TWO_TWO_ONE_ZONE:null,
+    zonePositions,attackRight:offense===0?g.quarter<=2:g.quarter>2,
     screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
     oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};

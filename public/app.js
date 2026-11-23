@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
   const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets','Run For The Hills','Play Through Point'];
-  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press','Clog The Lanes'];
+  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press','Clog The Lanes','4-1 Zone','2-2-1 Zone'];
   const OFFENSE_INFO = {
     'Play Through Superstar':'The highest-rated player becomes your primary option. Higher Teamwork means teammates reliably feed the star, space the floor and follow the play call.',
     'Play Through Stars':'Prioritizes your two best players while everyone else supplies complementary touches. Teamwork controls how reliably players stick to their roles.',
@@ -23,7 +23,9 @@
     'Perimeter Secured':'Prioritizes contesting three-pointers, giving opponents more chances to attack inside.',
     '3-2 Zone':'Three defenders patrol the perimeter and two defend near the rim. Helps challenge outside looks, but is more vulnerable to interior attacks and offensive rebounds.',
     'Full Court Press':'Pressure the ball all the way up court. Slightly higher on-ball steal chance, more stamina drain on opponents and roughly 10% chance to force an eight-second violation per defensive possession. Pressing defenders become significantly more exhausted.',
-    'Clog The Lanes':'Defenders constantly drift beside or behind their matchups and directly into passing lanes, greatly increasing eligible lane-interception chances. This leaves the paint dangerously open for drives, layups and dunks.'
+    'Clog The Lanes':'Defenders constantly drift beside or behind their matchups and directly into passing lanes, greatly increasing eligible lane-interception chances. This leaves the paint dangerously open for drives, layups and dunks.',
+    '4-1 Zone':'Four defenders spread along the three-point arc to contest outside shots and passes, while the Center guards the paint alone. Strong against perimeter shooting; drives, interior scoring and offensive boards become easier because the Center gets little help.',
+    '2-2-1 Zone':'A full-court zone press: two defenders pressure the ball high, two cover the middle passing routes, and one stays back to protect the basket. Can force occasional eight-second violations and extra steals, but uses more stamina and can give up open shots once beaten.'
   };
   function strategyInfo(name,kind){return `<div class="strategy-info"><strong>${esc(name)}</strong><p>${esc((kind==='offense'?OFFENSE_INFO:DEFENSE_INFO)[name]||'')}</p></div>`;}
   const CAT = {
@@ -440,6 +442,8 @@
     const anchors=[{x:.66,y:.5},{x:.74,y:.20},{x:.71,y:.82},{x:.84,y:.33},{x:.84,y:.64}];
     const defenseAnchors=[{x:.73,y:.50},{x:.81,y:.20},{x:.81,y:.82},{x:.87,y:.38},{x:.87,y:.65}];
     const zoneAnchors=[{x:.72,y:.19},{x:.74,y:.50},{x:.72,y:.81},{x:.86,y:.33},{x:.86,y:.67}];
+    const fourOneAnchors=[{x:.71,y:.17},{x:.73,y:.38},{x:.73,y:.62},{x:.71,y:.83},{x:.89,y:.50}];
+    const twoTwoOneAnchors=[{x:.39,y:.29},{x:.39,y:.71},{x:.61,y:.30},{x:.61,y:.70},{x:.88,y:.50}];
     const pressAnchors=[{x:.32,y:.50},{x:.41,y:.22},{x:.42,y:.78},{x:.55,y:.37},{x:.55,y:.64}];
     const scheme=state.teams[offense].offense;
     const isChaos=scheme==='Pure Chaos';
@@ -450,14 +454,20 @@
     const isClog=state.teams[1-offense].defense==='Clog The Lanes';
     const isPress=state.teams[1-offense].defense==='Full Court Press';
     const isZone=state.teams[1-offense].defense==='3-2 Zone';
+    const isFourOne=state.teams[1-offense].defense==='4-1 Zone';
+    const isTwoTwoOne=state.teams[1-offense].defense==='2-2-1 Zone';
     const eventAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
     const present=new Set();
     for(let side=0;side<2;side++){
       for(let pos=0;pos<5;pos++){
         const id=game.active[side][pos];if(!id)continue;present.add(id);
         const attacking=side===offense;
-        const anchor=attacking?anchors:(isPress?pressAnchors:isZone?zoneAnchors:defenseAnchors)[pos];
+        const anchor=attacking?anchors:(isTwoTwoOne?twoTwoOneAnchors:isFourOne?fourOneAnchors:
+          isPress?pressAnchors:isZone?zoneAnchors:defenseAnchors)[pos];
         let x=anchor.x*W,y=anchor.y*H;
+        if(!attacking&&(isFourOne||isTwoTwoOne)&&event?.zonePositions?.[id]){
+          const target=event.zonePositions[id];x=target.x*W;y=target.y*H;
+        }
         if(!attacking&&isClog){
           const coverage=event?.clogPositions?.[id];
           if(coverage){x=coverage.x*W;y=coverage.y*H;}
@@ -523,7 +533,7 @@
         }
         if(!attackRight)x=W-x;
         const prev=canvasPositions.get(id)||{x,y};
-        const v=isHills&&attacking?.072:isPress&&!attacking?.075:.060;prev.x+=(x-prev.x)*v;prev.y+=(y-prev.y)*v;canvasPositions.set(id,prev);
+        const v=isHills&&attacking?.072:(isPress||isTwoTwoOne)&&!attacking?.075:.060;prev.x+=(x-prev.x)*v;prev.y+=(y-prev.y)*v;canvasPositions.set(id,prev);
         const p=player(id);if(!p)continue;
         ctx.save();
         if(ankleStumble){
@@ -605,6 +615,16 @@
       }
       ctx.beginPath();ctx.fillStyle='#fc8c2f';ctx.strokeStyle='#45290e';ctx.lineWidth=2;ctx.arc(bx,by,9,0,2*Math.PI);ctx.fill();ctx.stroke();
       ctx.beginPath();ctx.moveTo(bx-9,by);ctx.lineTo(bx+9,by);ctx.moveTo(bx,by-9);ctx.lineTo(bx,by+9);ctx.stroke();
+    }
+    // One short 🖐️ centered between the actual blocker and the blocked shooter.
+    // Positions are the rendered, interpolated circle coordinates on this frame.
+    if(event?.displayEvent==='block'&&event?.blockId&&eventAge<850&&state.phase==='sim'&&
+       canvasPositions.has(event.blockId)&&canvasPositions.has(event.shooter)){
+      const defender=canvasPositions.get(event.blockId),attacker=canvasPositions.get(event.shooter);
+      const midX=(defender.x+attacker.x)/2,midY=(defender.y+attacker.y)/2;
+      ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,eventAge/110,(850-eventAge)/200));
+      ctx.font='32px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('🖐️',midX,midY);ctx.restore();
     }
     if(event?.ankleBreaker&&state.phase==='sim'){
       courtReactionBurst(ctx,W,H,['🫪','😱','😯'],eventAge,ANKLE_REACTIONS_MS);
