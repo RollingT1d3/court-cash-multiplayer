@@ -7,7 +7,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 const freePort=()=>new Promise((resolve,reject)=>{
  const s=net.createServer();s.on('error',reject);s.listen(0,'127.0.0.1',()=>{const port=s.address().port;s.close(()=>resolve(port));});
 });
-test('v0.8.1 two-player game: each new zone defends live plays, awards and rematch persist',
+test('v0.8.2 two-player game: each new zone defends live plays, awards and rematch persist',
   {timeout:60000},async()=>{
  const port=await freePort();
  const child=spawn(process.execPath,['server.js'],{cwd:process.cwd(),env:{...process.env,PORT:String(port),COIN_MS:'35',SPIN_MS:'35',SIM_MS:'28',TICK_MS:'10'},stdio:['ignore','pipe','pipe']});
@@ -19,7 +19,7 @@ test('v0.8.1 two-player game: each new zone defends live plays, awards and remat
  const until=async(fn,ms=11000)=>{const start=Date.now();while(Date.now()-start<ms){const val=await fn();if(val)return val;await delay(11);}throw Error('Timed out. '+err);};
  try{
   const health=await until(async()=>{try{const r=await fetch(root+'/health');return r.ok?await r.json():null;}catch{return null;}},2500);
-  assert.equal(health.version,'0.8.1');
+  assert.equal(health.version,'0.8.2');
   const a=await req('/api/create',{name:'Golden Guards',format:1});
   const b=await req('/api/join',{code:a.code,name:'Block City'});
   let snapshot;
