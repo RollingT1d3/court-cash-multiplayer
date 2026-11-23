@@ -120,3 +120,7 @@ Read [UPDATE_V08.md](UPDATE_V08.md) for **Play Through Point**, **Clog The Lanes
 ## v0.8.2 — global three-point accuracy and distance rebalance
 
 See [UPDATE_V082.md](UPDATE_V082.md) for the new 3PT rating-to-accuracy brackets and the standard, elite (95–99), and perfect (100) distance-penalty schedules. These apply to **every offensive strategy** and preserve fatigue, positional and defensive effects.
+
+## v0.8.3 — height-based contests and interior blocks
+
+See [UPDATE_V083.md](UPDATE_V083.md) for height-adjusted three-point, mid-range, layup and dunk contests, plus modest interior block modifiers. The update preserves v0.8.2 three-point balancing and prevents the old Pure Chaos height bonus from stacking twice.
