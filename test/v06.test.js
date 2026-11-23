@@ -123,5 +123,5 @@ test('strategies are selectable on both clients; server handles route/press/putb
   assert.match(app,/hillsRoutes/);
   assert.match(app,/FULL COURT PRESS|Full Court Press/);
   assert.match(app,/8 SECOND VIOLATION/);
-  assert.match(html,/ALPHA v0\.8\.4/);
+  assert.match(html,/ALPHA v0\.8\.41/);
 });
