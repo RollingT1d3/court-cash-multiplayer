@@ -2,8 +2,8 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets'];
-  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone'];
+  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets','Run For The Hills'];
+  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press'];
   const OFFENSE_INFO = {
     'Play Through Superstar':'The highest-rated player becomes your primary option. Higher Teamwork means teammates reliably feed the star, space the floor and follow the play call.',
     'Play Through Stars':'Prioritizes your two best players while everyone else supplies complementary touches. Teamwork controls how reliably players stick to their roles.',
@@ -12,14 +12,16 @@
     'Paint Mash':'Emphasizes drives, dunks, post play and inside looks, with occasional mid-range attempts. Teamwork helps cutters and finishers follow the game plan.',
     'Pure Chaos':'Heavy off-ball movement and frequent screens. Hunts favorable mismatches (a big against a small defender or a scorer against a weak defender), creating chances at the cost of extra stamina. Teamwork strongly affects execution.',
     'Run & Gun':'The team works together to get the best possible shooters consistently open. Very perimeter-focused. The two best three-point shooters hunt threes, while the other three run and set screens; the two weakest combined mid/three shooters focus only on screens and rebounds. Any eligible 80+ mid-range shooter also works to get open.',
-    'Old-School Buckets':'A well-balanced, slightly interior-focused offense. The best three-point shooter stays at the arc and the strongest rebounder stays near the paint. The other three run, pass, cut and screen for open layups, dunks and mid-range shots. When the shot clock runs low or an opening appears, the ball kicks out to the three-point shooter.'
+    'Old-School Buckets':'A well-balanced, slightly interior-focused offense. The best three-point shooter stays at the arc and the strongest rebounder stays near the paint. The other three run, pass, cut and screen for open layups, dunks and mid-range shots. When the shot clock runs low or an opening appears, the ball kicks out to the three-point shooter.',
+    'Run For The Hills':'Your best passer (excluding your PG) inbounds, while four runners mix up routes and attack the rim. Everyone either crashes for layups, dunks and aggressive rebounds, or the top two available shooters flare out for their better 3PT/mid-range shot; a kickout may fail and return to paint offense. Slight speed and rebound boosts, higher stamina drain.'
   };
   const DEFENSE_INFO = {
     'Man-to-Man':'Each defender tracks an opposing player. Balanced coverage without major tactical bonuses or vulnerabilities.',
     'Double the Star':'Sends extra pressure at the opponent’s best scorer, reducing their shot quality while taking attention away from other threats.',
     'Protect the Paint':'Loads defenders near the basket to reduce dunks and layups, leaving more space for outside jumpers.',
     'Perimeter Secured':'Prioritizes contesting three-pointers, giving opponents more chances to attack inside.',
-    '3-2 Zone':'Three defenders patrol the perimeter and two defend near the rim. Helps challenge outside looks, but is more vulnerable to interior attacks and offensive rebounds.'
+    '3-2 Zone':'Three defenders patrol the perimeter and two defend near the rim. Helps challenge outside looks, but is more vulnerable to interior attacks and offensive rebounds.',
+    'Full Court Press':'Pressure the ball all the way up court. Slightly higher on-ball steal chance, more stamina drain on opponents and roughly 10% chance to force an eight-second violation per defensive possession. Pressing defenders become significantly more exhausted.'
   };
   function strategyInfo(name,kind){return `<div class="strategy-info"><strong>${esc(name)}</strong><p>${esc((kind==='offense'?OFFENSE_INFO:DEFENSE_INFO)[name]||'')}</p></div>`;}
   const CAT = {
@@ -370,10 +372,13 @@
     const anchors=[{x:.66,y:.5},{x:.74,y:.20},{x:.71,y:.82},{x:.84,y:.33},{x:.84,y:.64}];
     const defenseAnchors=[{x:.73,y:.50},{x:.81,y:.20},{x:.81,y:.82},{x:.87,y:.38},{x:.87,y:.65}];
     const zoneAnchors=[{x:.72,y:.19},{x:.74,y:.50},{x:.72,y:.81},{x:.86,y:.33},{x:.86,y:.67}];
+    const pressAnchors=[{x:.32,y:.50},{x:.41,y:.22},{x:.42,y:.78},{x:.55,y:.37},{x:.55,y:.64}];
     const scheme=state.teams[offense].offense;
     const isChaos=scheme==='Pure Chaos';
     const isRunGun=scheme==='Run & Gun';
     const isOldSchool=scheme==='Old-School Buckets';
+    const isHills=scheme==='Run For The Hills';
+    const isPress=state.teams[1-offense].defense==='Full Court Press';
     const isZone=state.teams[1-offense].defense==='3-2 Zone';
     const eventAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
     const present=new Set();
@@ -381,7 +386,7 @@
       for(let pos=0;pos<5;pos++){
         const id=game.active[side][pos];if(!id)continue;present.add(id);
         const attacking=side===offense;
-        const anchor=attacking?anchors:(isZone?zoneAnchors:defenseAnchors)[pos];
+        const anchor=attacking?anchors:(isPress?pressAnchors:isZone?zoneAnchors:defenseAnchors)[pos];
         let x=anchor.x*W,y=anchor.y*H;
         // Different offensive roles are visible: perimeter screening, cuts and paint anchors.
         if(attacking&&(isChaos||isRunGun||isOldSchool)&&eventAge<3500){
@@ -393,6 +398,18 @@
           if(isOldSchool&&id===event?.arcShooter){x=.67*W;y=.24*H;}
           if(isRunGun&&event?.arcShooters?.includes(id)){x=.66*W;y=(id===event.arcShooters[0]?.27:.73)*H;}
         }
+        if(attacking&&isHills&&event?.hillsRoutes&&eventAge<3500){
+          if(id===event.hillsInbounder){x=.18*W;y=.5*H;}
+          else if(event.hillsRoutes[id]){
+            const t=Math.min(1,eventAge/1750);
+            const route=event.hillsRoutes[id];
+            const speed=1.07; // slight on-court movement boost
+            const advance=Math.min(1,t*speed);
+            const curve=Math.sin(Math.PI*advance)*(pos%2?.055:-.055);
+            x=(.30+(route.x-.30)*advance)*W;
+            y=(anchor.y+(route.y-anchor.y)*advance+curve)*H;
+          }
+        }
         // During a pass, show passer and receiver at their actual lane anchors.
         // For a turnover, don't teleport the intended receiver to a shot location.
         if(event?.passerId===id&&attacking&&eventAge<event.passDurationMs+220){
@@ -400,19 +417,19 @@
         }
         if(event?.shooter===id&&attacking&&event.passerId&&eventAge<event.passDurationMs+220){
           x=event.passTo.x*W;y=event.passTo.y*H;
-        } else if(event?.shooter===id&&attacking&&!['illegal-screen','pass-out-of-bounds','interception'].includes(event.displayEvent)){
+        } else if(event?.shooter===id&&attacking&&!['illegal-screen','pass-out-of-bounds','interception','eight-second-violation'].includes(event.displayEvent)&&!(isHills&&eventAge<1600)){
           // From ordinary paint attempts to 60-foot heaves, draw the actual shot position.
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
           x=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*.50;
         }
-        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'){x=.85*W;y=H*.53;}
+        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress){x=.85*W;y=H*.53;}
         if(event?.interceptorId===id&&!attacking&&event.interceptionAt){
           x=event.interceptionAt.x*W;y=event.interceptionAt.y*H;
         }
         if(event?.reboundId===id){x=.88*W;y=H*.58;}
         if(!attackRight)x=W-x;
         const prev=canvasPositions.get(id)||{x,y};
-        const v=.060;prev.x+=(x-prev.x)*v;prev.y+=(y-prev.y)*v;canvasPositions.set(id,prev);
+        const v=isHills&&attacking?.072:isPress&&!attacking?.075:.060;prev.x+=(x-prev.x)*v;prev.y+=(y-prev.y)*v;canvasPositions.set(id,prev);
         const p=player(id);if(!p)continue;
         ctx.beginPath();ctx.fillStyle='#101824';ctx.arc(prev.x,prev.y,26,0,2*Math.PI);ctx.fill();
         ctx.save();ctx.beginPath();ctx.arc(prev.x,prev.y,22,0,2*Math.PI);ctx.clip();
@@ -458,7 +475,7 @@
     if(event&&canvasPositions.has(event.shooter)){
       const d=canvasPositions.get(event.shooter),t=eventAge;
       let bx=d.x+28,by=d.y+14;
-      const turnover=['illegal-screen','pass-out-of-bounds','interception','steal'].includes(event.displayEvent);
+      const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event.displayEvent);
       if(event.passerId&&event.passFrom&&event.passTo&&t<event.passDurationMs){
         const from=event.passFrom,to=event.passOutcome==='intercepted'&&event.interceptionAt?event.interceptionAt:event.passTo;
         const progress=Math.min(1,t/Math.max(1,event.passDurationMs));
@@ -484,13 +501,25 @@
       'illegal-screen':'🚫 ILLEGAL SCREEN • OFFENSIVE FOUL',
       'pass-out-of-bounds':'🏀 ERRANT PASS • OUT OF BOUNDS',
       'interception':'✋ PASS INTERCEPTED!',
-      'steal':'✋ BALL STOLEN!'
+      'steal':'✋ BALL STOLEN!',
+      'eight-second-violation':'⏱ 8 SECOND VIOLATION!'
     }[event?.displayEvent];
     if(turnoverBanner&&eventAge<1900&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1900-eventAge)/300);
       ctx.fillStyle='#101824e5';ctx.fillRect(W/2-230,H*.14,460,48);
       ctx.font='900 22px system-ui';ctx.fillStyle='#ffdb84';ctx.textAlign='center';
       ctx.fillText(turnoverBanner,W/2,H*.14+31);ctx.restore();
+    }
+    if(event?.hillsMode&&eventAge<1750&&state.phase==='sim'){
+      ctx.save();ctx.globalAlpha=Math.min(1,(1750-eventAge)/350);
+      ctx.fillStyle='#14233fdf';ctx.fillRect(W/2-190,65,380,37);
+      ctx.fillStyle='#cbff77';ctx.textAlign='center';ctx.font='900 19px system-ui';
+      ctx.fillText(event.hillsMode==='kickout'?'🏃 HILLS • SHOOTERS FLARE OUT':
+        event.hillsMode==='paint-crash'?'🏃 HILLS • CRASH THE PAINT':'🏃 HILLS • BACK TO THE PAINT',W/2,91);ctx.restore();
+    }
+    if(event?.putbackMade&&eventAge<1750&&state.phase==='sim'){
+      ctx.save();ctx.fillStyle='#ffe87f';ctx.textAlign='center';ctx.font='900 20px system-ui';
+      ctx.fillText('🏀 AGGRESSIVE PUTBACK!',W/2,H*.79);ctx.restore();
     }
     if(event?.screen&&!event?.illegalScreen&&eventAge<1500&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/350);

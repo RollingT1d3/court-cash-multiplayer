@@ -80,6 +80,7 @@ export const DEFENSE_ANCHORS=Object.freeze([
   Object.freeze({x:.73,y:.50}),Object.freeze({x:.81,y:.20}),
   Object.freeze({x:.81,y:.82}),Object.freeze({x:.87,y:.38}),Object.freeze({x:.87,y:.65})
 ]);
+import { PRESS_DEFENSE_ANCHORS } from './strategy-v06.js';
 export const ZONE_ANCHORS=Object.freeze([
   Object.freeze({x:.72,y:.19}),Object.freeze({x:.74,y:.50}),
   Object.freeze({x:.72,y:.81}),Object.freeze({x:.86,y:.33}),Object.freeze({x:.86,y:.67})
@@ -98,8 +99,8 @@ export function laneProximity(from,to,guard,radius=.078){
   const dist=Math.hypot(gx-t*dx,gy-t*dy);
   return dist<=radius*525?{distance:dist,progress:t}:null;
 }
-export function passingLaneDefenders(from,to,defenders,isZone=false){
-  const anchors=isZone?ZONE_ANCHORS:DEFENSE_ANCHORS;
+export function passingLaneDefenders(from,to,defenders,isZone=false,isPress=false){
+  const anchors=isPress?PRESS_DEFENSE_ANCHORS:isZone?ZONE_ANCHORS:DEFENSE_ANCHORS;
   return defenders.map((id,i)=>({id,at:anchors[i],lane:laneProximity(from,to,anchors[i])}))
     .filter(x=>x.lane!==null).sort((a,b)=>a.lane.distance-b.lane.distance);
 }

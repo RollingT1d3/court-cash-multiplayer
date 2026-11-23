@@ -7,6 +7,10 @@ import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
+import { RUN_FOR_THE_HILLS, FULL_COURT_PRESS, hillsInbounder, hillsRoutes,
+  HILLS_SPEED_MULTIPLIER, HILLS_STAMINA_MULTIPLIER,
+  PRESS_DEFENSE_STAMINA_MULTIPLIER, PRESS_OFFENSE_STAMINA_MULTIPLIER,
+  pressForcesEightSeconds, pressOnBallChance, hillsOffensiveReboundChance, pickHillsPutback, PRESS_DEFENSE_ANCHORS } from './strategy-v06.js';
 import { illegalScreenChance, passingOutChance, interceptionChance, onBallStealChance, screenStrengthBonus, passFlightMs, OFFENSE_ANCHORS, passingLaneDefenders } from './court-rules-v05.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -16,8 +20,8 @@ const BY_ID = new Map(PLAYERS.map(p => [p.id, p]));
 if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 16) throw Error('Players need unique IDs; at least 16 required.');
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS];
-const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone'];
+const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS];
+const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS];
 const BASE_SECONDS = 48*60;
 const TIMEOUTS_PER_GAME = 5;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
@@ -189,7 +193,10 @@ function fatigue(room,seconds){
     for(const id of t.roster){
       if(g.active[i].includes(id)){
         const stamina=rating(id,'stamina');
-        const drain=(.22+(100-stamina)*.034)*(seconds/17);
+        let drain=(.22+(100-stamina)*.034)*(seconds/17);
+        if(t.defense===FULL_COURT_PRESS)drain*=PRESS_DEFENSE_STAMINA_MULTIPLIER;
+        if(room.teams[other(i)].defense===FULL_COURT_PRESS)drain*=PRESS_OFFENSE_STAMINA_MULTIPLIER;
+        if(i===g.offense&&t.offense===RUN_FOR_THE_HILLS)drain*=HILLS_STAMINA_MULTIPLIER;
         t.energy[id]=clamp((t.energy[id]??100)-drain,0,100);
         g.stats[id].seconds+=seconds;
       }else t.energy[id]=clamp((t.energy[id]??100)+1.3*(seconds/17),0,100);
@@ -216,10 +223,12 @@ function simulatePlay(room){
   const scheme=ot.offense,dscheme=dt.defense;
   const high=shooters.slice().sort((a,b)=>ov(b)-ov(a));
   const chaos=scheme==='Pure Chaos',runGun=scheme===RUN_AND_GUN,oldSchool=scheme===OLD_SCHOOL_BUCKETS;
+  const hills=scheme===RUN_FOR_THE_HILLS,fullCourtPress=dscheme===FULL_COURT_PRESS;
+  const hillsPlay=hills?hillsRoutes(shooters,hillsInbounder(shooters,rating),rating,rnd):null;
   const roles=offenseRoles(shooters,rating);
   // Shot-clock pressure is modeled within each possession. A late or open kickout
   // sends the ball to the designated arc specialist in Old-School Buckets.
-  const seconds=Math.min(g.secondsLeft,10+randomInt(20));
+  let seconds=Math.min(g.secondsLeft,10+randomInt(20));
   const shotClockRemaining=Math.max(1,24-Math.floor(seconds*24/29));
   const teamAdherence=shooters.reduce((sum,id)=>sum+planDiscipline(id),0)/shooters.length;
   const screeners=runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:shooters;
@@ -227,7 +236,7 @@ function simulatePlay(room){
   const openLook=oldSchool && rnd()<clamp(.13+(screenQuality-65)*.004, .08,.32);
   const kickout=oldSchool && (shotClockRemaining<=5||openLook) && rnd()<clamp(teamAdherence,.20,.98);
   const candidates=runGun?shooters.filter(id=>!roles.screenOnly.includes(id)):shooters;
-  const shooter=weightedId(candidates,id=> {
+  const shooter=hills?hillsPlay.shooter:weightedId(candidates,id=> {
     const discipline=planDiscipline(id);
     const baseline=1;
     let desired=baseline;
@@ -260,10 +269,11 @@ function simulatePlay(room){
   const threeTarget=runGun?(roles.runShooters.includes(shooter)?.81:.10):
     oldSchool?(shooter===roles.oldShooter?.98:.08):
     scheme===OFFENSE[3]?.68:scheme===OFFENSE[4]?.11:chaos?.36:scheme===OFFENSE[2]?.29:.32;
-  const isThree=rnd()<clamp(.32+adherence*(threeTarget-.32),.05,.98);
+  const isThree=hills?(hillsPlay.perimeterShot&&rating(shooter,'three')>=rating(shooter,'mid')):
+    rnd()<clamp(.32+adherence*(threeTarget-.32),.05,.98);
   const paintTarget=oldSchool?(shooter===roles.oldRebounder?.90:.58):
     runGun?.13:scheme===OFFENSE[4]?.82:chaos?.60:scheme===OFFENSE[3]?.38:.56;
-  const inPaint=!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.07,.94);
+  const inPaint=hills?!hillsPlay.perimeterShot:!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.07,.94);
   const dunkSkill=rating(shooter,'dunk');
   const dunkChance=clamp(.2+(dunkSkill-75)*.008,.02,.62);
   const type=isThree?'three':inPaint?(rnd()<dunkChance?'dunk':'layup'):'mid';
@@ -288,17 +298,20 @@ function simulatePlay(room){
   const mismatchBonus=huntMismatch?shotMismatch(shooter,defender,type):0;
   // A possession may include a real pass before the chosen shot, unless a
   // dribble/isolation play is called. A passer is an actual on-court teammate.
-  const passAttempt=shooters.length>1 && rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
+  const passAttempt=hills||shooters.length>1&&rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
   const passerCandidates=shooters.filter(id=>id!==shooter);
-  const passerId=passAttempt?weightedId(passerCandidates,id=>rating(id,'passing')*planDiscipline(id)*
+  const passerId=hills?hillsPlay.inbounder:passAttempt?weightedId(passerCandidates,id=>rating(id,'passing')*planDiscipline(id)*
     (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1)):null;
   const passerRating=passerId?rating(passerId,'passing'):null; // raw listed Passing: 90+ always immune
   const passDurationMs=passerId?passFlightMs(passerRating):0;
-  const passFrom=passerId?OFFENSE_ANCHORS[shooters.indexOf(passerId)]:null;
-  const passTo=passerId?OFFENSE_ANCHORS[shooters.indexOf(shooter)]:null;
-  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone'):[];
+  const passFrom=passerId?(hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
+  const passTo=passerId?(hills?hillsPlay.targets[shooter]:OFFENSE_ANCHORS[shooters.indexOf(shooter)]):null;
+  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress):[];
   let interceptorId=null,interceptionAt=null,passOutcome=null;
   let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false;
+  let putbackAttempt=false,putbackMade=false,putbackShooter=null;
+  const eightSecondViolation=fullCourtPress&&pressForcesEightSeconds(rnd);
+  if(eightSecondViolation)seconds=Math.min(g.secondsLeft,8);
   let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null,fouledOutSide=null;
   fatigue(room,seconds);
   // Constant motion and screening cost slightly more energy, especially when teamwork is low.
@@ -307,8 +320,11 @@ function simulatePlay(room){
   // Resolution order prevents a single action triggering multiple turnovers:
   // illegal screen -> errant pass -> in-lane interception -> on-ball steal -> shot.
   // 90+ passers cannot be intercepted regardless of defenders' Steal attributes.
-  const illegalScreen=screen && rnd()<illegalScreenChance(rating(screenSetterId,'iq'));
-  if(illegalScreen){
+  const illegalScreen=!eightSecondViolation&&screen&&rnd()<illegalScreenChance(rating(screenSetterId,'iq'));
+  if(eightSecondViolation){
+    event='eight-second-violation';
+    g.stats[passerId||shooter].tov++;
+  } else if(illegalScreen){
     event='illegal-screen';g.stats[screenSetterId].pf++;g.stats[screenSetterId].tov++;
     if(g.stats[screenSetterId].pf>=6){
       g.fouledOut.push(screenSetterId);fouledOutPlayer=screenSetterId;fouledOutSide=offense;
@@ -333,13 +349,13 @@ function simulatePlay(room){
       if(passerId)passOutcome='complete';
       // On-ball defender is matched with the shooter/handler; Steal chance
       // is the exact Steal bracket minus the handler's Dribbling deduction.
-      const ballSteal=onBallStealChance(rating(defender,'steal'),rating(shooter,'dribbling'));
+      const ballSteal=pressOnBallChance(onBallStealChance(rating(defender,'steal'),rating(shooter,'dribbling')),fullCourtPress);
       if(rnd()<ballSteal){
         event='steal';stealId=defender;g.stats[defender].stl++;g.stats[shooter].tov++;
       }
     }
   }
-  if(!['illegal-screen','pass-out-of-bounds','interception','steal'].includes(event)){
+  if(!['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event)){
     let value=isThree?effectiveOnCourt(room,offense,shooter,'three'):
       inPaint?(.44*effectiveOnCourt(room,offense,shooter,'layup')+.46*effectiveOnCourt(room,offense,shooter,'dunk')+.1*effectiveOnCourt(room,offense,shooter,'post')):
       effectiveOnCourt(room,offense,shooter,'mid');
@@ -354,7 +370,8 @@ function simulatePlay(room){
     const screensBonus=screen?.018*adherence+screenBonus*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
     let chance=clamp(base+(value-80)*.0075-defenseBump+screensBonus+mismatchQuality-
-      (isThree?longThreePenalty(shotDistanceFt):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0),.035,.83);
+      (isThree?longThreePenalty(shotDistanceFt):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0)+
+      (hills&&inPaint?(HILLS_SPEED_MULTIPLIER-1)*.20:0),.035,.83);
     const blocked=inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14);
     // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
     // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
@@ -398,25 +415,42 @@ function simulatePlay(room){
     }
     if(!made&&!foul){
       const zoneReboundPenalty=dscheme==='3-2 Zone'?.045:0;
-      const rebTeam=rnd()<(inPaint?.74:.80)-zoneReboundPenalty?def:offense;
+      const reboundBase=1-((inPaint?.74:.80)-zoneReboundPenalty);
+      const offenseReboundChance=hills?hillsOffensiveReboundChance(reboundBase,hillsPlay.perimeterShot):reboundBase;
+      const rebTeam=rnd()<offenseReboundChance?offense:def;
       const rebRoles=offenseRoles(g.active[rebTeam],rating);
       reboundId=weightedId(g.active[rebTeam],id=>(effectiveOnCourt(room,rebTeam,id,'rebound')+effectiveOnCourt(room,rebTeam,id,'strength')*.16)*
         (room.teams[rebTeam].offense===OLD_SCHOOL_BUCKETS&&id===rebRoles.oldRebounder?4.4:
-          room.teams[rebTeam].offense===RUN_AND_GUN&&rebRoles.screenOnly.includes(id)?2.3:1));
+          room.teams[rebTeam].offense===RUN_AND_GUN&&rebRoles.screenOnly.includes(id)?2.3:
+          room.teams[rebTeam].offense===RUN_FOR_THE_HILLS&&hillsPlay?.paintPlayers.includes(id)?2.5:1));
       g.stats[reboundId].reb++;
+      // A crashing offense may get an IMMEDIATE second layup/dunk attempt.
+      // The putback is a separate recorded FGA with its own scorer.
+      if(hills&&rebTeam===offense&&hillsPlay.paintCrash&&pickHillsPutback(rnd)){
+        putbackAttempt=true;putbackShooter=reboundId;
+        g.stats[reboundId].fga++;
+        const putbackSkill=(rating(reboundId,'layup')+rating(reboundId,'dunk'))/2;
+        const putbackChance=clamp(.43+(putbackSkill-75)*.004, .24,.69);
+        if(rnd()<putbackChance){
+          putbackMade=true;made=true;points=2;event='putback';
+          g.stats[reboundId].fgm++;g.stats[reboundId].pts+=2;g.score[offense]+=2;
+        }
+      }
     }
   }
   const timeUsed=Math.min(seconds,g.secondsLeft);g.secondsLeft-=timeUsed;g.possessions++;
   const shooterName=getPlayer(shooter).name;
   const deepThree=isDeepThree(type,made,shotDistanceFt);
-  const actionPrefix=chaos&&screen?(huntMismatch?'Pure Chaos finds a mismatch! ':'Pure Chaos screen frees a scorer! '):
+  const actionPrefix=hills?(hillsPlay.perimeterShot?'🏃 Run For The Hills kickout! ':hillsPlay.wantsKickout?'🏃 Routes collapse to the paint! ':'🏃 Everyone crashes the paint! '):chaos&&screen?(huntMismatch?'Pure Chaos finds a mismatch! ':'Pure Chaos screen frees a scorer! '):
     runGun&&screen?'Run & Gun screens spring a scorer! ':
     oldSchool&&kickout?'Old-School kickout to the arc! ':
     oldSchool&&screen?'Old-School cuts create an opening! ':'';
-  if(event==='illegal-screen')log(room,`🚫 ILLEGAL SCREEN! ${getPlayer(screenSetterId).name} is called for an offensive foul (${g.stats[screenSetterId].pf} PF). Turnover.`);
+  if(event==='eight-second-violation')log(room,`⏱️ FULL COURT PRESS! ${ot.name} cannot cross half court in 8 seconds. Turnover!`);
+  else if(event==='illegal-screen')log(room,`🚫 ILLEGAL SCREEN! ${getPlayer(screenSetterId).name} is called for an offensive foul (${g.stats[screenSetterId].pf} PF). Turnover.`);
   else if(event==='pass-out-of-bounds')log(room,`🏀 OUT OF BOUNDS! ${getPlayer(passerId).name}'s pass sails out. Turnover.`);
   else if(event==='interception')log(room,`✋ INTERCEPTION! ${getPlayer(interceptorId).name} reads the passing lane and picks off ${getPlayer(passerId).name}'s pass!`);
   else if(foul)log(room,`WHISTLE! ${getPlayer(fouler).name} fouls ${shooterName} on a ${type==='three'?'three-pointer':type==='mid'?'mid-range jumper':type}. ${freeThrowsMade}/${freeThrowsAttempted} free throws made. ${getPlayer(fouler).name} has ${g.stats[fouler].pf} personal foul(s).`);
+  else if(event==='putback')log(room,`🏀 RUN FOR THE HILLS! ${getPlayer(putbackShooter).name} scores a crashing putback after an offensive rebound!`);
   else if(event==='steal')log(room,`✋ ON-BALL STEAL! ${getPlayer(defender).name} strips ${shooterName}!`);
   else if(event==='block')log(room,`${getPlayer(defender).name} blocks ${shooterName}!`);
   else if(posterDunk)log(room,`🔥 POSTER DUNK! ${shooterName} dunks on ${getPlayer(defender).name}!`);
@@ -425,14 +459,18 @@ function simulatePlay(room){
   else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
   g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,deepThree,shotDistanceFt,shotClockRemaining,
     screen,screenSetterId,screenBonus,illegalScreen,mismatch:huntMismatch&&!illegalScreen,kickout,
-    passerId:illegalScreen?null:passerId,passFrom:illegalScreen?null:passFrom,
-    passTo:illegalScreen?null:passTo,passDurationMs:illegalScreen?0:passDurationMs,
-    passOutcome,interceptorId,interceptionAt,
+    passerId:illegalScreen||eightSecondViolation?null:passerId,passFrom:illegalScreen||eightSecondViolation?null:passFrom,
+    passTo:illegalScreen||eightSecondViolation?null:passTo,passDurationMs:illegalScreen||eightSecondViolation?0:passDurationMs,
+    passOutcome: eightSecondViolation?null:passOutcome,interceptorId,interceptionAt,
+    hillsMode:hills?(hillsPlay.perimeterShot?'kickout':hillsPlay.paintCrash?'paint-crash':'paint-after-kickout'):null,
+    hillsRoutes:hills?hillsPlay.targets:null,hillsInbounder:hills?hillsPlay.inbounder:null,
+    hillsShooters:hills?hillsPlay.shooters:[],hillsPaintPlayers:hills?hillsPlay.paintPlayers:[],
+    putbackAttempt,putbackMade,putbackShooter,fullCourtPress,eightSecondViolation,
     screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
     oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
   if(!fouledOutPlayer)automaticSubs(room);
-  g.offense=reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
+  g.offense=!putbackMade&&reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){
     if(g.quarter<4){g.quarter++;g.secondsLeft=720;g.period='Q'+g.quarter;log(room,`Start of quarter ${g.quarter}.`);}
     else if(g.score[0]===g.score[1]){g.quarter++;g.period='OT'+(g.quarter-4);g.secondsLeft=300;log(room,'Overtime!');}
