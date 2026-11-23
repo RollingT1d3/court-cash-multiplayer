@@ -33,3 +33,38 @@
 
 /* v0.4.1: opening jump-ball result */
 .tipoff-notice{background:#102b32;color:#f1d47f;border:1px solid #d7a449;border-radius:7px;padding:5px 9px;margin:6px auto;font-size:11px;font-weight:900;line-height:1.4;text-align:center;max-width:280px}
+
+/* v0.8 — full-screen winner podium, player awards and synchronized rematch. */
+.final-stage{position:relative;max-width:1370px;margin:12px auto 36px;padding:20px 25px 28px;border:2px solid #bb923e;border-radius:20px;background:radial-gradient(ellipse at 50% -25%,#7b571c55,transparent 60%),linear-gradient(135deg,#151b2a 0%,#090f1a 68%,#16121a 100%);box-shadow:0 0 32px #c49a3020,inset 0 0 35px #e9ba3610;text-align:center}
+.final-topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;text-align:left}
+.final-main-menu{padding:11px 15px;background:#11151d;border:1px solid #e3c786;color:#fff8e8;font-size:12px;font-weight:950;letter-spacing:1px;border-radius:9px;cursor:pointer}
+.gold-winner,.award-role{font-weight:1000;background:linear-gradient(140deg,#ffe8a0 5%,#d8a21f 28%,#fff8bf 45%,#bd7c12 75%,#fff1a9 95%);background-clip:text;-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 1px 1px #0b0905);text-shadow:0 0 25px #ffc44436}
+.gold-winner{font-size:clamp(31px,5vw,64px);line-height:1.1;letter-spacing:.5px;overflow-wrap:anywhere;margin:20px auto 8px}
+.final-score{font-size:14px;color:#f1dca6;font-weight:750;margin:10px 0 26px}.final-forfeit{color:#ffd1d1}
+.final-award-layout{display:grid;grid-template-columns:minmax(170px,.8fr) minmax(235px,1.13fr) minmax(240px,1.05fr);align-items:start;gap:15px}
+.final-award{border:1px solid #7b642b80;background:#111725c9;padding:19px 12px;border-radius:15px;min-width:0;box-shadow:0 6px 16px #0004}
+.final-mvp{border:2px solid #e9c655aa;box-shadow:0 0 18px #edbd3638;background:linear-gradient(#3b2c1633,#131827dd)}
+.final-dpog{margin-top:25px}.award-role{font-size:clamp(23px,3vw,35px);letter-spacing:.4px}
+.final-dpog .award-role{font-size:clamp(20px,2.6vw,29px)}
+.award-name{margin:12px 0;color:#fff;font-size:clamp(16px,1.8vw,22px);font-weight:950;overflow-wrap:anywhere}
+.award-portrait{display:flex;justify-content:center;margin:15px 0 22px}
+.award-portrait .portrait{width:min(80%,190px);height:195px;border-radius:14px;border:3px solid #e1b855;box-shadow:0 0 22px #cb9c3f42;overflow:hidden;font-size:34px}
+.award-portrait .portrait img{z-index:3;object-fit:contain;background:#121924}
+.award-mini-stats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.award-mini-stat{min-width:65px;padding:7px 10px;background:#283346;border-radius:9px}
+.award-mini-stat strong{display:block;color:#fff;font-size:20px}.award-mini-stat small{display:block;color:#b9cce3;font-size:10px;font-weight:850;letter-spacing:.6px}
+.final-teams{display:grid;gap:12px;text-align:left}
+.final-team-box{background:#111c2d;border:1px solid #34465c;border-radius:13px;padding:12px}
+.final-team-box h3{font-size:15px;font-weight:950;color:#f0e4ba;margin:0 0 10px;overflow-wrap:anywhere}
+.final-grades{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px}
+.final-grades>div{background:#243041;border-radius:9px;text-align:center;padding:8px 2px}
+.final-grades strong{display:block;font-size:20px;color:#ffda69}.final-grades small{font-size:10px;letter-spacing:1px;color:#d0dbe9;font-weight:850}
+.final-team-stats{display:grid;grid-template-columns:1fr 1fr;column-gap:12px}
+.final-team-stats>div{display:flex;justify-content:space-between;border-top:1px solid #344052;padding:5px 2px;gap:8px}
+.final-team-stats span{font-size:11px;color:#b6c5d9}.final-team-stats b{font-size:12px;color:white}
+.final-actions{display:flex;justify-content:flex-end;margin-top:17px;min-height:72px;align-items:flex-end}
+.final-rematch-area{text-align:right}.rematch-button{border:2px solid #ffbaba!important;border-radius:7px!important;background:#c92532!important;color:white!important;font-weight:1000!important;font-size:clamp(20px,2.5vw,30px)!important;letter-spacing:1.1px;padding:14px 28px!important;box-shadow:0 3px 16px #c92f3180;cursor:pointer}
+.rematch-button:disabled{opacity:.7;cursor:default}.final-rematch-area p{margin:5px 0 0;max-width:290px}
+.final-box-details{margin-top:22px;border-top:1px solid #5a4b30;padding-top:13px;text-align:left}.final-box-details summary{cursor:pointer;color:#f6dc90;font-size:12px;font-weight:950;letter-spacing:.8px}
+@media(max-width:960px){.final-award-layout{grid-template-columns:1fr 1.15fr}.final-teams{grid-column:1 / -1;grid-template-columns:1fr 1fr}.final-dpog{margin-top:12px}}
+@media(max-width:590px){.final-stage{padding:13px 10px}.final-award-layout{grid-template-columns:1fr 1fr;gap:8px}.final-award{padding:12px 5px}.final-teams{grid-template-columns:1fr}.award-portrait .portrait{height:140px}.award-mini-stat{min-width:51px;padding:5px}.award-mini-stat strong{font-size:17px}.final-main-menu{padding:7px}.final-score{font-size:11px}}

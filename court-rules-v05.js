@@ -99,8 +99,8 @@ export function laneProximity(from,to,guard,radius=.078){
   const dist=Math.hypot(gx-t*dx,gy-t*dy);
   return dist<=radius*525?{distance:dist,progress:t}:null;
 }
-export function passingLaneDefenders(from,to,defenders,isZone=false,isPress=false){
+export function passingLaneDefenders(from,to,defenders,isZone=false,isPress=false,clogTargets=null){
   const anchors=isPress?PRESS_DEFENSE_ANCHORS:isZone?ZONE_ANCHORS:DEFENSE_ANCHORS;
-  return defenders.map((id,i)=>({id,at:anchors[i],lane:laneProximity(from,to,anchors[i])}))
+  return defenders.map((id,i)=>{const at=clogTargets?.[id]||anchors[i];return {id,at,lane:laneProximity(from,to,at)};})
     .filter(x=>x.lane!==null).sort((a,b)=>a.lane.distance-b.lane.distance);
 }

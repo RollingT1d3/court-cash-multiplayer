@@ -8,6 +8,10 @@ import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longT
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
 import { ankleBreaks, ANKLE_OPEN_SHOT_BONUS } from './ankle-rules-v07.js';
+import { PLAY_THROUGH_POINT, CLOG_THE_LANES, pointPlay, clogPositions,
+  clogInterceptionChance, CLOG_PAINT_SHOT_BONUS, CLOG_PAINT_REBOUND_BONUS,
+  CLOG_BLOCK_FACTOR } from './strategy-v08.js';
+import { gameAwards } from './awards-v08.js';
 import { RUN_FOR_THE_HILLS, FULL_COURT_PRESS, hillsInbounder, hillsRoutes,
   HILLS_SPEED_MULTIPLIER, HILLS_STAMINA_MULTIPLIER,
   PRESS_DEFENSE_STAMINA_MULTIPLIER, PRESS_OFFENSE_STAMINA_MULTIPLIER,
@@ -21,8 +25,8 @@ const BY_ID = new Map(PLAYERS.map(p => [p.id, p]));
 if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 16) throw Error('Players need unique IDs; at least 16 required.');
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS];
-const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS];
+const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT];
+const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS,CLOG_THE_LANES];
 const BASE_SECONDS = 48*60;
 const TIMEOUTS_PER_GAME = 5;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
@@ -56,7 +60,7 @@ function create(name,format) {
   let code;
   do {code=randomBytes(4).toString('hex').slice(0,6).toUpperCase();} while(ROOMS.has(code));
   const key=token();
-  const room={code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null};
+  const room={code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false]};
   ROOMS.set(code,room);return {code,token:key,teamIndex:0};
 }
 function join(code,name){
@@ -71,7 +75,7 @@ function join(code,name){
 }
 function publicState(room,i){
   const removeSecret=t=>t?({name:t.name,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
-  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS,wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,serverTime:now()};
+  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS,wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}
 function log(room,msg){room.log.push(msg);if(room.log.length>120)room.log.shift();}
@@ -143,7 +147,7 @@ function startGame(room){
   // Exactly one uniform 25%-each court selection per game, shared by both browsers.
   const courtStyle=chooseCourtStyle(rnd);
   room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
-  room.phase='sim';room.play={at:now()};room.log=[];room.timeout=null;room.foulout=null;
+  room.phase='sim';room.play={at:now()};room.log=[];room.timeout=null;room.foulout=null;room.rematchReady=[false,false];room.result=null;
   const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
   const favored=result.probabilities.map(p=>Math.round(p*100));
   log(room,`🏀 TIP-OFF: ${getPlayer(centerIds[0]).name} (${heights[0]}) vs ${getPlayer(centerIds[1]).name} (${heights[1]}) — odds ${favored[0]}/${favored[1]}. ${room.teams[result.winningTeam].name} wins the tip and starts with possession!`);
@@ -229,6 +233,8 @@ function simulatePlay(room){
   const high=shooters.slice().sort((a,b)=>ov(b)-ov(a));
   const chaos=scheme==='Pure Chaos',runGun=scheme===RUN_AND_GUN,oldSchool=scheme===OLD_SCHOOL_BUCKETS;
   const hills=scheme===RUN_FOR_THE_HILLS,fullCourtPress=dscheme===FULL_COURT_PRESS;
+  const point=scheme===PLAY_THROUGH_POINT,clog=dscheme===CLOG_THE_LANES;
+  const pointAction=point?pointPlay(shooters,rating,rnd):null;
   const hillsPlay=hills?hillsRoutes(shooters,hillsInbounder(shooters,rating),rating,rnd):null;
   const roles=offenseRoles(shooters,rating);
   // Shot-clock pressure is modeled within each possession. A late or open kickout
@@ -236,12 +242,12 @@ function simulatePlay(room){
   let seconds=Math.min(g.secondsLeft,10+randomInt(20));
   const shotClockRemaining=Math.max(1,24-Math.floor(seconds*24/29));
   const teamAdherence=shooters.reduce((sum,id)=>sum+planDiscipline(id),0)/shooters.length;
-  const screeners=runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:shooters;
+  const screeners=point?[pointAction.center]:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:shooters;
   const screenQuality=screeners.reduce((sum,id)=>sum+(rating(id,'teamwork')*.65+rating(id,'strength')*.20+rating(id,'passing')*.15),0)/screeners.length;
   const openLook=oldSchool && rnd()<clamp(.13+(screenQuality-65)*.004, .08,.32);
   const kickout=oldSchool && (shotClockRemaining<=5||openLook) && rnd()<clamp(teamAdherence,.20,.98);
   const candidates=runGun?shooters.filter(id=>!roles.screenOnly.includes(id)):shooters;
-  const shooter=hills?hillsPlay.shooter:weightedId(candidates,id=> {
+  const shooter=point?pointAction.shooter:hills?hillsPlay.shooter:weightedId(candidates,id=> {
     const discipline=planDiscipline(id);
     const baseline=1;
     let desired=baseline;
@@ -274,11 +280,11 @@ function simulatePlay(room){
   const threeTarget=runGun?(roles.runShooters.includes(shooter)?.81:.10):
     oldSchool?(shooter===roles.oldShooter?.98:.08):
     scheme===OFFENSE[3]?.68:scheme===OFFENSE[4]?.11:chaos?.36:scheme===OFFENSE[2]?.29:.32;
-  const isThree=hills?(hillsPlay.perimeterShot&&rating(shooter,'three')>=rating(shooter,'mid')):
+  const isThree=point?pointAction.range==='three':hills?(hillsPlay.perimeterShot&&rating(shooter,'three')>=rating(shooter,'mid')):
     rnd()<clamp(.32+adherence*(threeTarget-.32),.05,.98);
   const paintTarget=oldSchool?(shooter===roles.oldRebounder?.90:.58):
     runGun?.13:scheme===OFFENSE[4]?.82:chaos?.60:scheme===OFFENSE[3]?.38:.56;
-  const inPaint=hills?!hillsPlay.perimeterShot:!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.07,.94);
+  const inPaint=point?pointAction.range==='paint':hills?!hillsPlay.perimeterShot:!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.07,.94);
   const dunkSkill=rating(shooter,'dunk');
   const dunkChance=clamp(.2+(dunkSkill-75)*.008,.02,.62);
   const type=isThree?'three':inPaint?(rnd()<dunkChance?'dunk':'layup'):'mid';
@@ -290,12 +296,13 @@ function simulatePlay(room){
   // Screen execution is influenced by role specialists, their Teamwork and energy.
   const screenRequested=(chaos&&rnd()<.18+.72*adherence)||
     (runGun&&rnd()<clamp(.47+.35*teamAdherence+(screenQuality-70)*.002,.2,.94))||
-    (oldSchool&&rnd()<clamp(.42+.40*teamAdherence+(screenQuality-70)*.002,.2,.94));
+    (oldSchool&&rnd()<clamp(.42+.40*teamAdherence+(screenQuality-70)*.002,.2,.94))||
+    (point&&pointAction.screen);
   // Every real screen has a specific setter: strength impacts shot quality;
   // IQ sets the exact personal-offensive-foul odds for THAT screen.
   const availableScreeners=screeners.filter(id=>id!==shooter);
-  const screen=screenRequested&&availableScreeners.length>0;
-  const screenSetterId=screen?weightedId(availableScreeners,id=>Math.max(1,rating(id,'strength'))*planDiscipline(id)):null;
+  const screen=point?pointAction.screen:screenRequested&&availableScreeners.length>0;
+  const screenSetterId=screen?(point?pointAction.center:weightedId(availableScreeners,id=>Math.max(1,rating(id,'strength'))*planDiscipline(id))):null;
   const screenBonus=screen?screenStrengthBonus(rating(screenSetterId,'strength')):0;
   const huntMismatch=chaos&&screen&&rnd()<.25+.62*adherence;
   const defender=(process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1')?defenders[0]:huntMismatch?weightedId(defenders,id=>.15+shotMismatch(shooter,id,type)*120):
@@ -303,15 +310,16 @@ function simulatePlay(room){
   const mismatchBonus=huntMismatch?shotMismatch(shooter,defender,type):0;
   // A possession may include a real pass before the chosen shot, unless a
   // dribble/isolation play is called. A passer is an actual on-court teammate.
-  const passAttempt=inboundAfterTimeout||hills||shooters.length>1&&rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
+  const passAttempt=inboundAfterTimeout||hills||(point&&pointAction.passer!==null)||shooters.length>1&&rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
   const passerCandidates=shooters.filter(id=>id!==shooter);
-  const passerId=hills?hillsPlay.inbounder:passAttempt?weightedId(passerCandidates,id=>rating(id,'passing')*planDiscipline(id)*
+  const passerId=point?(pointAction.passer||(inboundAfterTimeout?(shooter===pointAction.pg?pointAction.center:pointAction.pg):null)):hills?hillsPlay.inbounder:passAttempt?weightedId(passerCandidates,id=>rating(id,'passing')*planDiscipline(id)*
     (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1)):null;
   const passerRating=passerId?rating(passerId,'passing'):null; // raw listed Passing: 90+ always immune
   const passDurationMs=passerId?passFlightMs(passerRating):0;
-  const passFrom=passerId?(inboundAfterTimeout?{x:.12,y:.5}:hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
-  const passTo=passerId?(hills?hillsPlay.targets[shooter]:OFFENSE_ANCHORS[shooters.indexOf(shooter)]):null;
-  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress):[];
+  const passFrom=passerId?(inboundAfterTimeout?{x:.12,y:.5}:point?pointAction.targets[passerId]:hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
+  const passTo=passerId?(point?pointAction.targets[shooter]:hills?hillsPlay.targets[shooter]:OFFENSE_ANCHORS[shooters.indexOf(shooter)]):null;
+  const clogTargets=clog?clogPositions(passFrom,passTo,defenders):null;
+  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress,clogTargets):[];
   let interceptorId=null,interceptionAt=null,passOutcome=null;
   let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false,ankleBreaker=false;
   let putbackAttempt=false,putbackMade=false,putbackShooter=null;
@@ -341,7 +349,8 @@ function simulatePlay(room){
       // Only defenders geometrically in the pass lane can attempt this type
       // of steal. The server uses actual, scheme-dependent court coordinates.
       for(const lanePlayer of inLane){
-        if(rnd()<interceptionChance(rating(lanePlayer.id,'steal'),passerRating,true)){
+        const baseLaneChance=interceptionChance(rating(lanePlayer.id,'steal'),passerRating,true);
+        if(rnd()<(clog?clogInterceptionChance(baseLaneChance,passerRating):baseLaneChance)){
           interceptorId=lanePlayer.id;interceptionAt=lanePlayer.at;
           break;
         }
@@ -378,6 +387,7 @@ function simulatePlay(room){
     if(dscheme===DEFENSE[3]&&isThree)defenseBump+=.105;
     if(dscheme===DEFENSE[1]&&shooter===high[0])defenseBump+=.11;
     if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
+    if(clog&&inPaint)defenseBump-=CLOG_PAINT_SHOT_BONUS;
     const base=isThree?.365:inPaint?.61:.43;
     const screensBonus=screen?.018*adherence+screenBonus*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
@@ -386,7 +396,7 @@ function simulatePlay(room){
       (hills&&inPaint?(HILLS_SPEED_MULTIPLIER-1)*.20:0)+
       (ankleBreaker?ANKLE_OPEN_SHOT_BONUS:0),.035,ankleBreaker?.89:.83);
     // A stumbling guard temporarily cannot recover in time to block the shot.
-    const blocked=!ankleBreaker&&inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14);
+    const blocked=!ankleBreaker&&inPaint&&rnd()<clamp(.028+(effectiveOnCourt(room,def,defender,'block')-75)*.0018+(dscheme===DEFENSE[2]?.025:0),.006,.14)*(clog?CLOG_BLOCK_FACTOR:1);
     // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
     // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
     // This prototype does not generate and-one shots or technical/non-shooting fouls.
@@ -430,7 +440,7 @@ function simulatePlay(room){
     if(!made&&!foul){
       const zoneReboundPenalty=dscheme==='3-2 Zone'?.045:0;
       const reboundBase=1-((inPaint?.74:.80)-zoneReboundPenalty);
-      const offenseReboundChance=hills?hillsOffensiveReboundChance(reboundBase,hillsPlay.perimeterShot):reboundBase;
+      const offenseReboundChance=clamp(hills?hillsOffensiveReboundChance(reboundBase,hillsPlay.perimeterShot):reboundBase+(clog?CLOG_PAINT_REBOUND_BONUS:0),0,.95);
       const rebTeam=rnd()<offenseReboundChance?offense:def;
       const rebRoles=offenseRoles(g.active[rebTeam],rating);
       reboundId=weightedId(g.active[rebTeam],id=>(effectiveOnCourt(room,rebTeam,id,'rebound')+effectiveOnCourt(room,rebTeam,id,'strength')*.16)*
@@ -455,7 +465,7 @@ function simulatePlay(room){
   const timeUsed=Math.min(seconds,g.secondsLeft);g.secondsLeft-=timeUsed;g.possessions++;
   const shooterName=getPlayer(shooter).name;
   const deepThree=isDeepThree(type,made,shotDistanceFt);
-  const actionPrefix=hills?(hillsPlay.perimeterShot?'🏃 Run For The Hills kickout! ':hillsPlay.wantsKickout?'🏃 Routes collapse to the paint! ':'🏃 Everyone crashes the paint! '):chaos&&screen?(huntMismatch?'Pure Chaos finds a mismatch! ':'Pure Chaos screen frees a scorer! '):
+  const actionPrefix=point?`🎯 Play Through Point (${pointAction.action})! `:hills?(hillsPlay.perimeterShot?'🏃 Run For The Hills kickout! ':hillsPlay.wantsKickout?'🏃 Routes collapse to the paint! ':'🏃 Everyone crashes the paint! '):chaos&&screen?(huntMismatch?'Pure Chaos finds a mismatch! ':'Pure Chaos screen frees a scorer! '):
     runGun&&screen?'Run & Gun screens spring a scorer! ':
     oldSchool&&kickout?'Old-School kickout to the arc! ':
     oldSchool&&screen?'Old-School cuts create an opening! ':'';
@@ -464,7 +474,7 @@ function simulatePlay(room){
   if(event==='eight-second-violation')log(room,`⏱️ FULL COURT PRESS! ${ot.name} cannot cross half court in 8 seconds. Turnover!`);
   else if(event==='illegal-screen')log(room,`🚫 ILLEGAL SCREEN! ${getPlayer(screenSetterId).name} is called for an offensive foul (${g.stats[screenSetterId].pf} PF). Turnover.`);
   else if(event==='pass-out-of-bounds')log(room,`🏀 OUT OF BOUNDS! ${getPlayer(passerId).name}'s pass sails out. Turnover.`);
-  else if(event==='interception')log(room,`✋ INTERCEPTION! ${getPlayer(interceptorId).name} reads the passing lane and picks off ${getPlayer(passerId).name}'s pass!`);
+  else if(event==='interception')log(room,`✋ INTERCEPTION! ${getPlayer(interceptorId).name} ${clog?'clogs the passing lane':'reads the passing lane'} and picks off ${getPlayer(passerId).name}'s pass!`);
   else if(foul)log(room,`WHISTLE! ${getPlayer(fouler).name} fouls ${shooterName} on a ${type==='three'?'three-pointer':type==='mid'?'mid-range jumper':type}. ${freeThrowsMade}/${freeThrowsAttempted} free throws made. ${getPlayer(fouler).name} has ${g.stats[fouler].pf} personal foul(s).`);
   else if(event==='putback')log(room,`🏀 RUN FOR THE HILLS! ${getPlayer(putbackShooter).name} scores a crashing putback after an offensive rebound!`);
   else if(event==='steal')log(room,`✋ ON-BALL STEAL! ${getPlayer(defender).name} strips ${shooterName}!`);
@@ -482,6 +492,11 @@ function simulatePlay(room){
     hillsRoutes:hills?hillsPlay.targets:null,hillsInbounder:hills?hillsPlay.inbounder:null,
     hillsShooters:hills?hillsPlay.shooters:[],hillsPaintPlayers:hills?hillsPlay.paintPlayers:[],
     putbackAttempt,putbackMade,putbackShooter,fullCourtPress,eightSecondViolation,
+    pointMode:point?pointAction.action:null,pointRoutes:point?pointAction.targets:null,
+    pointPG:point?pointAction.pg:null,pointCenter:point?pointAction.center:null,
+    pointCorners:point?pointAction.corners:[],pointWingCut:point?pointAction.wingCut:null,
+    pointCutReturned:point?pointAction.cutReturned:false,
+    clogPositions:clogTargets,clog,attackRight:offense===0?g.quarter<=2:g.quarter>2,
     screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
     oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
@@ -509,7 +524,7 @@ function simulatePlay(room){
 function completeNoEligiblePlayers(room,side){
   const winner=other(side);
   room.teams[winner].wins++;
-  room.result={winner,score:room.game.score.slice(),gameNumber:room.gameNumber,forfeit:true,reason:`${room.teams[side].name} has no eligible player to replace a fouled-out player.`};
+  room.result={winner,score:room.game.score.slice(),gameNumber:room.gameNumber,awards:gameAwards(room.teams,room.game.stats,winner),forfeit:true,reason:`${room.teams[side].name} has no eligible player to replace a fouled-out player.`};
   log(room,room.result.reason);
   room.foulout=null;
   if(room.format===1||room.teams[winner].wins===4)room.phase='finished';
@@ -519,13 +534,13 @@ function completeNoEligiblePlayers(room,side){
 
 function completeGame(room){
   const g=room.game;const winner=g.score[0]>g.score[1]?0:1;room.teams[winner].wins++;
-  room.result={winner,score:g.score.slice(),gameNumber:room.gameNumber,forfeit:false};
+  room.result={winner,score:g.score.slice(),gameNumber:room.gameNumber,awards:gameAwards(room.teams,g.stats,winner),forfeit:false};
   log(room,`${room.teams[winner].name} wins Game ${room.gameNumber}, ${g.score[winner]}–${g.score[other(winner)]}!`);
   if(room.format===1 || room.teams[winner].wins===4)room.phase='finished';
   else {room.phase='intermission';room.teams.forEach(t=>t.ready=false);}
   broadcast(room);
 }
-function forfeit(room,i){if(room.phase==='finished')return;const winner=other(i);room.result={winner,forfeit:true,reason:`${room.teams[i].name} disconnected for over 30 seconds.`};room.phase='finished';log(room,room.result.reason);broadcast(room);}
+function forfeit(room,i){if(room.phase==='finished')return;const winner=other(i);room.result={winner,awards:room.game?gameAwards(room.teams,room.game.stats,winner):null,forfeit:true,reason:`${room.teams[i].name} disconnected for over 30 seconds.`};room.phase='finished';log(room,room.result.reason);broadcast(room);}
 function action(room,i,data){
   const t=room.teams[i],a=room.auction;
   switch(data.type){
@@ -584,6 +599,18 @@ function action(room,i,data){
       fillSlots(t);if(SLOTS.some(s=>!t.slots[s]))throw Error('Place all eight players first.');
       t.ready=true;
       if(room.teams.every(x=>x.ready))startGame(room);else broadcast(room);break;
+    }
+    case 'rematch':{
+      if(room.phase!=='finished'||!room.game||!room.teams.every(Boolean))throw Error('Rematch is only available after the match is over.');
+      room.rematchReady[i]=true;
+      if(room.rematchReady.every(Boolean)){
+        // Rematch keeps the drafted players, starts a fresh game/series and
+        // resets the teams' series wins, timeouts, energy and game statistics.
+        room.teams.forEach(t=>{t.wins=0;t.ready=false;});
+        room.gameNumber=0;
+        startGame(room);
+      }else broadcast(room);
+      break;
     }
     case 'timeout':{
       if(room.phase!=='sim'||t.timeouts<1)throw Error('No timeouts available.');

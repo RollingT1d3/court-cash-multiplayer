@@ -11,8 +11,8 @@ test('v0.5.2 court geometry preserved in v0.6: size, aspect ratio and click mapp
 });
 test('current deployment identifiable by /health version and main menu version',()=>{
   const pkg=JSON.parse(read('package.json'));
-  assert.equal(pkg.version,'0.7.0');
-  assert.match(read('public/index.html'),/ALPHA v0\.7\.0/);
+  assert.equal(pkg.version,'0.8.0');
+  assert.match(read('public/index.html'),/ALPHA v0\.8\.0/);
   assert.match(read('server.js'),/gitCommit:process\.env\.RENDER_GIT_COMMIT\|\|null/);
   assert.match(read('server.js'),/version:BUILD_VERSION/);
   assert.match(read('server.js'),/fresh\?'no-store':'public,max-age=3600'/);

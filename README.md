@@ -1,4 +1,4 @@
-# Court Cash — multiplayer basketball auction prototype (v0.3.0, deploy-ready)
+# Court Cash — multiplayer basketball auction prototype (v0.2.0, deploy-ready)
 
 A working **desktop-first, two-browser, real-time** basketball auction and condensed 2D basketball simulation proof of concept. The game server, not the browsers, owns the coin flip, weighted wheel, budgets, turns, roster assignments, timeout rules, and game results.
 
@@ -112,3 +112,7 @@ See [UPDATE_V04.md](UPDATE_V04.md) for the new Run & Gun and Old-School Buckets 
 ## v0.7 ankle breakers, possession-only timeouts & poster celebrations
 
 See [UPDATE_V07.md](UPDATE_V07.md) for exact Dribbling/Perimeter Defense crossover odds, temporary open-shot treatment, possession-preserving timeout inbounds, comic emoji animations for poster dunks, and the test coverage.
+
+## v0.8.0 — new strategies, end-game awards, rematches
+
+Read [UPDATE_V08.md](UPDATE_V08.md) for **Play Through Point**, **Clog The Lanes**, SWISH!/3PTS! shot captions, the MVP and DPOG score formulas, team Offense/Defense grades and the mutual-rematch winner screen.

@@ -2,8 +2,8 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
-  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets','Run For The Hills'];
-  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press'];
+  const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets','Run For The Hills','Play Through Point'];
+  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press','Clog The Lanes'];
   const OFFENSE_INFO = {
     'Play Through Superstar':'The highest-rated player becomes your primary option. Higher Teamwork means teammates reliably feed the star, space the floor and follow the play call.',
     'Play Through Stars':'Prioritizes your two best players while everyone else supplies complementary touches. Teamwork controls how reliably players stick to their roles.',
@@ -13,7 +13,8 @@
     'Pure Chaos':'Heavy off-ball movement and frequent screens. Hunts favorable mismatches (a big against a small defender or a scorer against a weak defender), creating chances at the cost of extra stamina. Teamwork strongly affects execution.',
     'Run & Gun':'The team works together to get the best possible shooters consistently open. Very perimeter-focused. The two best three-point shooters hunt threes, while the other three run and set screens; the two weakest combined mid/three shooters focus only on screens and rebounds. Any eligible 80+ mid-range shooter also works to get open.',
     'Old-School Buckets':'A well-balanced, slightly interior-focused offense. The best three-point shooter stays at the arc and the strongest rebounder stays near the paint. The other three run, pass, cut and screen for open layups, dunks and mid-range shots. When the shot clock runs low or an opening appears, the ball kicks out to the three-point shooter.',
-    'Run For The Hills':'Your best passer (excluding your PG) inbounds, while four runners mix up routes and attack the rim. Everyone either crashes for layups, dunks and aggressive rebounds, or the top two available shooters flare out for their better 3PT/mid-range shot; a kickout may fail and return to paint offense. Slight speed and rebound boosts, higher stamina drain.'
+    'Run For The Hills':'Your best passer (excluding your PG) inbounds, while four runners mix up routes and attack the rim. Everyone either crashes for layups, dunks and aggressive rebounds, or the top two available shooters flare out for their better 3PT/mid-range shot; a kickout may fail and return to paint offense. Slight speed and rebound boosts, higher stamina drain.',
+    'Play Through Point':'Your PG and Center control the offense. The two best 3PT shooters (excluding PG/C) spread to the corners. The Center screens and rolls or pops based on their abilities; the PG can drive and kick, the Center can attack the paint, and a corner shooter occasionally cuts inside before returning to the arc if unrewarded.'
   };
   const DEFENSE_INFO = {
     'Man-to-Man':'Each defender tracks an opposing player. Balanced coverage without major tactical bonuses or vulnerabilities.',
@@ -21,7 +22,8 @@
     'Protect the Paint':'Loads defenders near the basket to reduce dunks and layups, leaving more space for outside jumpers.',
     'Perimeter Secured':'Prioritizes contesting three-pointers, giving opponents more chances to attack inside.',
     '3-2 Zone':'Three defenders patrol the perimeter and two defend near the rim. Helps challenge outside looks, but is more vulnerable to interior attacks and offensive rebounds.',
-    'Full Court Press':'Pressure the ball all the way up court. Slightly higher on-ball steal chance, more stamina drain on opponents and roughly 10% chance to force an eight-second violation per defensive possession. Pressing defenders become significantly more exhausted.'
+    'Full Court Press':'Pressure the ball all the way up court. Slightly higher on-ball steal chance, more stamina drain on opponents and roughly 10% chance to force an eight-second violation per defensive possession. Pressing defenders become significantly more exhausted.',
+    'Clog The Lanes':'Defenders constantly drift beside or behind their matchups and directly into passing lanes, greatly increasing eligible lane-interception chances. This leaves the paint dangerously open for drives, layups and dunks.'
   };
   function strategyInfo(name,kind){return `<div class="strategy-info"><strong>${esc(name)}</strong><p>${esc((kind==='offense'?OFFENSE_INFO:DEFENSE_INFO)[name]||'')}</p></div>`;}
   const CAT = {
@@ -32,7 +34,7 @@
     'OTHER': [['Rebounding','rebound',.20],['Strength','strength',.12],['Speed','speed',.16],['IQ','iq',.16],['Teamwork','teamwork',.16],['Stamina','stamina',.20]]
   };
   let identity = null, stream = null, state = null, lastRenderKey='', currentPicked=null, expanded=new Set(), selectedFocus=null;
-  let lastRoomPhase=null, wheelSize=390, noticeTimer=null;
+  let lastRoomPhase=null, wheelSize=390, noticeTimer=null, intermissionPrep=false;
   let canvasPositions = new Map(), courtImages = new Map(), frameRunning=false;
   let syncOffset=0;
   const ANKLE_STUMBLE_MS=1050, ANKLE_REACTIONS_MS=1150, POSTER_REACTIONS_MS=1250;
@@ -334,19 +336,64 @@
       ${t.roster.map(id=>{const p=player(id),s=g.stats[id];return `<tr><td><div class="box-player">${portrait(p,'sm',i?'red':'blue')}<span>${esc(p.name)}${g.fouledOut.includes(id)?'<small class="fouled-out-label">FOULED OUT</small>':''}</span></div></td><td>${s.pts}</td><td>${s.reb}</td><td>${s.ast}</td><td>${s.stl}</td><td>${s.blk}</td><td>${s.pf}</td><td>${s.ftm}/${s.fta}</td><td>${s.tov}</td><td>${s.fgm}/${s.fga}</td><td>${s.threeM}/${s.threeA}</td><td>${Math.round(s.seconds/60)}</td></tr>`;}).join('')}
     </tbody></table></div>`;
   }
+  function returnToMainMenu(){
+    if(stream){stream.close();stream=null;}
+    identity=null;state=null;sessionStorage.removeItem('court-cash-identity');
+    lastRenderKey='';lastRoomPhase=null;selectedFocus=null;currentPicked=null;
+    canvasPositions.clear();courtImages.clear();intermissionPrep=false;
+    $('status-label').textContent='Not in a room';$('status-dot').classList.remove('on');
+    $('gameview').classList.add('hide');$('welcome').classList.remove('hide');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function awardCard(id,role,stats,labels,teamIndex){
+    const p=player(id);
+    if(!p)return '<div class="award-empty">No award data available</div>';
+    const rows=labels.map(({label,value})=>`<span class="award-mini-stat"><strong>${esc(value)}</strong><small>${esc(label)}</small></span>`).join('');
+    return `<div class="award-role">${role}</div>
+      <h3 class="award-name">${esc(p.name)}</h3>
+      <div class="award-portrait">${portrait(p,'xl',teamIndex===0?'blue':'red')}</div>
+      <div class="award-mini-stats">${rows}</div>`;
+  }
+  function teamBoxSummary(i,awards){
+    const t=state.teams[i],s=awards?.totals?.[i],g=awards?.grades?.[i];
+    if(!s||!g)return '';
+    return `<section class="final-team-box"><h3>${esc(t.name)}</h3>
+       <div class="final-grades"><div><strong>${esc(g.offense)}/100</strong><small>OFFENSE</small></div><div><strong>${esc(g.defense)}/100</strong><small>DEFENSE</small></div></div>
+       <div class="final-team-stats">${[
+         ['PTS',s.pts],['REB',s.reb],['AST',s.ast],['STL',s.stl],['BLK',s.blk],
+         ['TOV',s.tov],['FG',`${s.fgm}/${s.fga}`],['3PT',`${s.threeM}/${s.threeA}`],
+         ['FT',`${s.ftm}/${s.fta}`],['PF',s.pf]
+       ].map(([label,value])=>`<div><span>${label}</span><b>${esc(value)}</b></div>`).join('')}</div></section>`;
+  }
   function renderEnd(){
     const end=$('end-view'),winner=state.result?.winner;
     if(winner===undefined||winner===null)return;
-    const winTeam=state.teams[winner],over=state.phase==='finished';
-    end.innerHTML=`<div class="end-card card"><div class="smallcaps">${state.result.forfeit?'FORFEIT':over?'MATCH COMPLETE':'GAME COMPLETE'} • GAME ${state.gameNumber}</div>
-      <h1 class="winner">🏆 ${esc(winTeam.name)} WINS!</h1>
-      ${state.result.forfeit?`<p class="subtle">${esc(state.result.reason)}</p>`:`<p class="lead">${state.game.score[0]} – ${state.game.score[1]} ${state.format===7?' • Series '+state.teams[0].wins+'–'+state.teams[1].wins:''}</p>`}
-      ${state.game?boxTable(0)+boxTable(1):''}
-      ${state.format===7&&!over?'<button id="between-ready" class="primary">ADJUST SCHEMES FOR NEXT GAME →</button>':'<p class="subtle">Match finished. To start another match, create a new room.</p>'}</div>`;
-    $('between-ready')?.addEventListener('click',()=>{window.scrollTo({top:0,behavior:'smooth'});});
+    const winnerTeam=state.teams[winner],over=state.phase==='finished';
+    const awards=state.result?.awards;
+    const owner=id=>state.teams.findIndex(t=>t.roster.includes(id));
+    end.innerHTML=`<section class="final-stage">
+      <div class="final-topbar"><span class="smallcaps">${state.result.forfeit?'FORFEIT':over?'MATCH COMPLETE':'GAME COMPLETE'} · GAME ${state.gameNumber}${state.format===7?' · SERIES '+state.teams.map(t=>t.wins).join('–'):''}</span><button id="final-main-menu" class="final-main-menu" type="button">MAIN MENU</button></div>
+      <h1 class="gold-winner">WINNER: ${esc(winnerTeam.name)}</h1>
+      <p class="final-score">${state.game?`${state.teams.map((t,i)=>`${esc(t.name)} ${state.game.score[i]}`).join(' · ')}`:''}</p>
+      ${state.result.forfeit?`<p class="final-forfeit">${esc(state.result.reason)}</p>`:''}
+      ${awards?`<div class="final-award-layout">
+        <div class="final-award final-dpog">${awardCard(awards.dpog,'🔒DPOG🔒',null,[{label:'STEALS',value:awards.dpogSteals},{label:'BLOCKS',value:awards.dpogBlocks}],owner(awards.dpog))}</div>
+        <div class="final-award final-mvp">${awardCard(awards.mvp,'🏆MVP🏆',null,awards.mvpTop3,owner(awards.mvp))}</div>
+        <div class="final-teams">${teamBoxSummary(0,awards)}${teamBoxSummary(1,awards)}</div>
+      </div>`:'<p class="subtle">Player awards are available after a completed game.</p>'}
+      <div class="final-actions">
+        ${over?`<div class="final-rematch-area"><button id="rematch-button" type="button" class="rematch-button" ${state.rematchReady?.[state.you]?'disabled':''}>${state.rematchReady?.[state.you]?'REMATCH REQUESTED ✓':'REMATCH!'}</button><p class="tiny">${state.rematchReady?.[state.you]?'Waiting for your opponent to press REMATCH!':'Both players must agree. Same drafted rosters, fresh game.'}</p></div>`:
+          `<button id="next-game-setup" class="primary" type="button">ADJUST STRATEGIES / NEXT GAME →</button>`}
+      </div>
+      <details class="final-box-details"><summary>FULL PLAYER BOX SCORES</summary>${state.game?boxTable(0)+boxTable(1):''}</details>
+    </section>`;
+    $('final-main-menu')?.addEventListener('click',returnToMainMenu);
+    $('rematch-button')?.addEventListener('click',()=>act('rematch'));
+    $('next-game-setup')?.addEventListener('click',()=>{intermissionPrep=true;render(true);});
   }
   function render(force=false){
     if(!state)return;
+    if(state.phase==='intermission'&&lastRoomPhase!=='intermission')intermissionPrep=false;
     $('welcome').classList.add('hide');$('gameview').classList.remove('hide');
     $('room-header').innerHTML=`<span class="room-title">PRIVATE ROOM <span class="room-code" title="Share this code with your friend">${esc(state.code)}</span></span>
       <div class="room-versus"><span>${esc(state.teams[0]?.name)}</span><span class="vs">VS</span><span>${esc(state.teams[1]?.name||'WAITING...')}</span></div>
@@ -355,14 +402,14 @@
     $('phase-banner').textContent=banners[state.phase]||'';
     const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
-      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked});
+      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,intermissionPrep});
     if(!force&&sig===lastRenderKey){updateClocks();return;}
     lastRenderKey=sig;
     for(const id of ['draft-view','setup-view','sim-view','end-view'])$(id).classList.add('hide');
     if(['lobby','coinflip','wheel','auction','placement'].includes(state.phase)){$('draft-view').classList.remove('hide');renderDraft();}
-    if(['lineup','intermission'].includes(state.phase)){$('setup-view').classList.remove('hide');renderPrep();}
+    if(state.phase==='lineup'||(state.phase==='intermission'&&intermissionPrep)){$('setup-view').classList.remove('hide');renderPrep();}
     if(['sim','timeout','foulout'].includes(state.phase)){$('sim-view').classList.remove('hide');renderSim();}
-    if(state.phase==='finished'){$('end-view').classList.remove('hide');renderEnd();}
+    if(state.phase==='finished'||(state.phase==='intermission'&&!intermissionPrep)){$('end-view').classList.remove('hide');renderEnd();}
     lastRoomPhase=state.phase;updateClocks();
   }
   function updateClocks(){
@@ -399,6 +446,8 @@
     const isRunGun=scheme==='Run & Gun';
     const isOldSchool=scheme==='Old-School Buckets';
     const isHills=scheme==='Run For The Hills';
+    const isPoint=scheme==='Play Through Point';
+    const isClog=state.teams[1-offense].defense==='Clog The Lanes';
     const isPress=state.teams[1-offense].defense==='Full Court Press';
     const isZone=state.teams[1-offense].defense==='3-2 Zone';
     const eventAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
@@ -409,6 +458,24 @@
         const attacking=side===offense;
         const anchor=attacking?anchors:(isPress?pressAnchors:isZone?zoneAnchors:defenseAnchors)[pos];
         let x=anchor.x*W,y=anchor.y*H;
+        if(!attacking&&isClog){
+          const coverage=event?.clogPositions?.[id];
+          if(coverage){x=coverage.x*W;y=coverage.y*H;}
+          else {x=(.65+pos*.025)*W;y=(pos%2?.77:.23)*H;}
+        }
+        if(attacking&&isPoint&&event?.pointRoutes&&eventAge<3000){
+          const target=event.pointRoutes[id];
+          if(target){
+            const progress=Math.min(1,eventAge/950);
+            x=(anchor.x+(target.x-anchor.x)*progress)*W;
+            y=(anchor.y+(target.y-anchor.y)*progress)*H;
+            if(event.pointWingCut===id&&event.pointCutReturned){
+              // Decoy wing cuts in before running back to the corner.
+              const dive=eventAge<750?eventAge/750:Math.max(0,1-(eventAge-750)/950);
+              x+=.16*W*dive;y+=(.5-target.y)*H*dive;
+            }
+          }
+        }
         // Different offensive roles are visible: perimeter screening, cuts and paint anchors.
         if(attacking&&(isChaos||isRunGun||isOldSchool)&&eventAge<3500){
           const wave=(Date.now()/(isRunGun?260:isOldSchool?410:330))+(pos*1.7);
@@ -438,12 +505,12 @@
         }
         if(event?.shooter===id&&attacking&&event.passerId&&eventAge<event.passDurationMs+220){
           x=event.passTo.x*W;y=event.passTo.y*H;
-        } else if(event?.shooter===id&&attacking&&!['illegal-screen','pass-out-of-bounds','interception','eight-second-violation'].includes(event.displayEvent)&&!(isHills&&eventAge<1600)){
+        } else if(event?.shooter===id&&attacking&&!['illegal-screen','pass-out-of-bounds','interception','eight-second-violation'].includes(event.displayEvent)&&!(isHills&&eventAge<1600)&&!(isPoint&&eventAge<1100)){
           // From ordinary paint attempts to 60-foot heaves, draw the actual shot position.
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
           x=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*.50;
         }
-        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress){x=.85*W;y=H*.53;}
+        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress&&!isClog){x=.85*W;y=H*.53;}
         if(event?.interceptorId===id&&!attacking&&event.interceptionAt){
           x=event.interceptionAt.x*W;y=event.interceptionAt.y*H;
         }
@@ -542,6 +609,16 @@
     if(event?.ankleBreaker&&state.phase==='sim'){
       courtReactionBurst(ctx,W,H,['🫪','😱','😯'],eventAge,ANKLE_REACTIONS_MS);
     }
+    // Mid-range and three-point baskets use a brief WHITE scoreboard label at
+    // the rim (not on fouls, misses, or made putbacks).
+    if(event?.made&&['mid','three'].includes(event.displayEvent)&&eventAge<1250&&state.phase==='sim'){
+      ctx.save();ctx.globalAlpha=Math.min(1,eventAge/130,(1250-eventAge)/230);
+      ctx.textAlign='center';ctx.font='1000 34px system-ui';ctx.lineWidth=5;
+      ctx.strokeStyle='#111827';ctx.fillStyle='#ffffff';
+      const text=event.displayEvent==='mid'?'SWISH!':'3PTS!';
+      ctx.strokeText(text,targetGoal,H/2-58);ctx.fillText(text,targetGoal,H/2-58);
+      ctx.restore();
+    }
     if(event?.posterDunk&&state.phase==='sim'){
       courtReactionBurst(ctx,W,H,['📸😯','📸','🫪'],eventAge,POSTER_REACTIONS_MS);
       if(eventAge<POSTER_REACTIONS_MS){
@@ -568,6 +645,12 @@
       ctx.fillStyle='#091b2cce';ctx.fillRect(W/2-175,H*.78,350,34);
       ctx.fillStyle='#fff3ab';ctx.font='900 18px system-ui';ctx.textAlign='center';
       ctx.fillText('🏀 INBOUND AFTER TIMEOUT',W/2,H*.78+24);ctx.restore();
+    }
+    if(event?.pointMode&&eventAge<1700&&state.phase==='sim'){
+      ctx.save();ctx.globalAlpha=Math.min(1,(1700-eventAge)/300);
+      ctx.textAlign='center';ctx.font='900 19px system-ui';ctx.fillStyle='#ffdf84';
+      ctx.fillText(`🎯 POINT + CENTER · ${event.pointMode.replaceAll('-',' ').toUpperCase()}`,W/2,H*.14);
+      ctx.restore();
     }
     if(event?.hillsMode&&eventAge<1750&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1750-eventAge)/350);
