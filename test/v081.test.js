@@ -90,10 +90,10 @@ test('blocks produce a single brief hand emoji exactly between rendered blocker 
  assert.match(app,/ctx\.fillText\('🖐️',midX,midY\)/);
 });
 
-test('version is 0.8.1 and all previous v0.8 celebrations and rematch UI remain',()=>{
+test('version is 0.8.2 and all previous v0.8 celebrations and rematch UI remain',()=>{
  const app=read('public/app.js'),html=read('public/index.html');
- assert.equal(JSON.parse(read('package.json')).version,'0.8.1');
- assert.match(html,/ALPHA v0\.8\.1/);
+ assert.equal(JSON.parse(read('package.json')).version,'0.8.2');
+ assert.match(html,/ALPHA v0\.8\.2/);
  assert.match(app,/SWISH!/);assert.match(app,/3PTS!/);
  assert.match(app,/🏆MVP🏆/);assert.match(app,/🔒DPOG🔒/);
  assert.match(app,/REMATCH!/);
