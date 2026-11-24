@@ -189,7 +189,7 @@
       <p style="margin:0"><strong>${esc(t.name)}'S TURN</strong> • <strong class="time-left" data-countdown>${seconds}s</strong></p>
       ${amI?`<div class="bid-row"><label class="smallcaps" for="bid-input">YOUR BID ($)</label><input id="bid-input" type="number" step="0.50" min="${(need/100).toFixed(2)}" max="${(my().budget/100).toFixed(2)}" value="${(need/100).toFixed(2)}" /></div>
       <div class="flex-row"><button class="primary" id="submit-bid" ${mayBid?'':'disabled'}>PLACE BID</button><button class="secondary" id="pass-bid">PASS</button></div>`:'<p class="smallcaps">WAITING FOR OPPONENT TO BID</p>'}
-      <p class="tiny">Minimum opening bid $1.00. Raise by $0.50 or more in $0.50 increments.</p>
+      <p class="tiny">The opening team automatically bids $1.00. Raise by at least $0.50 in $0.50 steps, or pass to give the player to the current high bidder.</p>
     </div>`;
   }
   function wheelMarkup(){return `<div class="wheel-stage"><span class="wheel-arrow"></span><canvas id="wheel-canvas" width="440" height="440" aria-label="Weighted player wheel"></canvas></div>`;}
@@ -223,7 +223,7 @@
     if(state.phase==='coinflip'){
       center.innerHTML=`<h2 class="auction-heading">🪙 WHO BIDS FIRST?</h2><p class="auction-sub">One side for each team. One synchronized flip.</p>
       <div class="coin flip">${esc(state.teams[state.coinWinner]?.name||'FLIP')}</div>
-      <h3>${esc(state.teams[state.coinWinner]?.name)} wins the flip!</h3><p class="subtle">They'll open bidding on the first wheel spin. Starting bidder alternates each spin.</p>`;
+      <h3>${esc(state.teams[state.coinWinner]?.name)} wins the flip!</h3><p class="subtle">They automatically open the first auction with a $1.00 bid. The other team acts first; opening bidder alternates each spin.</p>`;
       return;
     }
     if(state.phase==='wheel'){
