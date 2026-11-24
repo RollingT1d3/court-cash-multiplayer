@@ -11,7 +11,7 @@
   const imageCache = new Map();
   const clamp = n => Math.max(0, Math.min(1, n));
   const formatHeight = inches => Math.floor(inches / 12) + "'" + inches % 12 + '"';
-  const defaultCrop = () => ({ ...window.CourtHeadshots.DEFAULT_CROP });
+  const defaultCrop = p => ({ ...window.CourtHeadshots.DEFAULT_CROP, width: p?.courtPortrait?.image ? 1 : window.CourtHeadshots.DEFAULT_CROP.width });
   const mainMenuVisible = () => !$('welcome').classList.contains('hide');
 
   function message(text, type = '') {
@@ -106,7 +106,7 @@
   function photo(src, onReady) {
     if (!src) return null;
     let img = imageCache.get(src);
-    if (img) return img;
+    if (imageCache.has(src)) return img;
     img = new Image();
     imageCache.set(src, img);
     img.onload = () => {
@@ -213,7 +213,7 @@
   function selectPlayer(id) {
     selected = roster.find(p => p.id === id) || null;
     if (!selected) return;
-    crop = { ...defaultCrop(), ...(selected.courtPortrait?.crop || {}) };
+    crop = { ...defaultCrop(selected), ...(selected.courtPortrait?.crop || {}) };
     resetPending = false;
     $('admin-editor-empty').hidden = true;
     $('admin-editor-content').hidden = false;
@@ -284,7 +284,7 @@
 
   $('admin-reset').addEventListener('click', () => {
     if (!selected) return;
-    crop = { ...defaultCrop() };
+    crop = { ...defaultCrop(selected) };
     resetPending = true;
     refresh();
     message('Default crop previewed. Press Save to apply it.');
