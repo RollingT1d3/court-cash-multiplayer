@@ -39,6 +39,7 @@ const TIMEOUTS_PER_GAME = 5;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
 const COIN_MS = Math.max(20,Number(process.env.COIN_MS)||3200);
 const SPIN_MS = Math.max(20,Number(process.env.SPIN_MS)||2600);
+const AUCTION_MS = Math.max(20,Number(process.env.AUCTION_MS)||30000);
 // ~148 possessions at ~19.5 simulated seconds each; 3.25 seconds/play ≈ 8 real minutes per 48-minute game.
 // Timeouts and overtime add real time. For automated tests SIM_MS may be overridden.
 const SIM_MS = Math.max(10,Number(process.env.SIM_MS)||3250);
@@ -108,8 +109,11 @@ function startAuction(room){
   else if(a.budget<100||b.budget<100){mode='free';chooser=a.budget>=100?0:1;}
   else {mode='normal';}
   room.phase='auction';
-  room.auction={playerId:id,mode,turn:mode==='normal'?open:chooser,highBidder:null,bid:0,opening:open,passed:false,deadline:now()+30000,recipient};
+  // In a normal auction the designated opening team automatically bids $1.00.
+  // The opponent acts first: raise by at least $0.50, pass, or time out.
+  room.auction={playerId:id,mode,turn:mode==='normal'?other(open):chooser,highBidder:mode==='normal'?open:null,bid:mode==='normal'?100:0,opening:open,deadline:now()+AUCTION_MS,recipient};
   if(mode==='auto'){award(room,recipient,0);return;}
+  if(mode==='normal')log(room,`${room.teams[open].name} automatically opens at $1.00.`);
   broadcast(room);
 }
 function award(room,winner,cents){
@@ -564,13 +568,13 @@ function action(room,i,data){
       if(room.phase!=='auction'||!a||a.mode!=='normal'||a.turn!==i)throw Error('Not your turn to bid.');
       const amount=Number(data.cents);
       if(!Number.isInteger(amount)||amount<100||amount%50!==0||amount<a.bid+50||amount>t.budget)throw Error('Bid must be a valid $0.50 increment within your budget.');
-      a.bid=amount;a.highBidder=i;a.turn=other(i);a.deadline=now()+30000;a.passed=false;log(room,`${t.name} bids $${(amount/100).toFixed(2)}.`);broadcast(room);break;
+      a.bid=amount;a.highBidder=i;a.turn=other(i);a.deadline=now()+AUCTION_MS;log(room,`${t.name} bids $${(amount/100).toFixed(2)}.`);broadcast(room);break;
     }
     case 'pass':{
       if(room.phase!=='auction'||!a||a.mode!=='normal'||a.turn!==i)throw Error('Not your turn to pass.');
-      if(a.highBidder!==null){award(room,a.highBidder,a.bid);break;}
-      if(a.passed){room.spinIndex++;log(room,'Both players passed. Spinning again.');startSpin(room);break;}
-      a.passed=true;a.turn=other(i);a.deadline=now()+30000;broadcast(room);break;
+      // An opening $1.00 bid always exists in normal auctions.
+      // Passing awards the player immediately to the current high bidder.
+      award(room,a.highBidder,a.bid);break;
     }
     case 'select':case 'freePass':{
       if(room.phase!=='auction'||!a||a.mode!=='free'||a.turn!==i)throw Error('Only the free-pick chooser can choose.');
@@ -678,9 +682,8 @@ setInterval(()=>{
       const a=room.auction;
       if(a.mode==='free')award(room,other(a.turn),0);
       else if(a.mode==='normal'){
-        if(a.highBidder!==null)award(room,a.highBidder,a.bid);
-        else if(a.passed){room.spinIndex++;startSpin(room);}
-        else {a.passed=true;a.turn=other(a.turn);a.deadline=ms+30000;broadcast(room);}
+        // The opponent's clock expiring awards the player to the standing high bidder.
+        award(room,a.highBidder,a.bid);
       }
     }
     if(room.phase==='timeout'&&ms>=room.timeout.until){

@@ -132,3 +132,7 @@ See [UPDATE_V084.md](UPDATE_V084.md). Shooting fatigue caps at 18%, finishing at
 ## v0.9 — admin appearance editor
 
 See [UPDATE_V09.md](UPDATE_V09.md). The main-menu-only blue lock opens a server-verified admin panel that sorts the live roster by OVR and edits the exact 44px on-court headshot crops while leaving full-body art and all gameplay data unchanged. Crop backups can be exported and imported, since free Render has ephemeral storage.
+
+## v0.9.1 — automatic $1 opening bid
+
+See [UPDATE_V091.md](UPDATE_V091.md). Every normal auction now begins with a $1 bid automatically placed by the designated opener. Their opponent acts first; passing or timing out awards the opener that player for $1. Higher bids, alternating openers and free-selection cases work as before.

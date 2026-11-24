@@ -21,7 +21,7 @@ test('two real clients draft, run Hills against Full Court Press and observe bot
   const until=async(fn,ms=16000)=>{const start=Date.now();while(Date.now()-start<ms){const result=await fn();if(result)return result;await delay(12);}throw Error('Timeout: '+stderr);};
   try{
     const health=await until(async()=>{try{const r=await fetch(base+'/health');if(!r.ok)return null;return r.json();}catch{return null;}},3000);
-    assert.equal(health.version,'0.9.0');
+    assert.equal(health.version,'0.9.1');
     const first=await post('/api/create',{name:'Hills Team',format:1});
     const second=await post('/api/join',{code:first.code,name:'Press Team'});
     let state=await until(async()=>{const x=await getState(first);return x.phase==='auction'?x:null;});
