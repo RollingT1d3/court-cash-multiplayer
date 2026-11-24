@@ -6,15 +6,19 @@
   <title>Court Cash • Basketball Auction Showdown</title>
   <meta name="description" content="Live two-player basketball auction draft and animated simulation." />
   <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/admin-v09.css" />
 </head>
 <body>
   <div id="shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-icon">🏀</span> COURT <b>CASH</b> <small>ALPHA v0.8.4</small></div>
+      <div class="brand"><span class="brand-icon">🏀</span> COURT <b>CASH</b> <small>ALPHA v0.9</small></div>
       <div class="status"><span id="status-dot" class="dot"></span><span id="status-label">Not in a room</span></div>
     </header>
     <main id="app">
       <section id="welcome" class="welcome">
+        <button id="admin-open" class="admin-entry" type="button" aria-label="Open admin panel" title="Admin Panel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+        </button>
         <div class="hero-eyebrow">BASKETBALL AUCTION SHOWDOWN</div>
         <h1>Draft big.<br /><em>Play bigger.</em></h1>
         <p class="lead" id="home-phrase">Shoutout ceekel</p>
@@ -63,6 +67,69 @@
         <div id="end-view" class="hide"></div>
       </section>
     </main>
+    <section id="admin-screen" class="admin-overlay" role="dialog" aria-modal="true" aria-labelledby="admin-title" hidden>
+      <div class="admin-window">
+        <header class="admin-header">
+          <div><span class="admin-kicker">COURT CASH · V0.9</span><h2 id="admin-title">Admin Panel</h2></div>
+          <div class="admin-header-controls"><button type="button" id="admin-close" aria-label="Close admin panel">✕ Close</button></div>
+        </header>
+        <p id="admin-message" class="admin-message" role="status" aria-live="polite"></p>
+        <section id="admin-auth" class="admin-login">
+          <h3>🔒 Admin Access</h3>
+          <p>Enter the four-digit admin code to edit the players' on-court appearances.</p>
+          <form id="admin-login-form">
+            <label>ADMIN CODE<input id="admin-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required placeholder="••••"></label>
+            <button type="submit" id="admin-unlock">Unlock editor</button>
+          </form>
+        </section>
+        <section id="admin-workspace" hidden>
+          <div class="admin-toolbar">
+            <input id="admin-search" type="search" placeholder="Search players…" aria-label="Search players">
+            <div class="admin-toolbar-right">
+              <small id="admin-count"></small>
+              <button class="admin-tool-button" id="admin-export" type="button">↓ Export settings</button>
+              <label class="admin-import-label">↑ Import settings<input id="admin-import" type="file" accept=".json,application/json"></label>
+              <button class="admin-tool-button" id="admin-signout" type="button">Sign out</button>
+            </div>
+          </div>
+          <div class="admin-layout">
+            <aside class="admin-left" aria-label="Players sorted by overall">
+              <div class="admin-list-title"><span>PLAYERS · OVR HIGH → LOW</span><span id="admin-visible"></span></div>
+              <div id="admin-player-list" class="admin-player-list"></div>
+            </aside>
+            <section class="admin-editor" aria-label="Selected player on-court portrait editor">
+              <p id="admin-editor-empty">Select a player to edit their court circle.</p>
+              <div id="admin-editor-content" hidden>
+                <h3 id="admin-player-name"></h3>
+                <p id="admin-player-details" class="admin-editor-sub"></p>
+                <div class="admin-editor-views">
+                  <div class="admin-art-block">
+                    <div class="admin-block-label">ORIGINAL ARTWORK · UNCHANGED</div>
+                    <img id="admin-original" alt="Original player portrait" hidden>
+                    <p id="admin-no-original" class="admin-no-image" hidden>No artwork uploaded yet.</p>
+                  </div>
+                  <div class="admin-circle-block">
+                    <div class="admin-block-label">ACTUAL ON-COURT CIRCLE</div>
+                    <canvas id="admin-court-preview" width="44" height="44" aria-label="Drag to reposition on-court portrait"></canvas>
+                    <p>Drag the circle or use the controls below. Changes display instantly.</p>
+                  </div>
+                </div>
+                <div class="admin-sliders">
+                  <div class="admin-slider-row"><label for="admin-zoom">Zoom <output id="admin-zoom-value"></output></label><input id="admin-zoom" type="range" min="100" max="450" step="1"></div>
+                  <div class="admin-slider-row"><label for="admin-x">Horizontal position <output id="admin-x-value"></output></label><input id="admin-x" type="range" min="0" max="100" step="1"></div>
+                  <div class="admin-slider-row"><label for="admin-y">Vertical position <output id="admin-y-value"></output></label><input id="admin-y" type="range" min="0" max="100" step="1"></div>
+                </div>
+                <div class="admin-editor-actions">
+                  <button id="admin-reset" type="button">↶ Reset</button>
+                  <button id="admin-save" type="button" disabled>Save appearance</button>
+                </div>
+              </div>
+            </section>
+          </div>
+          <p class="admin-footer">Edits change only the on-court circular crop, not player stats or original artwork. Export your crop settings for backup: free Render hosting may reset saved local files after a redeploy.</p>
+        </section>
+      </div>
+    </section>
     <div id="toast" role="status" aria-live="polite"></div>
   </div>
   <script type="module" src="/home-phrases.js"></script>
@@ -70,5 +137,6 @@
   <script src="/court-designs.js" defer></script>
   <script src="/court-headshots.js" defer></script>
   <script src="/app.js" defer></script>
+  <script src="/admin-v09.js" defer></script>
 </body>
 </html>

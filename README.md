@@ -128,3 +128,7 @@ See [UPDATE_V083.md](UPDATE_V083.md) for height-adjusted three-point, mid-range,
 ## v0.8.4 — fatigue rebalance and player-controlled substitutions
 
 See [UPDATE_V084.md](UPDATE_V084.md). Shooting fatigue caps at 18%, finishing at 12% and defense at 10%; playmaking remains unaffected. Timeouts restore +4 energy for both on-court teams, voluntary subs are timeout-only (with forced foul-out replacements preserved), and the small fatigue emoji now appears in the top-right of player circles at below 60% / below 25% energy. No new energy bars in the substitution UI.
+
+## v0.9 — admin appearance editor
+
+See [UPDATE_V09.md](UPDATE_V09.md). The main-menu-only blue lock opens a server-verified admin panel that sorts the live roster by OVR and edits the exact 44px on-court headshot crops while leaving full-body art and all gameplay data unchanged. Crop backups can be exported and imported, since free Render has ephemeral storage.

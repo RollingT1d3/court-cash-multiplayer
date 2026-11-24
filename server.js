@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { createAdminAPI } from './admin-v09.js';
 import { readFileSync, createReadStream, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -700,12 +701,17 @@ setInterval(()=>{
   if(ms-lastBroadcastAt>=1000)lastBroadcastAt=ms;
 },TICK_MS);
 
+const adminAPI = createAdminAPI({ root: ROOT, players: PLAYERS, onUpdate: () => {
+  for (const room of ROOMS.values()) broadcast(room);
+} });
+
 const contentTypes={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon'};
 function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value));}
 async function body(req){let chunks=[],total=0;for await(const part of req){total+=part.length;if(total>1e5)throw Error('Request too large.');chunks.push(part);}return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost');
   try{
+    if(await adminAPI(req,res,url))return;
     if(req.method==='GET'&&url.pathname==='/health')return json(res,200,{ok:true,rooms:ROOMS.size,players:PLAYERS.length,version:BUILD_VERSION,gitCommit:process.env.RENDER_GIT_COMMIT||null});
     if(req.method==='POST'&&url.pathname==='/api/create'){const v=await body(req);return json(res,200,create(v.name,v.format));}
     if(req.method==='POST'&&url.pathname==='/api/join'){const v=await body(req);return json(res,200,join(v.code,v.name));}
