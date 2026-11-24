@@ -1,0 +1,62 @@
+/* COURT CASH V0.9 — Admin button appears ONLY inside #welcome. */
+[hidden]{display:none!important}
+.welcome .admin-entry{position:fixed;top:90px;right:max(20px,calc((100vw - 1740px)/2));z-index:8;display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;background:#1876e9;border:1px solid #66b0ff;border-radius:50%;box-shadow:0 3px 13px #07172e99}
+.welcome .admin-entry svg{width:17px;height:17px;stroke:#fff;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.welcome .admin-entry:hover{background:#3395ff}
+body.admin-open{overflow:hidden}
+.admin-overlay{position:fixed;inset:0;z-index:1000;background:#02060bdc;display:flex;align-items:center;justify-content:center;padding:18px}
+.admin-window{width:min(1180px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:#101924;border:1px solid #3c506e;border-radius:18px;box-shadow:0 30px 90px #000c}
+.admin-window button{font-size:13px}
+.admin-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:19px 24px;border-bottom:1px solid #35435a}
+.admin-header h2{font-size:23px;margin:4px 0}
+.admin-kicker{color:#79b7ff;font-size:10px;letter-spacing:2px;font-weight:900}
+.admin-header-controls{display:flex;gap:10px;align-items:center}
+.admin-header-controls button{background:#25374f;border:1px solid #425674;color:#e9f2ff}
+.admin-login{max-width:360px;margin:50px auto 60px;padding:24px;border:1px solid #30415b;border-radius:14px;background:#182637}
+.admin-login h3{font-size:20px;margin:0 0 8px}
+.admin-login p{font-size:13px;color:#adbbcf;line-height:1.55}
+.admin-login label{margin:18px 0}
+.admin-login input{font-size:23px;text-align:center;letter-spacing:10px;font-variant-numeric:tabular-nums}
+.admin-login button{width:100%;background:#1976df;color:#fff}
+.admin-message{font-size:12px;color:#a9bbd2;min-height:19px;padding:8px 24px 0}
+.admin-message.error{color:#ff9ca8}.admin-message.success{color:#c8ff83}
+.admin-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 23px;border-bottom:1px solid #2e3c53}
+.admin-toolbar input[type=search]{max-width:300px}
+.admin-toolbar-right{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.admin-toolbar small{color:#aabbd0}
+.admin-tool-button,.admin-import-label{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 11px;border:1px solid #3a5373;border-radius:8px;background:#23374e;color:#e4edfa;font-weight:750;font-size:12px;cursor:pointer}
+.admin-import-label input{display:none}
+.admin-layout{display:grid;grid-template-columns:minmax(330px,.9fr) minmax(400px,1.1fr);min-height:480px;max-height:64vh}
+.admin-left{border-right:1px solid #314158;min-height:0;display:flex;flex-direction:column}
+.admin-list-title{padding:12px 16px;display:flex;justify-content:space-between;gap:12px;color:#a9bed6;font-size:11px;font-weight:800}
+.admin-player-list{overflow:auto;min-height:0;padding:0 8px 14px}
+.admin-player-row{display:flex;align-items:center;text-align:left;gap:12px;width:100%;min-width:0;padding:9px;background:transparent;color:#fff;border:1px solid transparent;border-radius:10px;margin-bottom:4px}
+.admin-player-row:hover{background:#1d3149}
+.admin-player-row.selected{border-color:#55a8ff;background:#1b324e}
+.admin-original-thumb{flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;width:56px;height:56px;border-radius:9px;background:#344259;color:#daeaff;font-size:23px}
+.admin-original-thumb img{height:100%;width:100%;object-fit:cover}
+.admin-row-label{display:flex;flex-direction:column;flex:1;min-width:0;gap:5px}
+.admin-row-label strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-row-label small{font-size:11px;color:#a9bad0}
+.admin-row-court{width:44px;height:44px;border-radius:50%;border:2px solid #7286a3;flex:none}
+.admin-editor{padding:22px;overflow:auto;min-height:0}
+.admin-editor h3{font-size:21px;margin:0 0 4px}
+.admin-editor-sub{font-size:12px;color:#9eb3cb;margin-bottom:14px}
+.admin-editor-views{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,.65fr);gap:15px;margin-bottom:16px}
+.admin-art-block,.admin-circle-block{background:#101f30;border:1px solid #354865;border-radius:12px;padding:12px;display:flex;align-items:center;flex-direction:column;justify-content:center;gap:8px;min-height:185px}
+.admin-block-label{align-self:stretch;text-align:center;font-size:10px;letter-spacing:1px;font-weight:850;color:#a9bfd7}
+.admin-art-block img{width:100%;height:240px;max-height:28vh;object-fit:contain}
+.admin-no-image{font-size:12px;color:#b3c4dc}
+.admin-circle-block canvas{width:44px;height:44px;border-radius:50%;border:2px solid #899ab0;touch-action:none;cursor:grab}
+.admin-circle-block canvas:active{cursor:grabbing}
+.admin-circle-block p{color:#91a8c1;text-align:center;font-size:11px;line-height:1.5;margin:0}
+.admin-sliders{display:grid;gap:14px;margin:13px 0 20px}
+.admin-slider-row{display:grid;gap:6px}
+.admin-slider-row label{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:8px;color:#cbdbef;font-size:12px;font-weight:800;letter-spacing:0}
+.admin-slider-row output{color:#8fbeff;font-weight:850}
+.admin-slider-row input{padding:0;height:19px;accent-color:#3396ff;background:none;border:none}
+.admin-editor-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.admin-editor-actions button{background:#273950;color:#fff}
+.admin-editor-actions #admin-save{background:#1d83e7;color:#fff}
+.admin-footer{font-size:11px;line-height:1.5;color:#9faec0;padding:11px 23px;border-top:1px solid #293952}
+@media(max-width:750px){.admin-overlay{padding:6px}.admin-window{max-height:calc(100dvh - 12px)}.admin-layout{grid-template-columns:1fr;max-height:none;min-height:0}.admin-left{border-right:0;border-bottom:1px solid #35465b;max-height:200px}.admin-editor{max-height:55vh}.admin-toolbar{padding:10px;gap:8px}.admin-header{padding:12px}.admin-original-thumb{width:48px;height:48px}.admin-art-block img{height:155px}.welcome .admin-entry{top:78px;right:14px}}
