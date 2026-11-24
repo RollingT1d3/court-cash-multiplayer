@@ -1,0 +1,18 @@
+name: Court Cash v0.9 checks
+on:
+  push:
+    branches: [feature/v0-9-admin-appearance-editor, main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: node --check admin-v09.js
+      - run: node --check public/admin-v09.js
+      - run: node --check server.js
+      - run: npm test
