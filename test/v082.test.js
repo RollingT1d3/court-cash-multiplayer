@@ -50,8 +50,8 @@ test('v0.8.2: new accuracy formula is connected to gameplay; existing shot gener
   assert.match(server,/threePointBaseChance\(rawThree\)/);
   assert.match(server,/longThreePenalty\(shotDistanceFt,rawThree\)/);
   assert.match(server,/skillAdjustment=\(value-\(isThree\?rawThree:80\)\)\*\.0075/);
-  assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version,'0.9.0');
-  assert.match(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'),/ALPHA v0\.9/);
+  assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version,'0.9.1');
+  assert.match(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'),/ALPHA v0\.9\.1/);
   assert.equal(threeDistanceFeet(95,18,()=>.999),30);
   assert.equal(threeDistanceFeet(95,3,()=>0),36);
 });
