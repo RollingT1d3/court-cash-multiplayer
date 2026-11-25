@@ -176,6 +176,38 @@
     }
     return t.slots;
   }
+  function bindDragHeadshot(element,p,side){
+    const src=window.CourtHeadshots.imageSource(p);
+    let loaded=null;
+    if(src)rosterImage(src).then(img=>{loaded=img;});
+    // Prevent a nested full-size image from starting its own native image drag.
+    for(const img of element.querySelectorAll('img'))img.draggable=false;
+    element.draggable=true;
+    element.addEventListener('dragstart',e=>{
+      if(!e.dataTransfer)return;
+      currentPicked=p.id;
+      e.dataTransfer.setData('text/plain',String(p.id));
+      e.dataTransfer.effectAllowed='move';
+      if(typeof e.dataTransfer.setDragImage!=='function')return;
+      const size=window.matchMedia('(max-width:590px)').matches?45:58;
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=size;
+      // If the crop source is the already-loaded auction portrait, use it even
+      // while the shared image cache is still loading. Initials are the fallback.
+      const original=element.querySelector('img');
+      const image=loaded||(src===p.image&&original?.complete&&original.naturalWidth>0?original:null);
+      const ctx=canvas.getContext('2d');
+      if(!ctx)return;
+      window.CourtHeadshots.drawDragPreview(ctx,image,p,size,side);
+      // Keep it in the viewport for browsers that require a rendered drag image.
+      const x=Math.max(0,Math.min(window.innerWidth-size,e.clientX-size/2));
+      const y=Math.max(0,Math.min(window.innerHeight-size,e.clientY-size/2));
+      canvas.setAttribute('aria-hidden','true');
+      Object.assign(canvas.style,{position:'fixed',left:x+'px',top:y+'px',width:size+'px',height:size+'px',pointerEvents:'none',zIndex:'10000'});
+      document.body.appendChild(canvas);
+      try{e.dataTransfer.setDragImage(canvas,size/2,size/2);}
+      finally{setTimeout(()=>canvas.remove(),0);}
+    });
+  }
   function teamPanel(i){
     const t=state.teams[i];if(!t)return '<div class="team-panel">Waiting for a team…</div>';
     const side=i===0?'left':'right';const change=eligible()&&isMine(i);
@@ -203,7 +235,7 @@
         else if(id){currentPicked=id;render(true);}
       });
       const id=rosterDisplaySlots(state.you)[slot.dataset.slot];
-      if(id){slot.draggable=true;slot.addEventListener('dragstart',e=>{currentPicked=id;e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';});}
+      if(id){const p=player(id);if(p)bindDragHeadshot(slot,p,state.you===0?'blue':'red');}
       slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drop-target');});
       slot.addEventListener('dragleave',()=>slot.classList.remove('drop-target'));
       slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drop-target');const dragging=e.dataTransfer.getData('text/plain')||currentPicked;if(dragging){act('place',{playerId:dragging,slot:slot.dataset.slot});currentPicked=null;}});
@@ -309,8 +341,7 @@
         ${isMine(owner)?'<button id="next-spin" class="primary">NEXT SPIN →</button>':''}`;
       const newPick=$('pick-new');
       if(newPick&&isMine(owner)){
-        newPick.draggable=true;
-        newPick.addEventListener('dragstart',e=>{currentPicked=p.id;e.dataTransfer.setData('text/plain',String(p.id));e.dataTransfer.effectAllowed='move';});
+        bindDragHeadshot(newPick,p,owner===0?'blue':'red');
         newPick.addEventListener('click',()=>{currentPicked=p.id;render(true);});
       }
       $('next-spin')?.addEventListener('click',()=>{currentPicked=null;act('next');});

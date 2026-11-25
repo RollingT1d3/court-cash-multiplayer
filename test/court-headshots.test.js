@@ -82,7 +82,7 @@ test('browser loads the headshot helper before app; auction portraits keep origi
   assert.match(app,/window\.CourtHeadshots\.draw\(ctx,img,p,size\/2,size\/2,size\)/);
   assert.match(app,/rosterHeadshot\(p,i\?'red':'blue',s\)/);
   assert.match(app,/paintRosterHeadshots\(container\)/);
-  assert.match(app,/newPick\.draggable=true/);
+  assert.match(app,/bindDragHeadshot\(newPick,p,owner===0\?'blue':'red'\)/);
   assert.match(app,/appearance:state\.teams\.flatMap/);
   const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
   assert.match(css,/\.roster-list \.roster-headshot\{[^}]*border-radius:50%/);
@@ -108,4 +108,44 @@ test('roster headshots paint saved crops using the shared draw helper and safely
   assert.equal(calls.length,1);
   assert.deepEqual(calls[0].slice(1),[400,150,600,600,0,0,128,128]);
   assert.deepEqual(classes,['ready']);
+});
+
+test('drag preview uses the exact saved head crop, a circular clip and a team-colored border',()=>{
+  const p={name:'Bobby Buckets',image:'/full.webp',courtPortrait:{crop:{centerX:.75,top:.1,width:.6}}};
+  const calls=[];
+  const ctx={clearRect(){},save(){},beginPath(){},arc(...a){calls.push(['arc',...a]);},clip(){calls.push(['clip']);},fillRect(){},drawImage(...a){calls.push(['image',...a]);},restore(){},stroke(){calls.push(['stroke',this.strokeStyle]);},fillText(...a){calls.push(['text',...a]);}};
+  const img=image(1000,1500);
+  browser.CourtHeadshots.drawDragPreview(ctx,img,p,58,'blue');
+  assert.deepEqual(calls.find(x=>x[0]==='image').slice(2),[400,150,600,600,2,2,54,54]);
+  assert.ok(calls.some(x=>x[0]==='clip'));
+  assert.deepEqual(calls.at(-1),['stroke','#7cb7ff']);
+  calls.length=0;
+  browser.CourtHeadshots.drawDragPreview(ctx,null,p,45,'red');
+  assert.deepEqual(calls.find(x=>x[0]==='text'),['text','BB',22.5,22.5]);
+  assert.deepEqual(calls.at(-1),['stroke','#ff859e']);
+});
+
+test('new picks and already assigned players use a centered custom native drag image, preserving the player ID', async ()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  const source=app.slice(app.indexOf('  function bindDragHeadshot('),app.indexOf('  function teamPanel('));
+  const calls=[],handlers={};
+  const img=image(1000,1500),p={id:'p001',name:'Test Player',image:'/full.webp'};
+  const canvas={style:{},getContext:()=>({}),setAttribute(){},remove(){calls.push(['removed']);}};
+  const nested={draggable:true};
+  const element={querySelectorAll:()=>[nested],querySelector:()=>null,addEventListener:(name,fn)=>handlers[name]=fn};
+  const win={innerWidth:900,innerHeight:700,matchMedia:()=>({matches:false}),CourtHeadshots:{imageSource:()=>p.image,drawDragPreview:(...a)=>calls.push(['draw',...a])}};
+  const document={createElement:()=>canvas,body:{appendChild:c=>calls.push(['append',c])}};
+  const scope={window:win,document,rosterImage:()=>Promise.resolve(img),currentPicked:null,element,p,setTimeout:fn=>fn()};
+  runInNewContext(source+"\nbindDragHeadshot(element,p,'red');",scope);
+  await Promise.resolve();
+  const transfer={setData:(...a)=>calls.push(['data',...a]),setDragImage:(...a)=>calls.push(['drag',...a])};
+  handlers.dragstart({dataTransfer:transfer,clientX:100,clientY:100});
+  assert.equal(nested.draggable,false);assert.equal(element.draggable,true);
+  assert.equal(scope.currentPicked,p.id);assert.equal(transfer.effectAllowed,'move');
+  assert.deepEqual(calls.find(x=>x[0]==='data'),['data','text/plain',p.id]);
+  assert.deepEqual(calls.find(x=>x[0]==='draw').slice(2),[img,p,58,'red']);
+  assert.deepEqual(calls.find(x=>x[0]==='drag'),['drag',canvas,29,29]);
+  assert.equal(canvas.width,58);assert.equal(canvas.height,58);
+  assert.deepEqual(calls.at(-1),['removed']);
+  assert.match(app,/bindDragHeadshot\(slot,p,state.you===0\?'blue':'red'\)/);
 });

@@ -54,5 +54,21 @@
     return true;
   }
 
-  root.CourtHeadshots = Object.freeze({ DEFAULT_CROP, imageSource, cropRect, draw });
+  // A transparent canvas is the native drag image, not the entire roster row.
+  function drawDragPreview(ctx,image,player,size,side) {
+    const center=size/2, inner=size-4;
+    ctx.clearRect(0,0,size,size);
+    ctx.save();
+    ctx.beginPath();ctx.arc(center,center,inner/2,0,Math.PI*2);ctx.clip();
+    ctx.fillStyle='#2b3b51';ctx.fillRect(0,0,size,size);
+    if(!draw(ctx,image,player,center,center,inner)){
+      ctx.fillStyle='#fff';ctx.font='900 15px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(String(player?.name||'?').split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase(),center,center);
+    }
+    ctx.restore();
+    ctx.beginPath();ctx.arc(center,center,center-1,0,Math.PI*2);
+    ctx.lineWidth=2;ctx.strokeStyle=side==='red'?'#ff859e':'#7cb7ff';ctx.stroke();
+  }
+
+  root.CourtHeadshots = Object.freeze({ DEFAULT_CROP, imageSource, cropRect, draw, drawDragPreview });
 })(typeof window === 'undefined' ? globalThis : window);
