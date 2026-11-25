@@ -74,3 +74,30 @@ test('dribbling slowdown follows possession rather than every player on offense'
  assert.match(app,/motion\.movementFactor\(p\.stats,energy,carrier===id,strategyBoost\)/);
  assert.match(app,/motion\.movePlayer\(/);
 });
+
+
+test('normal jumpers gather tightly on the shooting side and release toward the correct basket',()=>{
+ const p={x:500,y:250},g={x:880,y:262},duration=230;
+ for(const direction of [1,-1]){
+  const target=direction===1?g:{x:60,y:262};
+  for(const type of ['mid','three']){
+   const e={type,displayEvent:type,passDurationMs:300,jumperSetupMs:duration,made:true};
+   const start=m.normalBall(e,300,p,null,target,direction);
+   close(start.x,p.x+direction*16);close(start.y,p.y+12);
+   const middle=m.normalBall(e,415,p,null,target,direction);
+   assert.ok((middle.x-p.x)*direction>0&&middle.y<start.y);
+   const release=m.normalBall(e,530,p,null,target,direction);
+   close(release.x,p.x+direction*32/Math.sqrt(2));close(release.y,p.y-32/Math.sqrt(2));
+   assert.equal(m.shotStart(e),530);assert.equal(m.shotEnd(e),1000);
+   const flight=m.normalBall(e,540,p,null,target,direction);
+   assert.ok((flight.x-release.x)*direction>0);
+   close(m.normalBall(e,1000,p,null,target,direction).x,target.x);
+   assert.equal(m.ballCarrier({...e,shooter:'p'},400,null),'p');
+  }
+ }
+ for(const type of ['layup','dunk','putback'])assert.equal(m.shotStart({type,passDurationMs:300}),300);
+ assert.equal(m.shotStart({type:'fade',passDurationMs:300,fadeSetupMs:720}),1020);
+ const app=read('public/app.js'),server=read('server.js');
+ assert.match(app,/motion\.setupBall\(event,d,resultAge,direction\)/);
+ assert.match(server,/const jumperSetupMs=\['mid','three'\]\.includes\(type\)/);
+});

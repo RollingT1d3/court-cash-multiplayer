@@ -603,7 +603,9 @@
     const passLead=Array.isArray(chain)?event.passDurationMs||0:0;
     const resultAge=eventAge-passLead;
     const fadeSetup=event?.fadeSetupMs||0,fadeAnimating=!!fadeSetup&&!transitioning&&resultAge>=0&&resultAge<fadeSetup;
-    const freeThrowAge=resultAge-fadeSetup;
+    const shotSetup=event?motion.shotSetup(event):0;
+    const gathering=shotSetup>0&&!transitioning&&resultAge>=0&&resultAge<shotSetup;
+    const freeThrowAge=resultAge-shotSetup;
     const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&freeThrowAge>=0&&freeThrowAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
     const shotEffectAge=eventAge-(event?motion.shotEnd(event):0);
     const putbackEffectAge=eventAge-(event?motion.putbackEnd(event):0);
@@ -809,7 +811,7 @@
       const d=canvasPositions.get(event.shooter),t=eventAge;
       const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event.displayEvent);
       if(passFrame){ball=motion.passBall(passFrame,canvasPositions,W,H,direction);}
-      else if(fadeAnimating){ball=motion.fadeBall(d,resultAge,fadeSetup,direction);}
+      else if(gathering){ball=motion.setupBall(event,d,resultAge,direction);}
       else if(event.foul&&event.freeThrowResults?.length){
         const line={x:targetGoal-direction*14*(W/94),y:H/2};
         ftFrame=motion.freeThrowFrame(event.freeThrowResults,freeThrowAge,line,goal,direction);ball=ftFrame?.ball;

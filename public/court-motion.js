@@ -5,7 +5,18 @@
  const lerp=(a,b,t)=>a+(b-a)*t;
  const between=(a,b,t,lift=0)=>({x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t)-lift*4*t*(1-t)});
  const SHOT_MS=470,BOUNCE_MS=180,REBOUND_MS=260,PUTBACK_MS=300,NET_MS=170,FT_START=350,FT_STEP=850,TIP_MS=1800;
- function shotStart(e){return (Number(e.passDurationMs)||0)+(Number(e.fadeSetupMs)||0);}
+ function shotSetup(e){return Number(e.fadeSetupMs)||Number(e.jumperSetupMs)||0;}
+ function shotStart(e){return (Number(e.passDurationMs)||0)+shotSetup(e);}
+ // Short, close-to-body shooting-pocket lift, mirrored by attack direction.
+ // A full circle is reserved for fadeaways. Normal jumpers lift from the
+ // lower shooting side to the upper shooting side (about 1:30 or 10:30).
+ function jumperBall(shooter,age,duration,direction){
+   const progress=clamp(age/Math.max(1,duration),0,1);
+   const t=progress*progress*(3-2*progress);
+   const angle=lerp(Math.atan2(12,16),-Math.PI/4,t),r=lerp(20,32,t);
+   return {x:shooter.x+direction*r*Math.cos(angle),y:shooter.y+r*Math.sin(angle)};
+ }
+ function setupBall(e,shooter,age,direction){return e.fadeSetupMs?fadeBall(shooter,age,shotSetup(e),direction):jumperBall(shooter,age,shotSetup(e),direction);}
  function shotEnd(e){return shotStart(e)+SHOT_MS;}
  // The ball travels to twelve o'clock, makes one complete revolution around
  // the portrait, then releases from twelve o'clock. The circle follows the
@@ -27,10 +38,10 @@
  }
  function normalBall(e,age,shooter,rebounder,goal,direction){
    const passEnd=Number(e.passDurationMs)||0,start=shotStart(e),end=shotEnd(e);
-   const setup=Number(e.fadeSetupMs)||0;
+   const setup=shotSetup(e);
    if(age<passEnd)return shooter;
-   if(setup&&age<start)return fadeBall(shooter,age-passEnd,setup,direction);
-   const release=setup?fadeBall(shooter,setup,setup,direction):shooter;
+   if(setup&&age<start)return setupBall(e,shooter,age-passEnd,direction);
+   const release=setup?setupBall(e,shooter,setup,direction):shooter;
    if(age<end){
      const target=e.displayEvent==='block'?between(release,goal,.42):goal;
      return between(release,target,clamp((age-start)/SHOT_MS,0,1),e.displayEvent==='block'?24:65);
@@ -105,7 +116,7 @@
    if(e.displayEvent==='steal')return e.stealId;
    if(e.passOutcome==='intercepted')return e.interceptorId;
    if(e.passOutcome==='out-of-bounds')return null;
-   if(e.fadeSetupMs&&age>= (e.passDurationMs||0)&&age<shotStart(e))return e.shooter;
+   if(shotSetup(e)&&age>= (e.passDurationMs||0)&&age<shotStart(e))return e.shooter;
    if(e.foul)return null;
    if(e.reboundId&&!e.putbackAttempt&&age>=reboundEnd(e))return e.reboundId;
    return age<(e.passDurationMs||0)?e.shooter:null;
@@ -151,5 +162,5 @@
    if(frame.flying)return between(from,target,frame.progress,8);
    return target;
  }
- root.CourtMotion=Object.freeze({fadeBall,shotStart,movementFactor,movePlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ root.CourtMotion=Object.freeze({fadeBall,jumperBall,shotSetup,setupBall,shotStart,movementFactor,movePlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);

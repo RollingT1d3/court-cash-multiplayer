@@ -57,3 +57,9 @@ test('sound helper loads before app and controls stay outside room-specific view
   assert.match(app,/audio\?\.observe\(state\)/);
   assert.match(app,/audio\?\.reset\(\)/);
 });
+
+test('jumper gather delays rim and net sounds to the actual shot arrival',()=>{
+ const prev=s('sim',{game:{quarter:1,event:{id:1}}});
+ const next=s('sim',{game:{quarter:1,event:{id:2,at:1000,type:'three',made:true,passDurationMs:300,jumperSetupMs:230,transition:{durationMs:1450}}}});
+ assert.equal(plan(prev,next).find(c=>c.name==='swish').delay,1450+300+230+470);
+});

@@ -38,7 +38,7 @@
           const at=(name,ms)=>add(name,Math.max(0,lead+ms-age));
           if(lead&&age<lead){for(let ms=e.transition.kind==='inbound'?650:200;ms<lead;ms+=300){if(ms>=age)add('bounce',ms-age);}}
           const passLead=Array.isArray(e.passes)?Number(e.passDurationMs)||0:0;
-          const setup=Number(e.fadeSetupMs)||0;
+          const setup=Number(e.fadeSetupMs)||Number(e.jumperSetupMs)||0;
           const end=(Number(e.passDurationMs)||0)+setup+470;
           if(e.passes?.length)for(const p of e.passes){if(lead+p.startMs>=age)at('bounce',p.startMs);}
           const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(e.displayEvent);
