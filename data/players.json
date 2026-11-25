@@ -244,7 +244,7 @@
     "heightInches": 81,
     "archetype": "2-Way Rim Running Anchor",
     "overall": 90,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p007.webp",
     "stats": {
       "layup": 79,
@@ -639,7 +639,7 @@
     "heightInches": 77,
     "archetype": "Lockdown Sharpshooter",
     "overall": 90,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p017.webp",
     "stats": {
       "layup": 79,
@@ -1167,7 +1167,7 @@
     "heightInches": 83,
     "archetype": "Playmaking Titan",
     "overall": 92,
-    "weight": 0.2,
+    "weight": 0.39,
     "image": "/images/p031.webp",
     "stats": {
       "layup": 81,
@@ -1363,7 +1363,7 @@
     "heightInches": 76,
     "archetype": "High-Flying Shot Creator",
     "overall": 93,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p036.webp",
     "stats": {
       "layup": 95,
@@ -1396,7 +1396,7 @@
     "heightInches": 80,
     "archetype": "Explosive Paint Beast",
     "overall": 92,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p037.webp",
     "stats": {
       "layup": 90,
@@ -1480,7 +1480,7 @@
     "heightInches": 61,
     "archetype": "Athletic Anomaly",
     "overall": 92,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p039.webp",
     "stats": {
       "layup": 90,
@@ -1522,7 +1522,7 @@
     "heightInches": 78,
     "archetype": "Zen Sharpshooter",
     "overall": 91,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p040.webp",
     "stats": {
       "layup": 75,
@@ -1834,7 +1834,7 @@
     "heightInches": 82,
     "archetype": "Two-Way Interior Beast",
     "overall": 94,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p048.webp",
     "stats": {
       "layup": 89,
@@ -1903,7 +1903,7 @@
     "heightInches": 78,
     "archetype": "Two-Way Floor General",
     "overall": 90,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p050.webp",
     "stats": {
       "layup": 75,
@@ -2300,7 +2300,7 @@
     "heightInches": 89,
     "archetype": "Rim-Protecting Finisher",
     "overall": 91,
-    "weight": 1,
+    "weight": 0.4,
     "image": "/images/p061.webp",
     "stats": {
       "layup": 75,
@@ -2845,7 +2845,7 @@
     "heightInches": 84,
     "archetype": "Glass-Cleaning Rim Protector",
     "overall": 79,
-    "weight": 0.2,
+    "weight": 0.4,
     "image": "/images/p076.webp",
     "stats": {
       "layup": 50,
@@ -3181,7 +3181,7 @@
     "heightInches": 81,
     "archetype": "2-Way Slasher",
     "overall": 92,
-    "weight": 0.5,
+    "weight": 0.4,
     "image": "/images/p085.webp",
     "stats": {
       "layup": 89,
@@ -3485,7 +3485,7 @@
     "heightInches": 81,
     "archetype": "Glass-Cleaning Finisher",
     "overall": 79,
-    "weight": 0.5,
+    "weight": 0.51,
     "image": "/images/p093.webp",
     "stats": {
       "layup": 80,
@@ -4076,7 +4076,7 @@
     "heightInches": 80,
     "archetype": "Walking Bucket",
     "overall": 91,
-    "weight": 0.3,
+    "weight": 0.4,
     "image": "/images/p109.webp",
     "stats": {
       "layup": 89,
@@ -4117,7 +4117,7 @@
     "heightInches": 75,
     "archetype": "Sharpshooter",
     "overall": 79,
-    "weight": 0.2,
+    "weight": 0.3,
     "image": "/images/p110.webp",
     "stats": {
       "layup": 65,
@@ -4231,7 +4231,7 @@
     "heightInches": 78,
     "archetype": "2-Way Utility Guard",
     "overall": 79,
-    "weight": 0.2,
+    "weight": 0.4,
     "image": "/images/p113.webp",
     "stats": {
       "layup": 70,
@@ -4546,7 +4546,7 @@
     "heightInches": 79,
     "archetype": "Offensive Engine",
     "overall": 94,
-    "weight": 0.3,
+    "weight": 0.4,
     "image": "/images/p121.webp",
     "stats": {
       "layup": 90,
@@ -5852,7 +5852,7 @@
     "heightInches": 75,
     "archetype": "Inside-Out Scorer",
     "overall": 79,
-    "weight": 0.3,
+    "weight": 0.4,
     "image": "/images/p156.webp",
     "stats": {
       "layup": 80,
@@ -6525,7 +6525,7 @@
     "heightInches": 83,
     "archetype": "Three-Level Scorer",
     "overall": 78,
-    "weight": 0.2,
+    "weight": 0.3,
     "image": "/images/p174.webp",
     "stats": {
       "layup": 80,
@@ -6607,7 +6607,7 @@
     "heightInches": 76,
     "archetype": "2-Way Slasher",
     "overall": 79,
-    "weight": 0.3,
+    "weight": 0.4,
     "image": "/images/p176.webp",
     "stats": {
       "layup": 85,
@@ -6790,7 +6790,7 @@
     "heightInches": 83,
     "archetype": "Paint Beast",
     "overall": 79,
-    "weight": 0.2,
+    "weight": 0.4,
     "image": "/images/p181.webp",
     "stats": {
       "layup": 84,
@@ -7006,7 +7006,7 @@
     "heightInches": 74,
     "archetype": "Mid-Range Master",
     "overall": 78,
-    "weight": 0.1,
+    "weight": 0.2,
     "image": "/images/p187.webp",
     "stats": {
       "layup": 65,
