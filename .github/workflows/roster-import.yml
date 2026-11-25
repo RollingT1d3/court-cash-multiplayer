@@ -1,0 +1,62 @@
+name: Import finalized 200-player roster
+on:
+  push:
+    branches: [main]
+    paths: ['court-cash-200-player-game-update.zip']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: court-cash-roster-import
+  cancel-in-progress: false
+jobs:
+  import-roster:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate and install exact approved package
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, zipfile
+          from decimal import Decimal
+          archive = pathlib.Path('court-cash-200-player-game-update.zip')
+          assert hashlib.sha256(archive.read_bytes()).hexdigest() == 'b4d3ad688779dac638a00533237c871221af8d7f6db563568d100b3334bc327e', 'Unexpected package checksum'
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None, 'Corrupt archive'
+              players = json.loads(z.read('data/players.json'))
+              assert len(players) == 200
+              assert {p['id'] for p in players} == {f'p{i:03}' for i in range(1,201)}
+              assert len({p['name'] for p in players}) == 200
+              assert all(p['weight'] > 0 for p in players)
+              assert sum(Decimal(str(p['weight'])) for p in players) == Decimal('100.0')
+              assert sum(Decimal(str(p['weight'])) for p in players[:118]) == Decimal('66.6')
+              stats = {'layup','dunk','post','ft','mid','three','fades','passing','dribbling','paintDef','perimeterDef','block','steal','rebound','strength','speed','iq','teamwork','stamina'}
+              assert all(set(p['stats']) == stats and all(isinstance(v,(int,float)) and 0 <= v <= 100 for v in p['stats'].values()) for p in players)
+              assert all(p['image'] == '/images/' + p['id'] + '.webp' for p in players)
+              expected = {'data/players.json', 'INSTALL.txt'} | {'public'+p['image'] for p in players}
+              assert set(z.namelist()) == expected and len(z.namelist()) == len(expected)
+              for p in players:
+                  raw = z.read('public'+p['image'])
+                  assert raw[:4] == b'RIFF' and raw[8:12] == b'WEBP'
+              for path in sorted(expected - {'INSTALL.txt'}):
+                  dest = pathlib.Path(path)
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  dest.write_bytes(z.read(path))
+          print('Validated: 200 players, 200 portraits, 3,800 attributes, 100% wheel weight. No placeholders.')
+          PY
+      - name: Test existing game
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+      - name: Commit roster and artwork together
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/players.json public/images/p*.webp
+          git rm court-cash-200-player-game-update.zip
+          git commit -m "Replace all 32 test players with 200 official Court Cash players"
+          git push origin HEAD:main
