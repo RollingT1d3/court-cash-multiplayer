@@ -105,3 +105,12 @@
 .room-navigation{display:flex;justify-content:flex-start;padding-top:12px}
 .leave-room{background:#151f2d;color:#f2f6fa;border:1px solid #344258;border-radius:9px;font-size:13px;padding:8px 13px;font-weight:800}
 .leave-room:hover:enabled{border-color:#ff7087;color:#ffb0ba}
+
+/* Sound controls are available on the menu and throughout each match. */
+.topbar-tools{display:flex;align-items:center;gap:15px;flex-wrap:wrap;justify-content:flex-end;min-width:0}
+.sound-controls{display:flex;align-items:center;gap:7px;white-space:nowrap;color:var(--muted);font-size:11px}
+.sound-controls button{background:#151f2d;color:var(--txt);border:1px solid #344258;border-radius:7px;padding:6px 8px;font-size:12px}
+.sound-controls label{font-size:11px;letter-spacing:0}
+.sound-controls input[type=range]{width:86px;padding:0;border:0;accent-color:var(--lime);cursor:pointer}
+.sound-controls output{min-width:30px;text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:650px){.topbar{height:auto;min-height:78px;flex-wrap:wrap;padding:10px 0}.topbar-tools{gap:8px;justify-content:flex-start}.sound-controls input[type=range]{width:72px}.sound-controls label{display:none}}

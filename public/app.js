@@ -39,6 +39,22 @@
   let lastRoomPhase=null, wheelSize=390, noticeTimer=null, intermissionPrep=false;
   let canvasPositions = new Map(), courtImages = new Map(), rosterImages = new Map(), frameRunning=false;
   let syncOffset=0;
+  const audio=window.CourtCashAudio?.createEngine(window);
+  function syncAudioControls(){
+    if(!audio)return;
+    const s=audio.getSettings();
+    $('sound-volume').value=Math.round(s.volume*100);
+    $('sound-value').textContent=Math.round(s.volume*100)+'%';
+    $('sound-mute').textContent=s.muted?'🔇 Unmute':'🔊 Mute';
+    $('sound-mute').setAttribute('aria-pressed',String(s.muted));
+  }
+  if(audio){
+    syncAudioControls();
+    $('sound-volume').addEventListener('input',e=>{audio.unlock();audio.setVolume(Number(e.target.value)/100);syncAudioControls();});
+    $('sound-mute').addEventListener('click',()=>{audio.unlock();audio.setMuted(!audio.getSettings().muted);syncAudioControls();});
+    document.addEventListener('pointerdown',()=>audio.unlock(),{passive:true});
+    document.addEventListener('keydown',()=>audio.unlock());
+  }
   const ANKLE_STUMBLE_MS=1050, ANKLE_REACTIONS_MS=1150, POSTER_REACTIONS_MS=1250;
   // Fixed normalized positions for short comic reactions along the sidelines;
   // no random redraw flicker and never obscure the player names or main action.
@@ -82,13 +98,14 @@
   }
   function saveIdentity(v){identity=v;sessionStorage.setItem('court-cash-identity',JSON.stringify(v));connect();}
   function connect(){
+    audio?.reset();
     if(stream)stream.close();
     $('status-label').textContent='Connecting…';
     stream=new EventSource(`/events?code=${encodeURIComponent(identity.code)}&token=${encodeURIComponent(identity.token)}`);
     stream.onopen=()=>{$('status-label').textContent='Connected • '+identity.code;$('status-dot').classList.add('on');};
-    stream.onerror=()=>{$('status-label').textContent='Reconnecting…';$('status-dot').classList.remove('on');};
+    stream.onerror=()=>{audio?.reset();$('status-label').textContent='Reconnecting…';$('status-dot').classList.remove('on');};
     stream.onmessage=e=>{
-      try{state=JSON.parse(e.data);syncOffset=Date.now()-state.serverTime;render();}catch(err){console.error(err);}
+      try{state=JSON.parse(e.data);syncOffset=Date.now()-state.serverTime;audio?.observe(state);render();}catch(err){console.error(err);}
     };
   }
   $('create-form').addEventListener('submit',async e=>{
@@ -410,6 +427,7 @@
   }
   $('leave-room').addEventListener('click',leaveCurrentRoom);
   function returnToMainMenu(){
+    audio?.reset();
     if(stream){stream.close();stream=null;}
     identity=null;state=null;sessionStorage.removeItem('court-cash-identity');
     lastRenderKey='';lastRoomPhase=null;selectedFocus=null;currentPicked=null;

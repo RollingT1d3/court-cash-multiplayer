@@ -12,7 +12,7 @@
   <div id="shell">
     <header class="topbar">
       <div class="brand"><span class="brand-icon">🏀</span> COURT <b>CASH</b> <small>ALPHA v0.9.1</small></div>
-      <div class="status"><span id="status-dot" class="dot"></span><span id="status-label">Not in a room</span></div>
+      <div class="topbar-tools"><div class="sound-controls" role="group" aria-label="Sound settings"><button id="sound-mute" type="button" aria-pressed="false">🔊 Mute</button><label for="sound-volume">Volume</label><input id="sound-volume" type="range" min="0" max="100" step="1" value="45" aria-label="Master volume"><output id="sound-value" for="sound-volume">45%</output></div><div class="status"><span id="status-dot" class="dot"></span><span id="status-label">Not in a room</span></div></div>
     </header>
     <main id="app">
       <section id="welcome" class="welcome">
@@ -36,7 +36,7 @@
             <button class="secondary full" type="submit">JOIN ROOM →</button>
           </form>
         </div>
-        <p class="tip">Development build: temporary players and placeholder portraits. Real custom players can be added later.</p>
+        <p class="tip">Draft from 200 official Court Cash players. Sound effects begin after your first interaction.</p>
       </section>
       <section id="gameview" class="hide" aria-live="polite">
         <div class="room-navigation"><button id="leave-room" class="leave-room" type="button">← Leave Room</button></div>
@@ -137,6 +137,7 @@
   <!-- Load the reusable head-only court portrait cropping code before gameplay. -->
   <script src="/court-designs.js" defer></script>
   <script src="/court-headshots.js" defer></script>
+  <script src="/court-audio.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/admin-v09.js" defer></script>
 </body>
