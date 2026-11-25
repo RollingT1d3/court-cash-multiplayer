@@ -101,3 +101,24 @@ test('normal jumpers gather tightly on the shooting side and release toward the 
  assert.match(app,/motion\.setupBall\(event,d,resultAge,direction\)/);
  assert.match(server,/const jumperSetupMs=\['mid','three'\]\.includes\(type\)/);
 });
+
+
+test('made shots stay at the rim instead of drifting outward, in either direction',()=>{
+ for(const direction of [1,-1]){
+  const target={x:direction===1?880:60,y:260};
+  for(const type of ['mid','three','fade','layup','dunk']){
+   const e={type,made:true,displayEvent:type,passDurationMs:300,jumperSetupMs:['mid','three'].includes(type)?230:0,fadeSetupMs:type==='fade'?720:0};
+   for(const extra of [0,85,170,600]){
+    const ball=m.normalBall(e,m.shotEnd(e)+extra,shooter,null,target,direction);
+    close(ball.x,target.x);close(ball.y,target.y);
+   }
+  }
+  const put={putbackAttempt:true,putbackMade:true,made:true,reboundId:'p',rimBounces:2,displayEvent:'putback'};
+  const ball=m.normalBall(put,m.putbackEnd(put)+600,shooter,rebounder,target,direction);
+  close(ball.x,target.x);close(ball.y,target.y);
+  const ft=m.freeThrowFrame([true],m.FT_START+800,shooter,target,direction);
+  close(ft.ball.x,target.x);close(ft.ball.y,target.y);
+  const miss=m.normalBall({displayEvent:'miss',reboundId:'p',rimBounces:1},m.SHOT_MS+90,shooter,rebounder,target,direction);
+  assert.notEqual(miss.x,target.x);
+ }
+});

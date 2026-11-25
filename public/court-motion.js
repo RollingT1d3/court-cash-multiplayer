@@ -4,7 +4,7 @@
  const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
  const lerp=(a,b,t)=>a+(b-a)*t;
  const between=(a,b,t,lift=0)=>({x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t)-lift*4*t*(1-t)});
- const SHOT_MS=470,BOUNCE_MS=180,REBOUND_MS=260,PUTBACK_MS=300,NET_MS=170,FT_START=350,FT_STEP=850,TIP_MS=1800;
+ const SHOT_MS=470,BOUNCE_MS=180,REBOUND_MS=260,PUTBACK_MS=300,FT_START=350,FT_STEP=850,TIP_MS=1800;
  function shotSetup(e){return Number(e.fadeSetupMs)||Number(e.jumperSetupMs)||0;}
  function shotStart(e){return (Number(e.passDurationMs)||0)+shotSetup(e);}
  // Short, close-to-body shooting-pocket lift, mirrored by attack direction.
@@ -54,12 +54,12 @@
      if(age<reboundEnd(e))return between(origin,rebounder,clamp((age-bounceEnd)/REBOUND_MS,0,1),12);
      if(e.putbackAttempt){
        if(age<putbackEnd(e))return between(rebounder,goal,clamp((age-reboundEnd(e))/PUTBACK_MS,0,1),35);
-       if(e.putbackMade)return {x:goal.x+direction*16*clamp((age-putbackEnd(e))/NET_MS,0,1),y:goal.y};
+       if(e.putbackMade)return {...goal};
        return rimBounce(goal,Math.min(BOUNCE_MS,age-putbackEnd(e)),1,direction);
      }
      return {x:rebounder.x+direction*15,y:rebounder.y+12};
    }
-   if(e.made)return {x:goal.x+direction*16*clamp((age-end)/NET_MS,0,1),y:goal.y};
+   if(e.made)return {...goal};
    return goal;
  }
  function freeThrowFrame(results,age,shooter,goal,direction){
@@ -68,7 +68,7 @@
    const t=clamp(elapsed-index*FT_STEP,0,FT_STEP),made=results[index],release=120,arrival=550;
    let ball=shooter;
    if(t>=release&&t<arrival)ball=between(shooter,goal,(t-release)/(arrival-release),60);
-   else if(t>=arrival)ball=made?{x:goal.x+direction*16*clamp((t-arrival)/NET_MS,0,1),y:goal.y}:rimBounce(goal,Math.min(BOUNCE_MS,t-arrival),1,direction);
+   else if(t>=arrival)ball=made?{...goal}:rimBounce(goal,Math.min(BOUNCE_MS,t-arrival),1,direction);
    return {index,made,revealed:t>=arrival,ball,complete:age>=FT_START+results.length*FT_STEP};
  }
  function tipFrame(age,W,H,winningTeam){
