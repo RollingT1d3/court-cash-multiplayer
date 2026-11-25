@@ -551,6 +551,7 @@
   
   // Canvas rendering: gameplay results are computed on the server; all viewers animate the same event.
   function startCourtAnimation(){if(frameRunning)return;frameRunning=true;requestAnimationFrame(drawCourt);}
+  let transitionKey='',transitionStarts=new Map(),previousBall=null,transitionBallStart=null;
   function drawCourt(ms){
     if(!state?.game){frameRunning=false;return;}
     const el=$('court');const ctx=el.getContext('2d');const W=940,H=525;
@@ -558,7 +559,11 @@
     // Server picks one of four equally likely courts when each game starts.
     // The geometry includes fully connected NBA-style three-point arcs and corners.
     window.CourtDesigns.drawCourt(ctx,state.game.courtStyle,W,H);
-    const game=state.game,event=game.event;
+    const game=state.game,rawEvent=game.event;
+    // The server's pass geometry remains authoritative for gameplay. For the
+    // presentation, backcourt inbound anchors become frontcourt pass anchors
+    // after the separate visible inbound/advance stage.
+    const event=rawEvent?.transition&&rawEvent.passFrom?.x<.25?{...rawEvent,passFrom:{x:.60,y:rawEvent.passFrom.y}}:rawEvent;
     const offense=event?.offense??game.offense;
     const attackRight=event?.attackRight??(offense===0?(game.quarter<=2):!(game.quarter<=2));
     const targetGoal=attackRight?W-(17+5.25*(W/94)):(17+5.25*(W/94));
@@ -580,12 +585,17 @@
     const isFourOne=state.teams[1-offense].defense==='4-1 Zone';
     const isTwoTwoOne=state.teams[1-offense].defense==='2-2-1 Zone';
     const isBox=state.teams[1-offense].defense==='Box-and-One';
-    const eventAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
+    const rawAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
+    const tr=event?.transition,lead=tr?.durationMs||0,transitioning=!!tr&&rawAge<lead;
+    const eventAge=rawAge-lead;
+    const playAge=Math.max(0,eventAge);
     const motion=window.CourtMotion,goal={x:targetGoal,y:H/2},direction=attackRight?1:-1;
+    const key=state.code+':'+state.gameNumber+':'+(event?.id||0);
+    if(key!==transitionKey){transitionKey=key;transitionStarts=new Map([...canvasPositions].map(([id,p])=>[id,{...p}]));transitionBallStart=previousBall?{...previousBall}:null;}
     const tipAge=game.tipoff?Math.max(0,Date.now()-syncOffset-game.tipoff.at):Infinity;
     const tipping=!event&&tipAge<motion.TIP_MS&&state.phase==='sim';
     const tip=tipping?motion.tipFrame(tipAge,W,H,game.tipoff.winningTeam):null;
-    const freeThrow=event?.foul&&event.freeThrowResults?.length&&eventAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
+    const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&eventAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
     const shotEffectAge=eventAge-(event?motion.shotEnd(event):0);
     const putbackEffectAge=eventAge-(event?motion.putbackEnd(event):0);
     const present=new Set();
@@ -607,12 +617,12 @@
         if(attacking&&isPoint&&event?.pointRoutes&&eventAge<3000){
           const target=event.pointRoutes[id];
           if(target){
-            const progress=Math.min(1,eventAge/950);
+            const progress=Math.min(1,playAge/950);
             x=(anchor.x+(target.x-anchor.x)*progress)*W;
             y=(anchor.y+(target.y-anchor.y)*progress)*H;
             if(event.pointWingCut===id&&event.pointCutReturned){
               // Decoy wing cuts in before running back to the corner.
-              const dive=eventAge<750?eventAge/750:Math.max(0,1-(eventAge-750)/950);
+              const dive=playAge<750?playAge/750:Math.max(0,1-(playAge-750)/950);
               x+=.16*W*dive;y+=(.5-target.y)*H*dive;
             }
           }
@@ -628,14 +638,15 @@
           if(isRunGun&&event?.arcShooters?.includes(id)){x=.66*W;y=(id===event.arcShooters[0]?.27:.73)*H;}
         }
         if(attacking&&isHills&&event?.hillsRoutes&&eventAge<3500){
-          if(id===event.hillsInbounder){x=.18*W;y=.5*H;}
+          if(id===event.hillsInbounder){x=(tr?.durationMs? .60:.18)*W;y=.5*H;}
           else if(event.hillsRoutes[id]){
-            const t=Math.min(1,eventAge/1750);
+            const t=Math.min(1,playAge/1750);
             const route=event.hillsRoutes[id];
             const speed=1.07; // slight on-court movement boost
             const advance=Math.min(1,t*speed);
             const curve=Math.sin(Math.PI*advance)*(pos%2?.055:-.055);
-            x=(.30+(route.x-.30)*advance)*W;
+            const startX=tr?.durationMs? .60:.30;
+            x=(startX+(route.x-startX)*advance)*W;
             y=(anchor.y+(route.y-anchor.y)*advance+curve)*H;
           }
         }
@@ -661,14 +672,14 @@
         if(event?.interceptorId===id&&!attacking&&event.interceptionAt){
           x=event.interceptionAt.x*W;y=event.interceptionAt.y*H;
         }
-        if(event?.reboundId===id){x=.88*W;y=H*.58;}
+        if(event?.reboundId===id&&!transitioning&&eventAge>=motion.shotEnd(event)){x=.88*W;y=H*.58;}
         if(freeThrow){
           // One shooter at the foul line; the others line up outside the lane.
           if(id===event.shooter){x=W-(17+5.25*(W/94))-14*(W/94);y=H*.50;}
           else {const laneIndex=game.active[side].filter(pid=>pid!==event.shooter).indexOf(id);x=(.79+.045*Math.floor(laneIndex/2))*W;y=(laneIndex%2?.67:.33)*H; if(side===offense)y+=(laneIndex%2?1:-1)*.09*H;}
         }
         // Defender stumbles out of their assignment on a successful crossover.
-        const ankleStumble=event?.ankleBreaker&&event?.defender===id&&!attacking&&eventAge<ANKLE_STUMBLE_MS;
+        const ankleStumble=!transitioning&&event?.ankleBreaker&&event?.defender===id&&!attacking&&eventAge<ANKLE_STUMBLE_MS;
         if(ankleStumble){
           const sway=Math.sin(Math.PI*eventAge/ANKLE_STUMBLE_MS);
           x+=((pos%2)?1:-1)*23*sway;y+=14*sway;
@@ -679,8 +690,16 @@
           if(id===game.tipoff.centerIds[side]){x=W/2+sign*31;y=H/2-tip.jump;}
           else {x=W/2+sign*(105+pos%2*50);y=H*(pos<2?.25:.75);}
         }
-        const prev=canvasPositions.get(id)||{x,y};
-        const v=tipping?.25:isHills&&attacking?.072:(isPress||isTwoTwoOne)&&!attacking?.075:.060;prev.x+=(x-prev.x)*v;prev.y+=(y-prev.y)*v;canvasPositions.set(id,prev);
+        let prev=canvasPositions.get(id)||{x,y};
+        if(transitioning){
+          const start=transitionStarts.get(id)||{x:direction===1?W*.24:W*.76,y:H*(.18+pos*.16)};
+          prev=motion.transitionPosition(tr,rawAge,start,{x,y},side,offense,pos,id,W,H,direction);
+        }else{
+          const v=tipping?.25:isHills&&attacking?.072:(isPress||isTwoTwoOne)&&!attacking?.075:.060;
+          const dx=x-prev.x,dy=y-prev.y,dist=Math.hypot(dx,dy),step=Math.min(dist*v,12);
+          if(dist){prev.x+=dx/dist*step;prev.y+=dy/dist*step;}
+        }
+        canvasPositions.set(id,prev);
         const p=player(id);if(!p)continue;
         ctx.save();
         if(ankleStumble){
@@ -734,12 +753,12 @@
           ctx.font='36px system-ui';ctx.textAlign='center';ctx.fillText('🔥',prev.x,prev.y-45);
           ctx.restore();
         }
-        if(event?.ankleBreaker&&eventAge<ANKLE_STUMBLE_MS&&id===event.defender){
+        if(!transitioning&&event?.ankleBreaker&&eventAge<ANKLE_STUMBLE_MS&&id===event.defender){
           ctx.save();ctx.globalAlpha=Math.min(1,(ANKLE_STUMBLE_MS-eventAge)/240);
           ctx.font='29px system-ui';ctx.textAlign='center';
           ctx.fillText('😵‍💫',prev.x,prev.y-44);ctx.restore();
         }
-        if(event?.posterDunk&&eventAge<POSTER_REACTIONS_MS){
+        if(!transitioning&&event?.posterDunk&&eventAge<POSTER_REACTIONS_MS){
           ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-eventAge)/290);
           ctx.font='27px system-ui';ctx.textAlign='center';
           if(id===event.shooter)ctx.fillText('🗣️',prev.x,prev.y-44);
@@ -751,7 +770,8 @@
     for(const id of [...canvasPositions.keys()])if(!present.has(id))canvasPositions.delete(id);
     // Draw the ball from the authoritative event timeline, without rerolling outcomes.
     let ball=null,ftFrame=null;
-    if(tipping){ball=tip.ball;}
+    if(transitioning){ball=motion.transitionBall(tr,rawAge,canvasPositions,direction,transitionBallStart);}
+    else if(tipping){ball=tip.ball;}
     else if(!event&&game.tipoff){
       const receiver=canvasPositions.get(game.active[game.tipoff.winningTeam][0]);
       if(receiver)ball={x:receiver.x+16,y:receiver.y+12};
@@ -778,6 +798,7 @@
       } else ball={x:d.x+28,y:d.y+14};
     }
     if(ball){
+      previousBall={...ball};
       const bx=ball.x,by=ball.y;
       ctx.beginPath();ctx.fillStyle='#fc8c2f';ctx.strokeStyle='#45290e';ctx.lineWidth=2;ctx.arc(bx,by,9,0,2*Math.PI);ctx.fill();ctx.stroke();
       ctx.beginPath();ctx.moveTo(bx-9,by);ctx.lineTo(bx+9,by);ctx.moveTo(bx,by-9);ctx.lineTo(bx,by+9);ctx.stroke();
@@ -786,9 +807,14 @@
       ctx.save();ctx.textAlign='center';ctx.font='900 26px system-ui';ctx.fillStyle='#d0ff62';
       ctx.fillText(tip.won?state.teams[game.tipoff.winningTeam].name.toUpperCase()+' WINS THE TIP!':'JUMP BALL!',W/2,H*.14);ctx.restore();
     }
+    if(transitioning&&state.phase==='sim'){
+      ctx.save();ctx.textAlign='center';ctx.font='900 18px system-ui';ctx.fillStyle='#d0ff62';
+      const title=tr.kind==='inbound'?(rawAge<650?'INBOUND PASS':'BRINGING THE BALL UP'):tr.kind==='reset'?'RESETTING THE OFFENSE':'TRANSITION';
+      ctx.fillText(title,W/2,31);ctx.restore();
+    }
     // One short 🖐️ centered between the actual blocker and the blocked shooter.
     // Positions are the rendered, interpolated circle coordinates on this frame.
-    if(event?.displayEvent==='block'&&event?.blockId&&eventAge<850&&state.phase==='sim'&&
+    if(!transitioning&&event?.displayEvent==='block'&&event?.blockId&&eventAge<850&&state.phase==='sim'&&
        canvasPositions.has(event.blockId)&&canvasPositions.has(event.shooter)){
       const defender=canvasPositions.get(event.blockId),attacker=canvasPositions.get(event.shooter);
       const midX=(defender.x+attacker.x)/2,midY=(defender.y+attacker.y)/2;
@@ -796,7 +822,7 @@
       ctx.font='32px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText('🖐️',midX,midY);ctx.restore();
     }
-    if(event?.ankleBreaker&&state.phase==='sim'){
+    if(!transitioning&&event?.ankleBreaker&&state.phase==='sim'){
       courtReactionBurst(ctx,W,H,['🫪','😱','😯'],eventAge,ANKLE_REACTIONS_MS);
     }
     // Mid-range and three-point baskets use a brief WHITE scoreboard label at
@@ -809,7 +835,7 @@
       ctx.strokeText(text,targetGoal,H/2-58);ctx.fillText(text,targetGoal,H/2-58);
       ctx.restore();
     }
-    if(event?.posterDunk&&state.phase==='sim'){
+    if(!transitioning&&event?.posterDunk&&state.phase==='sim'){
       courtReactionBurst(ctx,W,H,['📸😯','📸','🫪'],eventAge,POSTER_REACTIONS_MS);
       if(eventAge<POSTER_REACTIONS_MS){
         ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-eventAge)/260);
@@ -824,25 +850,25 @@
       'steal':'✋ BALL STOLEN!',
       'eight-second-violation':'⏱ 8 SECOND VIOLATION!'
     }[event?.displayEvent];
-    if(turnoverBanner&&eventAge<1900&&state.phase==='sim'){
+    if(!transitioning&&turnoverBanner&&eventAge<1900&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1900-eventAge)/300);
       ctx.fillStyle='#101824e5';ctx.fillRect(W/2-230,H*.14,460,48);
       ctx.font='900 22px system-ui';ctx.fillStyle='#ffdb84';ctx.textAlign='center';
       ctx.fillText(turnoverBanner,W/2,H*.14+31);ctx.restore();
     }
-    if(event?.inboundAfterTimeout&&eventAge<1500&&state.phase==='sim'){
+    if(!transitioning&&event?.inboundAfterTimeout&&eventAge<1500&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/260);
       ctx.fillStyle='#091b2cce';ctx.fillRect(W/2-175,H*.78,350,34);
       ctx.fillStyle='#fff3ab';ctx.font='900 18px system-ui';ctx.textAlign='center';
       ctx.fillText('🏀 INBOUND AFTER TIMEOUT',W/2,H*.78+24);ctx.restore();
     }
-    if(event?.pointMode&&eventAge<1700&&state.phase==='sim'){
+    if(!transitioning&&event?.pointMode&&eventAge<1700&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1700-eventAge)/300);
       ctx.textAlign='center';ctx.font='900 19px system-ui';ctx.fillStyle='#ffdf84';
       ctx.fillText(`🎯 POINT + CENTER · ${event.pointMode.replaceAll('-',' ').toUpperCase()}`,W/2,H*.14);
       ctx.restore();
     }
-    if(event?.hillsMode&&eventAge<1750&&state.phase==='sim'){
+    if(!transitioning&&event?.hillsMode&&eventAge<1750&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1750-eventAge)/350);
       ctx.fillStyle='#14233fdf';ctx.fillRect(W/2-190,65,380,37);
       ctx.fillStyle='#cbff77';ctx.textAlign='center';ctx.font='900 19px system-ui';
@@ -853,7 +879,7 @@
       ctx.save();ctx.fillStyle='#ffe87f';ctx.textAlign='center';ctx.font='900 20px system-ui';
       ctx.fillText('PUTBACK!',W/2,H*.79);ctx.restore();
     }
-    if(event?.screen&&!event?.illegalScreen&&eventAge<1500&&state.phase==='sim'){
+    if(!transitioning&&event?.screen&&!event?.illegalScreen&&eventAge<1500&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/350);
       ctx.fillStyle='#112236da';ctx.fillRect(W/2-148,30,296,34);
       ctx.fillStyle='#d0ff62';ctx.font='900 19px system-ui';ctx.textAlign='center';
@@ -872,7 +898,7 @@
       ctx.fillText('🔥FROM DEEP!🔥',W/2,H*.43);
       ctx.restore();
     }
-    if(event?.foul&&eventAge<350){
+    if(!transitioning&&event?.foul&&eventAge<350){
       ctx.save();ctx.globalAlpha=Math.min(1,(2250-eventAge)/450);
       ctx.fillStyle='#0c1726e0';ctx.fillRect(W/2-190,16,380,42);
       ctx.fillStyle='#ffcc58';ctx.font='900 21px system-ui';ctx.textAlign='center';

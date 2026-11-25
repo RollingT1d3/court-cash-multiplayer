@@ -33,8 +33,10 @@
       const e=g.event;
       if(e&&e.id!==old.event?.id){
         const age=Math.max(0,Number(next.serverTime)-Number(e.at)||0);
-        if(age<1800){
-          const at=(name,ms)=>add(name,Math.max(0,ms-age));
+        const lead=e.transition?.durationMs||0;
+        if(age<1800+lead){
+          const at=(name,ms)=>add(name,Math.max(0,lead+ms-age));
+          if(lead&&age<lead){for(let ms=e.transition.kind==='inbound'?650:200;ms<lead;ms+=300){if(ms>=age)add('bounce',ms-age);}}
           const end=clamp(Number(e.passDurationMs)||0,0,1700)+470;
           const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(e.displayEvent);
           if(!turnover&&!e.foul){if(age<250)at('bounce',0);if(end>650&&age<500)at('bounce',300);}
@@ -47,7 +49,7 @@
           }
         }
       }
-      if(g.quarter>old.quarter)add('buzzer',1100);
+      if(g.quarter>old.quarter)add('buzzer',1100+(g.event?.transition?.durationMs||0));
     }
     if(['finished','intermission'].includes(next.phase)&&!['finished','intermission'].includes(prev.phase)){
       if(!next.result?.forfeit){add('buzzer',1250);add('cheer',1750);}

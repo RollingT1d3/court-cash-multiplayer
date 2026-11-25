@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { possessionTransition, possessionWindow } from './transition-rules.js';
 import { createAdminAPI } from './admin-v09.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
 import { BOX_AND_ONE, BOX_CHASER_FATIGUE, boxAssignments, boxShotDefenders, boxShotAdjustment } from './defense-box-one.js';
@@ -514,7 +515,8 @@ function simulatePlay(room){
   else if(deepThree)log(room,`🔥 FROM DEEP! 🔥 ${shooterName} drains a ${shotDistanceFt}-foot three-pointer!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else if(made)log(room,`${actionPrefix}${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
-  g.event={id:g.possessions,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,ankleBreaker,ankleBreakerHandler:ankleBreaker?shooter:null,ankleBreakerDefender:ankleBreaker?defender:null,deepThree,shotDistanceFt,shotClockRemaining,inboundAfterTimeout,
+  const transition=possessionTransition(g.event,offense,g.quarter,shooters,inboundAfterTimeout,passerId||shooter,hills?hillsPlay.inbounder:null);
+  g.event={id:g.possessions,quarter:g.quarter,transition,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,ankleBreaker,ankleBreakerHandler:ankleBreaker?shooter:null,ankleBreakerDefender:ankleBreaker?defender:null,deepThree,shotDistanceFt,shotClockRemaining,inboundAfterTimeout,
     screen,screenSetterId,screenBonus,illegalScreen,mismatch:huntMismatch&&!illegalScreen,kickout,
     passerId:illegalScreen||eightSecondViolation?null:passerId,passFrom:illegalScreen||eightSecondViolation?null:passFrom,
     passTo:illegalScreen||eightSecondViolation?null:passTo,passDurationMs:illegalScreen||eightSecondViolation?0:passDurationMs,
@@ -534,6 +536,7 @@ function simulatePlay(room){
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
     oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,freeThrowResults,
     rimBounces:!foul&&reboundId&&event!=='block'?1+(g.possessions%3):0,fouledOutPlayer,at:now()};
+  if(room.play)room.play.delay=possessionWindow(g.event,SIM_MS);
   // All voluntary substitutions are manual and require a timeout.
   g.offense=!putbackMade&&reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){
@@ -733,7 +736,7 @@ setInterval(()=>{
       room.game.timeoutInboundSide=room.timeout.possession;
       room.phase='sim';room.play={at:ms};room.timeout=null;broadcast(room);
     }
-    if(room.phase==='sim'&&ms-(room.play?.at||0)>=SIM_MS){
+    if(room.phase==='sim'&&ms-(room.play?.at||0)>=(room.play?.delay||SIM_MS)){
       room.play={at:ms};
       if(room.finishAnimation){const finish=room.finishAnimation;room.finishAnimation=null;finish();}
       else simulatePlay(room);

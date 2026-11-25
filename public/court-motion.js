@@ -52,5 +52,33 @@
    const tap=clamp((t-.57)/.35,0,1);
    return {jump:rise*28,ball:{x:W/2+direction*75*tap,y:H/2-10-95*rise+22*tap},won:t>=.57};
  }
- root.CourtMotion=Object.freeze({SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ function transitionPosition(tr,age,start,target,side,offense,slot,id,W,H,direction){
+   const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
+   const mirror=x=>direction===1?x:W-x;
+   const inbound=tr.kind==='inbound',sideline=tr.reason==='timeout'||tr.reason==='period'||tr.reason==='turnover';
+   const staging=id===tr.inbounderId?{x:mirror(sideline?.24*W:9),y:sideline?7:H/2}:id===tr.receiverId?{x:mirror(.19*W),y:H*.5}:null;
+   if(inbound&&staging){
+     if(age<320)return between(start,staging,ease(age/320));
+     if(age<650)return staging;
+     return between(staging,target,ease((age-650)/(tr.durationMs-650)));
+   }
+   const t=ease(age/tr.durationMs);
+   const lane=tr.kind==='reset'?0:Math.sin(Math.PI*t)*(slot%2?1:-1)*Math.min(26,Math.abs(target.x-start.x)*.08);
+   return {x:lerp(start.x,target.x,t),y:lerp(start.y,target.y,t)+lane};
+ }
+ function transitionBall(tr,age,positions,direction,lastBall){
+   const get=id=>positions.get(id),from=get(tr.sourceId),receiver=get(tr.receiverId),handler=get(tr.handlerId);
+   const hold=p=>p?{x:p.x+direction*15,y:p.y+12+Math.abs(Math.sin(age/105))*7}:null;
+   if(!from)return hold(handler||receiver)||lastBall;
+   if(tr.kind==='inbound'){
+     if(age<320&&lastBall)return between(lastBall,from,clamp(age/320,0,1),6);
+     if(age<320)return hold(from);
+     if(age<650&&receiver)return between(hold(from),hold(receiver),clamp((age-320)/330,0,1),12);
+   }
+   const carrier=tr.kind==='inbound'?receiver:from;
+   const exchange=tr.durationMs-240;
+   if(carrier&&handler&&carrier!==handler&&age>=exchange)return between(hold(carrier),hold(handler),clamp((age-exchange)/240,0,1),10);
+   return hold(carrier||handler||from);
+ }
+ root.CourtMotion=Object.freeze({transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);
