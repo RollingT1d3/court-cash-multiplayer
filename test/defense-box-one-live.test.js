@@ -19,7 +19,7 @@ test('Box-and-One is selectable and resolves a full game with a dedicated defend
  const until=async(fn,ms=11000)=>{const start=Date.now();while(Date.now()-start<ms){const val=await fn();if(val)return val;await delay(11);}throw Error('Timed out. '+err);};
  try{
   const health=await until(async()=>{try{const r=await fetch(root+'/health');return r.ok?await r.json():null;}catch{return null;}},2500);
-  assert.equal(health.version,'0.9.1');
+  assert.equal(health.version,'1.0.0');
   const a=await req('/api/create',{name:'Golden Guards',format:1});
   const b=await req('/api/join',{code:a.code,name:'Block City'});
   let snapshot;

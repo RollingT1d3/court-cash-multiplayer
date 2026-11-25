@@ -92,8 +92,8 @@ test('blocks produce a single brief hand emoji exactly between rendered blocker 
 
 test('version is 0.8.2 and all previous v0.8 celebrations and rematch UI remain',()=>{
  const app=read('public/app.js'),html=read('public/index.html');
- assert.equal(JSON.parse(read('package.json')).version,'0.9.1');
- assert.match(html,/ALPHA v0\.9\.1/);
+ assert.equal(JSON.parse(read('package.json')).version,'1.0.0');
+ assert.match(html,/ALPHA v1\.0/);
  assert.match(app,/SWISH!/);assert.match(app,/3PTS!/);
  assert.match(app,/🏆MVP🏆/);assert.match(app,/🔒DPOG🔒/);
  assert.match(app,/REMATCH!/);
