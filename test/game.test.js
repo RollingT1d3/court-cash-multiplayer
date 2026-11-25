@@ -65,6 +65,9 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     await action(a,'ready');await action(b,'ready');
     s=await until(async()=>{const x=await state(a);return x.phase==='sim'?x:null;});
     assert.equal(s.game.score.length,2);
+    assert.equal(s.game.quarter,1);
+    assert.equal(s.game.periodLength,600);
+    assert.ok(s.game.secondsLeft>0 && s.game.secondsLeft<=600);
     // One server-authoritative 25%-per-style selection, shared by both clients.
     assert.ok(['midnight-stars','dark-brown','blue-sky','whiteout'].includes(s.game.courtStyle));
     const otherScreen=await state(b);

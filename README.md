@@ -31,7 +31,7 @@ For a friend on another computer on the **same home network**, they can open `ht
 - OVR badges by tier; role-adjusted OVR on roster slots. Expandable weighted category ratings and individual attributes during bidding.
 - Six offensive schemes (including **Pure Chaos**) and five defensive schemes (including **3-2 Zone**); each affects the possession model. Plan adherence depends strongly on individual **Teamwork**.
 - Single-game or best-of-seven series, with scheme changes between games.
-- 48-minute game simulated at approximately 8 minutes of real time (plus timeouts and overtime), with a full-court 2D display, ten player markers, basketball ball movement, scoreboard, player statistics, stamina, fatigue effects, automatic substitutions, play-by-play, brief poster-dunk comic reactions (💪, 🗣️, 😢, 📸😯, 📸, 🫪), and a final box score.
+- 40-minute regulation game (four 10-minute quarters, with 3-minute overtime periods if tied), with a full-court 2D display, ten player markers, basketball ball movement, scoreboard, player statistics, stamina, fatigue effects, automatic substitutions, play-by-play, brief poster-dunk comic reactions (💪, 🗣️, 😢, 📸😯, 📸, 🫪), and a final box score.
 - Five 30-second timeouts **per game per team**. Only the team **in possession** may call timeout; only that team may manually substitute, but **both** teams may edit schemes. Caller can resume early, and its team inbounds afterward.
 - No injuries, no home-court advantage. Overtime if tied.
 
@@ -91,7 +91,7 @@ Run `npm test`. Automated integration tests exercise a real two-player game serv
 ## November 2026 gameplay update (v0.2)
 
 - **5 timeouts per team, per game**, reset for each game of a best-of-seven series; timeout may be called only by the team currently holding possession. That team inbounds when the timeout ends. Only the calling team can manually substitute during its timeout; both sides can update schemes.
-- **Simulation pacing:** Full 48-minute regulation over roughly 8 real minutes (with the default 3,250 ms possession interval); timeouts and overtime extend real duration. Fast automated tests can still override `SIM_MS`.
+- **Simulation pacing:** Full 40-minute regulation (four 10-minute quarters) with a default 3,250 ms base possession interval; animations, timeouts and any 3-minute overtime periods extend real duration. Fast automated tests can still override `SIM_MS`.
 - **Offensive discipline:** Individual Teamwork changes how strongly a player follows the selected shot distribution, star prioritization, ball movement and screen/mismatch plays. Low-Teamwork players are less likely to follow a play as called.
 - **Pure Chaos:** Extra screen actions, animated off-ball cutting, mismatch hunting using defensive ratings/height/strength, small shot-creation bonuses when executed, and modest stamina cost.
 - **3-2 Zone:** Three defenders high, two inside; improved outside contesting, weak inside protection and defensive rebounding.

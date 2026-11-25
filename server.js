@@ -3,7 +3,7 @@ import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-
 import { fastBreakPlan } from './fast-break-rules.js';
 import { passCount, passPath, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
 import { possessionTransition, possessionWindow } from './transition-rules.js';
-import { advancePeriod } from './period-rules.js';
+import { advancePeriod, REGULATION_QUARTER_SECONDS } from './period-rules.js';
 import './public/team-colors.js';
 const teamColors=globalThis.CourtTeamColors;
 import { createAdminAPI } from './admin-v09.js';
@@ -44,13 +44,13 @@ const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
 const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT];
 const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS,CLOG_THE_LANES,FOUR_ONE_ZONE,TWO_TWO_ONE_ZONE,BOX_AND_ONE];
-const BASE_SECONDS = 48*60;
 const TIMEOUTS_PER_GAME = 5;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
 const COIN_MS = Math.max(20,Number(process.env.COIN_MS)||3200);
 const SPIN_MS = Math.max(20,Number(process.env.SPIN_MS)||2600);
 const AUCTION_MS = Math.max(20,Number(process.env.AUCTION_MS)||30000);
-// ~148 possessions at ~19.5 simulated seconds each; 3.25 seconds/play ≈ 8 real minutes per 48-minute game.
+// ~123 possessions at ~19.5 simulated seconds each in 40-minute regulation;
+// animation windows can extend the base 3.25-second possession interval.
 // Timeouts and overtime add real time. For automated tests SIM_MS may be overridden.
 const SIM_MS = Math.max(10,Number(process.env.SIM_MS)||3250);
 const TICK_MS = Math.max(10,Number(process.env.TICK_MS)||150);
@@ -172,7 +172,7 @@ function startGame(room){
   const tipoff={...result,centerIds,centerHeights,at:now()};
   // Exactly one uniform 25%-each court selection per game, shared by both browsers.
   const courtStyle=chooseCourtStyle(rnd);
-  room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
+  room.game={score:[0,0],secondsLeft:REGULATION_QUARTER_SECONDS,quarter:1,periodLength:REGULATION_QUARTER_SECONDS,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
   room.phase='sim';room.play={at:now()};room.finishAnimation=null;room.log=[];room.timeout=null;room.foulout=null;room.rematchReady=[false,false];room.result=null;
   const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
   const favored=result.probabilities.map(p=>Math.round(p*100));

@@ -7,7 +7,8 @@ test('every overtime awards one timeout per team, preserving unused timeouts',()
   const game={quarter:4,period:'Q4',secondsLeft:0,score:[100,100]};
   assert.equal(advancePeriod(game,teams),'overtime');
   assert.equal(game.period,'OT1');
-  assert.equal(game.secondsLeft,300);
+  assert.equal(game.secondsLeft,180);
+  assert.equal(game.periodLength,180);
   assert.deepEqual(teams.map(t=>t.timeouts),[1,3]);
   assert.equal(advancePeriod(game,teams),'playing');
   assert.deepEqual(teams.map(t=>t.timeouts),[1,3]);
@@ -15,7 +16,8 @@ test('every overtime awards one timeout per team, preserving unused timeouts',()
   game.secondsLeft=0;game.score=[110,110];
   assert.equal(advancePeriod(game,teams),'overtime');
   assert.equal(game.period,'OT2');
-  assert.equal(game.secondsLeft,300);
+  assert.equal(game.secondsLeft,180);
+  assert.equal(game.periodLength,180);
   assert.deepEqual(teams.map(t=>t.timeouts),[1,4]);
   game.secondsLeft=0;game.score=[120,120];
   assert.equal(advancePeriod(game,teams),'overtime');
@@ -33,7 +35,8 @@ test('regulation transitions and non-tied regulation finishes grant no timeouts'
     game.secondsLeft=0;
     assert.equal(advancePeriod(game,teams),'regulation');
     assert.equal(game.period,'Q'+q);
-    assert.equal(game.secondsLeft,720);
+    assert.equal(game.secondsLeft,600);
+    assert.equal(game.periodLength,600);
   }
   game.secondsLeft=0;game.score=[100,99];
   assert.equal(advancePeriod(game,teams),'finished');
