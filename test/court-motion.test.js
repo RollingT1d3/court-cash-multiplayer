@@ -122,3 +122,22 @@ test('made shots stay at the rim instead of drifting outward, in either directio
   assert.notEqual(miss.x,target.x);
  }
 });
+
+
+test('off-ball attackers advance into the frontcourt in both directions without teleporting',()=>{
+ const W=940,anchor={x:.74,y:.2},back={x:170,y:105};
+ const target=m.frontcourtSupportTarget(back,anchor,W);
+ close(target.x,.74*W);close(target.y,105);
+ close(m.frontcourtSupportTarget({x:800,y:120},anchor,W).x,800);
+ for(const direction of [1,-1]){
+  const start={x:direction===1?90:850,y:105};
+  const dest={x:direction===1?target.x:W-target.x,y:target.y};
+  let p=start;
+  for(let i=0;i<60;i++)p=m.moveSupportPlayer(p,dest,1000/60,.7,W,direction);
+  assert.ok(direction===1?p.x>W/2:p.x<W/2);
+  assert.ok(Math.abs(p.x-dest.x)<Math.abs(start.x-dest.x));
+ }
+ const app=read('public/app.js');
+ assert.match(app,/motion\.frontcourtSupportTarget/);
+ assert.match(app,/motion\.moveSupportPlayer/);
+});

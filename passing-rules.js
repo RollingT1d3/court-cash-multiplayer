@@ -21,6 +21,11 @@ export function passCount(scheme,adherence,seconds,random=Math.random,minimum=0)
  for(;n<5;n++){r-=weights[n]*discipline+baseline[n]*(1-discipline);if(r<0)break;}
  return Math.min(cap,Math.max(minimum,n));
 }
+// Increase optional passing involvement for active players who have gone without a touch.
+// Retain each offensive strategy's preferred handlers and final passers.
+export function touchPriority(possessionsSinceTouch=0){
+ return 1+Math.min(10,Math.max(0,Number(possessionsSinceTouch)||0))*.30;
+}
 export function passPath(active,shooter,count,preferredFinal,preferredFirst,weight,random=Math.random){
  if(!count)return [shooter];
  const choose=ids=>{const w=ids.map(id=>Math.max(.01,weight(id))),sum=w.reduce((a,b)=>a+b,0);let r=random()*sum;for(let i=0;i<ids.length;i++){r-=w[i];if(r<0)return ids[i];}return ids.at(-1);};

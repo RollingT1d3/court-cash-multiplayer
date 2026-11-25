@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PASS_DISTRIBUTIONS,passCount,passPath,resolvePassChain} from '../passing-rules.js';
+import {PASS_DISTRIBUTIONS,passCount,passPath,touchPriority,resolvePassChain} from '../passing-rules.js';
 import {possessionWindow} from '../transition-rules.js';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
@@ -72,4 +72,14 @@ test('v1.0 passing shot boost honors every exact bracket and only the final imme
  assert.ok(Math.abs(boostedShotChance(.83,.075)-.905)<1e-10);
  assert.equal(boostedShotChance(.95,.10),1);
  assert.equal(boostedShotChance(.4,0),.4);
+});
+
+
+test('optional passers who have not touched the ball receive increased selection weight',()=>{
+ assert.equal(touchPriority(),1);assert.equal(touchPriority(10),4);assert.equal(touchPriority(100),4);
+ const ids=['pg','sg','sf','pf','c'];
+ const drought={c:10};
+ const count=(weighted)=>Array.from({length:1000},(_,i)=>passPath(ids,'pg',1,null,null,id=>weighted?touchPriority(drought[id]):1,()=>(i+.5)/1000)[0]).filter(id=>id==='c').length;
+ assert.ok(count(true)>count(false));
+ assert.equal(passPath(ids,'pg',1,'sg',null,id=>touchPriority(drought[id]),()=>.99)[0],'sg');
 });

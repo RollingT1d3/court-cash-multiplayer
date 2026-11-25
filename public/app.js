@@ -279,11 +279,11 @@
     $(where+'-left').innerHTML=teamPanel(0);$(where+'-right').innerHTML=teamPanel(1);
     bindRoster($(where+'-left'));bindRoster($(where+'-right'));
   }
-  function weightedRows(p){
+  function weightedRows(p,openAll=false){
     const parts=Object.entries(CAT);
     return parts.map(([name,attrs])=>{
       const rating=Math.round(attrs.reduce((n,[,key,w])=>n+p.stats[key]*w,0)/attrs.reduce((n,[,,w])=>n+w,0));
-      return `<details class="stat-category" data-cat="${name}" ${expanded.has(name)?'open':''}><summary>${name}<span style="margin-left:auto;color:var(--lime)">${rating}</span></summary>
+      return `<details class="stat-category" data-cat="${name}" ${openAll||expanded.has(name)?'open':''}><summary>${name}<span style="margin-left:auto;color:var(--lime)">${rating}</span></summary>
         ${attrs.map(([title,key])=>`<div class="stat-row"><span>${title}</span><strong>${p.stats[key]}</strong></div>`).join('')}</details>`;
     }).join('');
   }
@@ -370,9 +370,12 @@
     if(state.phase==='placement'){
       const p=player(state.pending.playerId);const owner=state.pending.winner;
       center.innerHTML=`<div class="smallcaps">SOLD • SPIN ${state.spinIndex}</div><h2 class="auction-heading">${esc(state.teams[owner].name)} GETS THE PICK!</h2>
-        <button class="pick-player" id="pick-new" type="button" ${isMine(owner)?'':'disabled'} style="background:transparent;padding:0">${portrait(p,'xl',owner===0?'blue':'red',true)}</button>
+        <button class="pick-player" id="pick-new" type="button" ${isMine(owner)?'':'disabled'} style="position:relative;background:transparent;padding:0">${portrait(p,'xl',owner===0?'blue':'red',true)}${badge(p)}</button>
         <h2 style="margin:10px 0">${esc(p.name)}</h2><p class="auction-sub">${isMine(owner)?'Drag this player into a position circle, or click the portrait and then the circle. Occupied spots send the replaced player to an empty bench spot first. Drag existing headshots to swap.':'Waiting for the drafting team to place their player.'}</p>
-        ${isMine(owner)?'<button id="next-spin" class="primary">NEXT SPIN →</button>':''}`;
+        ${isMine(owner)?'<button id="next-spin" class="primary">NEXT SPIN →</button>':''}
+        <section class="awarded-player-details" aria-label="Awarded player details" style="margin-top:16px;text-align:left"><div class="smallcaps">PLAYER DETAILS</div>
+          <p><strong>OVR:</strong> ${p.overall} • <strong>POS:</strong> ${esc(p.positions.join('/'))} • <strong>HEIGHT:</strong> ${formatHeight(p.heightInches)}</p>
+          <p>${esc(p.archetype)}</p>${weightedRows(p,true)}</section>`;
       const newPick=$('pick-new');
       if(newPick&&isMine(owner)){
         bindDragHeadshot(newPick,p,owner===0?'blue':'red');
@@ -693,13 +696,13 @@
           if(isRunGun&&event?.arcShooters?.includes(id)){x=.66*W;y=(id===event.arcShooters[0]?.27:.73)*H;}
         }
         if(attacking&&isHills&&event?.hillsRoutes&&eventAge<3500){
-          if(id===event.hillsInbounder){x=(tr?.durationMs? .60:.18)*W;y=.5*H;}
+          if(id===event.hillsInbounder){x=.60*W;y=.5*H;}
           else if(event.hillsRoutes[id]){
             const t=Math.min(1,playAge/1750);
             const route=event.hillsRoutes[id];
             const advance=Math.min(1,t); // movement boost is applied once by the motion model
             const curve=Math.sin(Math.PI*advance)*(pos%2?.055:-.055);
-            const startX=tr?.durationMs? .60:.30;
+            const startX=.60;
             x=(startX+(route.x-startX)*advance)*W;
             y=(anchor.y+(route.y-anchor.y)*advance+curve)*H;
           }
@@ -714,7 +717,7 @@
         }}
         // Animate the actual sender and receiver for each pass.
         const activePass=passFrame?.pass||(transitioning?chain?.[0]:null);
-        if(attacking&&activePass&&activePass.fromId===id){x=activePass.from.x*W;y=activePass.from.y*H;}
+        if(attacking&&activePass&&activePass.fromId===id&&!passFrame?.received){x=activePass.from.x*W;y=activePass.from.y*H;}
         else if(attacking&&activePass&&activePass.toId===id){
           x=activePass.to.x*W;y=activePass.to.y*H;
           if(passFrame?.final&&passFrame.received&&activePass.outcome==='complete'&&id===event.shooter&&(!event.foul||quickBreak)&&(!['steal','illegal-screen','eight-second-violation'].includes(event.displayEvent)||quickBreak)){
@@ -754,6 +757,12 @@
           const sway=Math.sin(Math.PI*resultAge/ANKLE_STUMBLE_MS);
           x+=((pos%2)?1:-1)*23*sway;y+=14*sway;
         }
+        // A passer who has released an outlet/kickout joins the other runners.
+        if(quickBreak&&attacking&&id===fb.thief&&id!==event.shooter&&!transitioning&&(!passFrame||passFrame.received)){x=anchor.x*W;y=anchor.y*H;}
+        // Off-ball attackers must advance even when not selected for a pass.
+        // Preserve real inbound, pass, shot (including deep threes) and free-throw positions.
+        const support=!!event&&attacking&&!transitioning&&!freeThrow&&id!==event.shooter&&carrier!==id&&!(activePass&&!passFrame?.received&&(activePass.fromId===id||activePass.toId===id));
+        if(support){const target=motion.frontcourtSupportTarget({x,y},anchor,W);x=target.x;y=target.y;}
         if(!attackRight)x=W-x;
         if(tipping){
           const sign=side===0?-1:1;
@@ -769,7 +778,7 @@
           const inboundStaging=tr.kind==='inbound'&&rawAge<650&&(id===tr.inbounderId||id===tr.receiverId);
           prev=inboundStaging?target:motion.movePlayer(canvasPositions.get(id)||start,target,frameDelta,moveFactor,true);
         }else{
-          prev=motion.movePlayer(prev,{x,y},frameDelta,tipping?moveFactor*2.5:moveFactor);
+          prev=support?motion.moveSupportPlayer(prev,{x,y},frameDelta,moveFactor,W,direction):motion.movePlayer(prev,{x,y},frameDelta,tipping?moveFactor*2.5:moveFactor);
         }
         canvasPositions.set(id,prev);
         ctx.save();

@@ -95,6 +95,16 @@
    const step=Math.min(distance,maxSpeed*factor*dt/1000,tracking?distance:distance*(1-Math.pow(.94,dt*factor/(1000/60))));
    return {x:start.x+dx/distance*step,y:start.y+dy/distance*step};
  }
+ // Keep supporting attackers in the attacking half; canonical x increases toward the basket.
+ function frontcourtSupportTarget(target,anchor,W){
+   return target.x<.54*W?{x:anchor.x*W,y:target.y}:{...target};
+ }
+ // A trailing off-ball runner uses full movement speed until crossing midcourt,
+ // rather than easing to a near stop while the possession changes around them.
+ function moveSupportPlayer(start,target,elapsed,factor,W,direction){
+   const behind=direction===1?start.x<W/2:start.x>W/2;
+   return movePlayer(start,target,elapsed,factor,behind);
+ }
  // Only the actual current ball carrier receives the dribbling modifier.
  function ballCarrier(e,rawAge,passFrame){
    if(!e)return null;
@@ -162,5 +172,5 @@
    if(frame.flying)return between(from,target,frame.progress,8);
    return target;
  }
- root.CourtMotion=Object.freeze({fadeBall,jumperBall,shotSetup,setupBall,shotStart,movementFactor,movePlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ root.CourtMotion=Object.freeze({fadeBall,jumperBall,shotSetup,setupBall,shotStart,movementFactor,movePlayer,frontcourtSupportTarget,moveSupportPlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);

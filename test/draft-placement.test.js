@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import net from 'node:net';
+import {readFileSync} from 'node:fs';
 import {setTimeout as delay} from 'node:timers/promises';
 
 test('draft replacements move immediately to bench first, then vacant starters; assigned players still swap',{timeout:30000},async()=>{
@@ -42,4 +43,15 @@ test('draft replacements move immediately to bench first, then vacant starters; 
   }
   const done=await state(a);assert.equal(done.phase,'lineup');assert.deepEqual(placed,[8,8]);
  }finally{child.kill();}
+});
+
+
+test('awarded player profile remains below the placement controls with all attributes initially expanded',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const placement=app.slice(app.indexOf("if(state.phase==='placement'){"),app.indexOf("if(state.phase==='lobby'){"));
+ assert.match(placement,/awarded-player-details/);
+ assert.match(placement,/weightedRows\(p,true\)/);
+ for(const key of ['p.overall','p.positions','p.heightInches','p.archetype'])assert.ok(placement.includes(key));
+ assert.match(placement,/bindDragHeadshot\(newPick,p/);
+ assert.match(placement,/next-spin/);
 });

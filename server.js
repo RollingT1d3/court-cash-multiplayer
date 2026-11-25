@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-rules.js';
 import { fastBreakPlan } from './fast-break-rules.js';
-import { passCount, passPath, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
+import { passCount, passPath, touchPriority, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
 import { possessionTransition, possessionWindow } from './transition-rules.js';
 import { advancePeriod, REGULATION_QUARTER_SECONDS } from './period-rules.js';
 import './public/team-colors.js';
@@ -172,7 +172,7 @@ function startGame(room){
   const tipoff={...result,centerIds,centerHeights,at:now()};
   // Exactly one uniform 25%-each court selection per game, shared by both browsers.
   const courtStyle=chooseCourtStyle(rnd);
-  room.game={score:[0,0],secondsLeft:REGULATION_QUARTER_SECONDS,quarter:1,periodLength:REGULATION_QUARTER_SECONDS,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
+  room.game={score:[0,0],secondsLeft:REGULATION_QUARTER_SECONDS,quarter:1,periodLength:REGULATION_QUARTER_SECONDS,offense:result.winningTeam,active,stats,touchDrought:{},possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
   room.phase='sim';room.play={at:now()};room.finishAnimation=null;room.log=[];room.timeout=null;room.foulout=null;room.rematchReady=[false,false];room.result=null;
   const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
   const favored=result.probabilities.map(p=>Math.round(p*100));
@@ -337,7 +337,7 @@ function simulatePlay(room){
   const preferredFinal=point?pointAction.passer:null;
   const preferredFirst=hills?hillsPlay.inbounder:null;
   let path=quickBreak?(fastBreak.mode==='solo'?[shooter]:[fastBreak.thief,shooter]):passPath(shooters,shooter,plannedPassCount,preferredFinal,preferredFirst,id=>rating(id,'passing')*planDiscipline(id)*
-    (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1),rnd);
+    (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1)*touchPriority(g.touchDrought?.[id]),rnd);
   if(fastBreak?.mode==='reset'&&path[0]!==fastBreak.thief&&seconds>=4){
     // Retain control through a real entry pass when the defense recovers.
     const maxPasses=Math.max(1,Math.min(5,Math.floor((seconds-4)/3)));
@@ -527,6 +527,15 @@ function simulatePlay(room){
       }
     }
   }
+  // Track actual touches, not planned passes that never happened after a turnover.
+  g.touchDrought??={};
+  const touched=new Set();
+  if(!eightSecondViolation&&!illegalScreen){
+    touched.add(firstHandler);
+    for(const pass of passes){touched.add(pass.fromId);if(pass.outcome==='complete')touched.add(pass.toId);}
+  }
+  if(reboundId&&shooters.includes(reboundId))touched.add(reboundId);
+  for(const id of shooters)g.touchDrought[id]=touched.has(id)?0:(g.touchDrought[id]??0)+1;
   const timeUsed=Math.min(seconds,g.secondsLeft);g.secondsLeft-=timeUsed;g.possessions++;
   const shooterName=getPlayer(shooter).name;
   const deepThree=isDeepThree(type,made,shotDistanceFt);
