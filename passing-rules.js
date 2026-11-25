@@ -27,7 +27,7 @@ export function passPath(active,shooter,count,preferredFinal,preferredFirst,weig
  const path=[shooter];
  for(let i=0;i<count;i++){
   const next=path[0],candidates=active.filter(id=>id!==next);
-  const preferred=i===count-1&&preferredFirst!==next?preferredFirst:i===0?preferredFinal:null;
+  const preferred=i===count-1&&candidates.includes(preferredFirst)?preferredFirst:i===0?preferredFinal:null;
   const unused=candidates.filter(id=>!path.includes(id));
   path.unshift(candidates.includes(preferred)?preferred:choose(unused.length?unused:candidates));
  }
