@@ -26,7 +26,7 @@
     const button=document.createElement('button');
     button.type='button';button.dataset.color=id;
     const swatch=document.createElement('span');swatch.className='team-color-swatch';swatch.style.background=hex;
-    swatch.setAttribute('aria-hidden','true');button.append(swatch,id[0].toUpperCase()+id.slice(1));
+    swatch.setAttribute('aria-hidden','true');button.append(swatch,id.replace(/\b\w/g,c=>c.toUpperCase()));
     button.addEventListener('click',()=>chooseColor(id));$('team-color-options').append(button);
   }
   syncColorPicker();

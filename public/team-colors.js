@@ -4,7 +4,8 @@
   const palette=Object.freeze({
     red:'#d84b4b',blue:'#4b6fd8',grey:'#7a7a7a',black:'#1f1f1f',white:'#f2f2f2',
     green:'#3fae5a',yellow:'#d8c84b',purple:'#8a55d8',pink:'#d86fb0',orange:'#d8893f',
-    sky:'#7f94ad',grass:'#6f8f6f',sun:'#ffd84a'
+    sky:'#7f94ad',grass:'#6f8f6f',sun:'#ffd84a',
+    poop:'#b58a5c','dog poop':'#624026',puke:'#aaff45',periwinkle:'#ccccff','other sky':'#a9d8f5'
   });
   const valid=id=>typeof id==='string'&&Object.hasOwn(palette,id);
   function choose(preferred,side,occupied){

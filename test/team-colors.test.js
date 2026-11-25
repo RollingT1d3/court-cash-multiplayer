@@ -2,9 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import '../public/team-colors.js';
 const {palette,valid,choose,ink}=globalThis.CourtTeamColors;
-test('all 13 team colors are validated, defaults remain blue and red, duplicates are rejected',()=>{
-  assert.equal(Object.keys(palette).length,13);
+test('all 18 team colors are validated, defaults remain blue and red, duplicates are rejected',()=>{
+  assert.equal(Object.keys(palette).length,18);
   for(const id of Object.keys(palette)){assert.ok(valid(id));assert.equal(choose(id,0),id);}
+  for(const id of ['poop','dog poop','puke','periwinkle','other sky']){
+    assert.ok(valid(id));assert.equal(choose(id,1,'blue'),id);
+    assert.throws(()=>choose(id,1,id),/already taken/);
+  }
   assert.equal(choose(null,0),'blue');
   assert.equal(choose(null,1,'blue'),'red');
   assert.equal(choose(null,1,'red'),'blue');
