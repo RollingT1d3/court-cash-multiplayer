@@ -52,7 +52,49 @@
    const tap=clamp((t-.57)/.35,0,1);
    return {jump:rise*28,ball:{x:W/2+direction*75*tap,y:H/2-10-95*rise+22*tap},won:t>=.57};
  }
- function transitionPosition(tr,age,start,target,side,offense,slot,id,W,H,direction){
+ // Same relative speed/energy/handle model as the server's fast-break planner.
+ // Normalize against a fresh 75 Speed player moving without the ball.
+ function movementFactor(stats={},energy=100,carrying=false,strategyBoost=1){
+   const stat=(key,fallback)=>clamp(Number.isFinite(stats?.[key])?stats[key]:fallback,0,100);
+   const stamina=.70+.30*clamp(Number.isFinite(energy)?energy:100,0,100)/100;
+   const handle=carrying?.67+stat('dribbling',75)*.0025:1;
+   return (12+stat('speed',75)*.16)/24*stamina*handle*strategyBoost;
+ }
+ // Time-based movement is independent of display refresh rate. A player
+ // approaching a target eases into it without teleporting or overshooting.
+ function movePlayer(start,target,elapsed,factor=1,tracking=false){
+   const dt=clamp(Number(elapsed)||0,0,64);
+   const dx=target.x-start.x,dy=target.y-start.y,distance=Math.hypot(dx,dy);
+   if(!distance||!dt)return {...start};
+   const maxSpeed=tracking?1100:720;
+   const step=Math.min(distance,maxSpeed*factor*dt/1000,tracking?distance:distance*(1-Math.pow(.94,dt*factor/(1000/60))));
+   return {x:start.x+dx/distance*step,y:start.y+dy/distance*step};
+ }
+ // Only the actual current ball carrier receives the dribbling modifier.
+ function ballCarrier(e,rawAge,passFrame){
+   if(!e)return null;
+   const tr=e.transition,lead=tr?.durationMs||0,age=rawAge-lead;
+   if(tr&&rawAge<lead){
+     if(tr.kind==='inbound'){
+       if(rawAge<320)return tr.sourceId;
+       if(rawAge<650)return null;
+     }
+     const id=tr.kind==='inbound'?tr.receiverId:tr.sourceId;
+     return id!==tr.handlerId&&rawAge>=lead-240?null:id;
+   }
+   if(passFrame){
+     const p=passFrame.pass;
+     if(passFrame.flying)return null;
+     if(!passFrame.received)return p.fromId;
+     return p.outcome==='complete'?p.toId:p.outcome==='intercepted'?p.interceptorId:null;
+   }
+   if(e.displayEvent==='steal')return e.stealId;
+   if(e.passOutcome==='intercepted')return e.interceptorId;
+   if(e.passOutcome==='out-of-bounds'||e.foul)return null;
+   if(e.reboundId&&!e.putbackAttempt&&age>=reboundEnd(e))return e.reboundId;
+   return age<(e.passDurationMs||0)?e.shooter:null;
+ }
+ function transitionPosition(tr,age,start,target,side,offense,slot,id,W,H,direction,factor=1){
    const ease=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
    const mirror=x=>direction===1?x:W-x;
    const inbound=tr.kind==='inbound',sideline=tr.reason==='timeout'||tr.reason==='period'||tr.reason==='turnover';
@@ -60,9 +102,9 @@
    if(inbound&&staging){
      if(age<320)return between(start,staging,ease(age/320));
      if(age<650)return staging;
-     return between(staging,target,ease((age-650)/(tr.durationMs-650)));
+     return between(staging,target,ease((age-650)*factor/Math.max(1,tr.durationMs-650)));
    }
-   const t=ease(age/tr.durationMs);
+   const t=ease(age*factor/Math.max(1,tr.durationMs));
    const lane=tr.kind==='reset'?0:Math.sin(Math.PI*t)*(slot%2?1:-1)*Math.min(26,Math.abs(target.x-start.x)*.08);
    return {x:lerp(start.x,target.x,t),y:lerp(start.y,target.y,t)+lane};
  }
@@ -93,5 +135,5 @@
    if(frame.flying)return between(from,target,frame.progress,8);
    return target;
  }
- root.CourtMotion=Object.freeze({passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ root.CourtMotion=Object.freeze({movementFactor,movePlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);

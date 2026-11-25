@@ -39,3 +39,38 @@ test('jump ball ends toward the actual tip winner; timing and integration are wi
  assert.match(server,/freeThrowResults/);assert.match(server,/finishAfterAnimation/);
  assert.ok(html.indexOf('/court-motion.js')<html.indexOf('/app.js'));
 });
+
+
+test('visual movement uses individual Speed, Dribbling, Energy and strategy multipliers',()=>{
+ const fresh=m.movementFactor({speed:75,dribbling:75},100,false);
+ close(fresh,1);
+ const quick=m.movementFactor({speed:99,dribbling:99},100,false);
+ const slow=m.movementFactor({speed:60,dribbling:60},100,false);
+ assert.ok(quick>slow);
+ close(quick/slow,27.84/21.6);
+ close(m.movementFactor({speed:75},0,false),.70);
+ close(m.movementFactor({speed:75},50,false),.85);
+ assert.ok(m.movementFactor({speed:90,dribbling:99},100,true)>m.movementFactor({speed:90,dribbling:60},100,true));
+ close(m.movementFactor({speed:75},100,false,1.07),1.07);
+ const start={x:100,y:250},target={x:850,y:250};
+ const run=(factor,frame,count)=>{let p=start;for(let i=0;i<count;i++)p=m.movePlayer(p,target,frame,factor);return p;};
+ assert.ok(run(quick,1000/60,30).x>run(slow,1000/60,30).x);
+ assert.ok(run(quick,1000/60,30).x>run(quick*.7,1000/60,30).x);
+ assert.ok(Math.abs(run(fresh,1000/60,30).x-run(fresh,1000/120,60).x)<4);
+ const tr={kind:'advance',durationMs:1450};
+ assert.ok(m.transitionPosition(tr,700,start,target,0,0,0,'p',940,525,1,quick).x>m.transitionPosition(tr,700,start,target,0,0,0,'p',940,525,1,slow).x);
+ assert.ok(m.movePlayer({x:849,y:250},target,64,quick).x<=850);
+});
+test('dribbling slowdown follows possession rather than every player on offense',()=>{
+ const event={transition:{kind:'advance',durationMs:1450,sourceId:'a',handlerId:'b'},passDurationMs:900,shooter:'c'};
+ assert.equal(m.ballCarrier(event,300,null),'a');
+ assert.equal(m.ballCarrier(event,1350,null),null);
+ const pass={fromId:'b',toId:'c',outcome:'complete'};
+ assert.equal(m.ballCarrier(event,1500,{pass,flying:false,received:false}),'b');
+ assert.equal(m.ballCarrier(event,1600,{pass,flying:true,received:false}),null);
+ assert.equal(m.ballCarrier(event,1800,{pass,flying:false,received:true}),'c');
+ assert.equal(m.ballCarrier(event,1800,{pass:{...pass,outcome:'intercepted',interceptorId:'d'},flying:false,received:true}),'d');
+ const app=read('public/app.js');
+ assert.match(app,/motion\.movementFactor\(p\.stats,energy,carrier===id,strategyBoost\)/);
+ assert.match(app,/motion\.movePlayer\(/);
+});

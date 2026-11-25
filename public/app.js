@@ -551,10 +551,13 @@
   
   // Canvas rendering: gameplay results are computed on the server; all viewers animate the same event.
   function startCourtAnimation(){if(frameRunning)return;frameRunning=true;requestAnimationFrame(drawCourt);}
-  let transitionKey='',transitionStarts=new Map(),previousBall=null,transitionBallStart=null;
+  let transitionKey='',transitionStarts=new Map(),previousBall=null,transitionBallStart=null,lastMotionFrame=null;
   function drawCourt(ms){
     if(!state?.game){frameRunning=false;return;}
     const el=$('court');const ctx=el.getContext('2d');const W=940,H=525;
+    const frameTime=Number.isFinite(ms)?ms:performance.now();
+    const frameDelta=lastMotionFrame===null?1000/60:Math.max(0,Math.min(64,frameTime-lastMotionFrame));
+    lastMotionFrame=frameTime;
     ctx.clearRect(0,0,W,H);
     // Server picks one of four equally likely courts when each game starts.
     // The geometry includes fully connected NBA-style three-point arcs and corners.
@@ -602,11 +605,16 @@
     const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&resultAge>=0&&resultAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
     const shotEffectAge=eventAge-(event?motion.shotEnd(event):0);
     const putbackEffectAge=eventAge-(event?motion.putbackEnd(event):0);
+    const carrier=motion.ballCarrier(event,rawAge,passFrame);
     const present=new Set();
     for(let side=0;side<2;side++){
       for(let pos=0;pos<5;pos++){
         const id=game.active[side][pos];if(!id)continue;present.add(id);
         const attacking=side===offense;
+        const p=player(id);if(!p)continue;
+        const energy=state.teams[side].energy[id]??100;
+        const strategyBoost=isHills&&attacking?1.07:(isPress||isTwoTwoOne)&&!attacking?1.25:1;
+        const moveFactor=motion.movementFactor(p.stats,energy,carrier===id,strategyBoost);
         const anchor=attacking?anchors:(isTwoTwoOne?twoTwoOneAnchors:isFourOne?fourOneAnchors:
           isPress?pressAnchors:isZone?zoneAnchors:defenseAnchors)[pos];
         let x=anchor.x*W,y=anchor.y*H;
@@ -646,8 +654,7 @@
           else if(event.hillsRoutes[id]){
             const t=Math.min(1,playAge/1750);
             const route=event.hillsRoutes[id];
-            const speed=1.07; // slight on-court movement boost
-            const advance=Math.min(1,t*speed);
+            const advance=Math.min(1,t); // movement boost is applied once by the motion model
             const curve=Math.sin(Math.PI*advance)*(pos%2?.055:-.055);
             const startX=tr?.durationMs? .60:.30;
             x=(startX+(route.x-startX)*advance)*W;
@@ -713,14 +720,15 @@
         let prev=canvasPositions.get(id)||{x,y};
         if(transitioning){
           const start=transitionStarts.get(id)||{x:direction===1?W*.24:W*.76,y:H*(.18+pos*.16)};
-          prev=motion.transitionPosition(tr,rawAge,start,{x,y},side,offense,pos,id,W,H,direction);
+          // Inbound staging is synchronized to the pass release/catch. After
+          // the catch every runner advances at their own movement factor.
+          const target=motion.transitionPosition(tr,rawAge,start,{x,y},side,offense,pos,id,W,H,direction,moveFactor);
+          const inboundStaging=tr.kind==='inbound'&&rawAge<650&&(id===tr.inbounderId||id===tr.receiverId);
+          prev=inboundStaging?target:motion.movePlayer(canvasPositions.get(id)||start,target,frameDelta,moveFactor,true);
         }else{
-          const v=tipping?.25:isHills&&attacking?.072:(isPress||isTwoTwoOne)&&!attacking?.075:.060;
-          const dx=x-prev.x,dy=y-prev.y,dist=Math.hypot(dx,dy),step=Math.min(dist*v,12);
-          if(dist){prev.x+=dx/dist*step;prev.y+=dy/dist*step;}
+          prev=motion.movePlayer(prev,{x,y},frameDelta,tipping?moveFactor*2.5:moveFactor);
         }
         canvasPositions.set(id,prev);
-        const p=player(id);if(!p)continue;
         ctx.save();
         if(ankleStumble){
           // Brief visible spin/stagger of the circular player portrait.
