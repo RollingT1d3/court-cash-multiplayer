@@ -11,10 +11,10 @@ export function shootingFoulChance(shotType, freeThrowRating) {
   if (!['three','mid','layup','dunk'].includes(shotType)) throw Error('Unrecognized shot type.');
   return (['three','mid'].includes(shotType) ? 0.02 : 0.05) + foulBonus(freeThrowRating);
 }
-export function shootFreeThrows(freeThrowRating, attempts, random = Math.random) {
+export function shootFreeThrows(freeThrowRating, attempts, random = Math.random, outcomes = null) {
   const probability = Math.max(0,Math.min(1,Number(freeThrowRating)/100));
   let made = 0;
-  for(let i=0;i<attempts;i++) if(random()<probability) made++;
+  for(let i=0;i<attempts;i++) {const hit=random()<probability;if(outcomes)outcomes.push(hit);if(hit)made++;}
   return {attempts,made};
 }
 export function eligibleBench(roster, active, disqualified) {

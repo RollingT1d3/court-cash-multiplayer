@@ -166,7 +166,7 @@ function startGame(room){
   // Exactly one uniform 25%-each court selection per game, shared by both browsers.
   const courtStyle=chooseCourtStyle(rnd);
   room.game={score:[0,0],secondsLeft:720,quarter:1,periodLength:720,offense:result.winningTeam,active,stats,possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
-  room.phase='sim';room.play={at:now()};room.log=[];room.timeout=null;room.foulout=null;room.rematchReady=[false,false];room.result=null;
+  room.phase='sim';room.play={at:now()};room.finishAnimation=null;room.log=[];room.timeout=null;room.foulout=null;room.rematchReady=[false,false];room.result=null;
   const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
   const favored=result.probabilities.map(p=>Math.round(p*100));
   log(room,`🏀 TIP-OFF: ${getPlayer(centerIds[0]).name} (${heights[0]}) vs ${getPlayer(centerIds[1]).name} (${heights[1]}) — odds ${favored[0]}/${favored[1]}. ${room.teams[result.winningTeam].name} wins the tip and starts with possession!`);
@@ -343,6 +343,7 @@ function simulatePlay(room){
     twoTwoOne&&twoTwoOneEightSecond(rnd);
   if(eightSecondViolation)seconds=Math.min(g.secondsLeft,8);
   let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null,fouledOutSide=null;
+  const freeThrowResults=[];
   fatigue(room,seconds,box?.chaser);
   // Constant motion and screening cost slightly more energy, especially when teamwork is low.
   if(chaos){for(const id of shooters)ot.energy[id]=clamp(ot.energy[id]-(.20+.30*(1-planDiscipline(id)))*(seconds/17),0,100);}
@@ -436,7 +437,7 @@ function simulatePlay(room){
       foul=true;fouler=defender;event='shooting-foul';
       g.stats[defender].pf++;
       freeThrowsAttempted=isThree?3:2;
-      const trips=shootFreeThrows(rating(shooter,'ft'),freeThrowsAttempted,rnd);
+      const trips=shootFreeThrows(rating(shooter,'ft'),freeThrowsAttempted,rnd,freeThrowResults);
       freeThrowsMade=trips.made;
       g.stats[shooter].fta+=trips.attempts;
       g.stats[shooter].ftm+=trips.made;
@@ -531,28 +532,37 @@ function simulatePlay(room){
     zonePositions,attackRight:offense===0?g.quarter<=2:g.quarter>2,
     screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],
-    oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,fouledOutPlayer,at:now()};
+    oldRebounder:oldSchool?roles.oldRebounder:null,foul,fouler,freeThrowsAttempted,freeThrowsMade,freeThrowResults,
+    rimBounces:!foul&&reboundId&&event!=='block'?1+(g.possessions%3):0,fouledOutPlayer,at:now()};
   // All voluntary substitutions are manual and require a timeout.
   g.offense=!putbackMade&&reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){
     if(g.quarter<4){g.quarter++;g.secondsLeft=720;g.period='Q'+g.quarter;log(room,`Start of quarter ${g.quarter}.`);}
     else if(g.score[0]===g.score[1]){g.quarter++;g.period='OT'+(g.quarter-4);g.secondsLeft=300;log(room,'Overtime!');}
-    else {completeGame(room);return;}
+    else {finishAfterAnimation(room,()=>completeGame(room));return;}
   }
   if(fouledOutPlayer){
     const side=fouledOutSide,slot=g.active[side].indexOf(fouledOutPlayer);
     const reserve=eligibleBench(room.teams[side].roster,g.active[side],g.fouledOut);
     if(!reserve.length){
-      // Edge case: the team no longer has five eligible players to field.
-      completeNoEligiblePlayers(room,side);return;
+      finishAfterAnimation(room,()=>completeNoEligiblePlayers(room,side));return;
     }
-    room.foulout={side,playerId:fouledOutPlayer,slot};
-    room.phase='foulout';
-    log(room,`🚫 ${getPlayer(fouledOutPlayer).name} FOULS OUT (6 PF). Game paused — ${room.teams[side].name} must choose a bench replacement.`);
+    finishAfterAnimation(room,()=>{
+      room.foulout={side,playerId:fouledOutPlayer,slot};
+      room.phase='foulout';
+      log(room,`🚫 ${getPlayer(fouledOutPlayer).name} FOULS OUT (6 PF). Game paused — ${room.teams[side].name} must choose a bench replacement.`);
+      broadcast(room);
+    });return;
   }
   broadcast(room);
 }
 
+// Keep the last possession visible before results or a mandatory substitution.
+// Accelerated integration tests still resolve without real-time animation delays.
+function finishAfterAnimation(room,finish){
+  if(SIM_MS<3000){finish();return;}
+  room.finishAnimation=finish;broadcast(room);
+}
 function completeNoEligiblePlayers(room,side){
   const winner=other(side);
   room.teams[winner].wins++;
@@ -665,6 +675,7 @@ function action(room,i,data){
     }
     case 'timeout':{
       if(room.phase!=='sim'||t.timeouts<1)throw Error('No timeouts available.');
+      if(room.finishAnimation)throw Error('Wait for the current play to finish.');
       // Possession is server-authoritative; a defending team cannot steal a
       // pause by pressing the API directly, even if its browser is stale.
       if(room.game?.offense!==i)throw Error('Your team must have the ball to call timeout.');
@@ -723,7 +734,9 @@ setInterval(()=>{
       room.phase='sim';room.play={at:ms};room.timeout=null;broadcast(room);
     }
     if(room.phase==='sim'&&ms-(room.play?.at||0)>=SIM_MS){
-      room.play={at:ms};simulatePlay(room);
+      room.play={at:ms};
+      if(room.finishAnimation){const finish=room.finishAnimation;room.finishAnimation=null;finish();}
+      else simulatePlay(room);
     }
     if(['auction','timeout','coinflip','wheel'].includes(room.phase)&&ms-lastBroadcastAt>=1000)broadcast(room);
     if(!['finished','lobby'].includes(room.phase)){

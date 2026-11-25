@@ -39,11 +39,11 @@
           const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(e.displayEvent);
           if(!turnover&&!e.foul){if(age<250)at('bounce',0);if(end>650&&age<500)at('bounce',300);}
           if(e.ankleBreaker)at('reaction',70);
-          if(e.foul||e.illegalScreen||e.displayEvent==='illegal-screen'||e.displayEvent==='eight-second-violation')at('whistle',Math.min(end,600));
+          if(e.foul||e.illegalScreen||e.displayEvent==='illegal-screen'||e.displayEvent==='eight-second-violation'){at('whistle',e.foul?0:Math.min(end,600));if(e.foul&&Array.isArray(e.freeThrowResults))e.freeThrowResults.forEach((made,i)=>at(made?'swish':'rim',350+i*850+550));}
           else if(!turnover){
-            if(e.putbackMade){at('rim',end);at('dunk',end+260);}
+            if(e.putbackMade){const count=e.rimBounces||1;for(let i=0;i<count;i++)at('rim',end+i*180);at('dunk',e.rimBounces?end+count*180+260+300:end+260);}
             else if(e.made)at(e.type==='dunk'||e.displayEvent==='dunk'?'dunk':'swish',end);
-            else if(e.displayEvent==='miss'||e.displayEvent==='block')at('rim',end);
+            else if(e.displayEvent==='miss'||e.displayEvent==='block'){const count=e.rimBounces||1;for(let i=0;i<count;i++)at('rim',end+i*180);}
           }
         }
       }

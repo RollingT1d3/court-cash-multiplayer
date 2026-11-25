@@ -93,3 +93,9 @@ test('six personal fouls pause the live game until a legal manual bench substitu
     await assert.rejects(()=>action(caller,'place',{playerId:f.playerId,slot:'PG'}),/fouled out/);
   } finally {child.kill();}
 });
+
+test('individual free throw results preserve the exact existing random draws and aggregate score',()=>{
+ const outcomes=[],dice=[.01,.60,.49];
+ assert.deepEqual(shootFreeThrows(50,3,()=>dice.shift(),outcomes),{attempts:3,made:2});
+ assert.deepEqual(outcomes,[true,false,true]);assert.equal(dice.length,0);
+});

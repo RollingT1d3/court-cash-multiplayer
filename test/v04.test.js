@@ -60,7 +60,7 @@ test('v0.4 front-end includes live new-strategy descriptions and both fire effec
     assert.ok(server.includes(name===RUN_AND_GUN?'RUN_AND_GUN':'OLD_SCHOOL_BUCKETS'));
   }
   assert.ok(app.includes("'🔥FROM DEEP!🔥'"));
-  assert.ok(app.includes("event?.deepThree&&eventAge<1650&&id===event.shooter"));
+  assert.ok(app.includes("event?.deepThree&&shotEffectAge>=0&&shotEffectAge<1250&&id===event.shooter"));
   assert.ok(app.includes("ctx.fillText('🔥',targetGoal,H/2-40)"));
   assert.ok(html.includes('Create a room') && html.includes('Join your friend'));
   assert.equal(html.includes('home-character-left'),false);
