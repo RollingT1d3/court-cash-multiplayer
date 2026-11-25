@@ -215,7 +215,7 @@ function fatigue(room,seconds,boxChaser=null){
         if(i===g.offense&&room.teams[other(i)].defense===TWO_TWO_ONE_ZONE)drain*=TWO_TWO_ONE_ATTACKER_FATIGUE_FACTOR;
         t.energy[id]=clamp((t.energy[id]??100)-drain,0,100);
         g.stats[id].seconds+=seconds;
-      }else t.energy[id]=clamp((t.energy[id]??100)+1.3*(seconds/17),0,100);
+      }else t.energy[id]=clamp((t.energy[id]??100)+1.5*(seconds/15),0,100);
     }
   }
 }

@@ -56,3 +56,25 @@ test('v0.8.4 fatigue emoji thresholds, small portrait overlay and exact-energy d
   assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version,'0.9.1');
   assert.match(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'),/ALPHA v0\.9\.1/);
 });
+
+test('bench recovery is 1.5 energy per 15 in-game seconds, capped at 100; active drain is unchanged',()=>{
+  const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+  const source=server.slice(server.indexOf('function fatigue('),server.indexOf('// Player teamwork'));
+  const fatigue=new Function('rating','clamp','other','FULL_COURT_PRESS','RUN_FOR_THE_HILLS','TWO_TWO_ONE_ZONE','BOX_AND_ONE',source+'\nreturn fatigue;')(
+    ()=>85,(n,a,b)=>Math.min(b,Math.max(a,n)),i=>1-i,'Full Court Press','Run For The Hills','2-2-1 Zone','Box-and-One');
+  const room={game:{active:[['a'],['c']],offense:0,stats:{a:{seconds:0},c:{seconds:0}}},teams:[
+    {roster:['a','b'],energy:{a:100,b:50},offense:'Team Ball',defense:'Man-to-Man'},
+    {roster:['c','d'],energy:{c:100,d:99},offense:'Team Ball',defense:'Man-to-Man'}
+  ]};
+  fatigue(room,15);
+  close(room.teams[0].energy.b,51.5);
+  close(room.teams[1].energy.d,100);
+  close(room.teams[0].energy.a,100-.73*15/17);
+  close(room.game.stats.a.seconds,15);
+  fatigue(room,45);
+  close(room.teams[0].energy.b,56);
+  fatigue(room,300);
+  close(room.teams[0].energy.b,86);
+  fatigue(room,150);
+  close(room.teams[0].energy.b,100);
+});
