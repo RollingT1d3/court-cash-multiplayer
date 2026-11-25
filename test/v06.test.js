@@ -112,7 +112,7 @@ test('strategies are selectable on both clients; server handles route/press/putb
   const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
   assert.match(server,/RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT\]/);
-  assert.match(server,/FULL_COURT_PRESS,CLOG_THE_LANES,FOUR_ONE_ZONE,TWO_TWO_ONE_ZONE\]/);
+  assert.match(server,/FULL_COURT_PRESS,CLOG_THE_LANES,FOUR_ONE_ZONE,TWO_TWO_ONE_ZONE,BOX_AND_ONE\]/);
   assert.match(server,/hills\?hillsPlay\.inbounder/);
   assert.match(server,/pressForcesEightSeconds\(rnd\)/);
   assert.match(server,/g\.stats\[passerId\|\|shooter\]\.tov\+\+/);

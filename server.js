@@ -127,11 +127,18 @@ function award(room,winner,cents){
   room.pending={winner,playerId:id};room.auction=null;room.phase='placement';room.wheel=null;
   broadcast(room);
 }
-function assignSlot(t,id,slot){
+function assignSlot(t,id,slot,duringDraft=false){
   if(!SLOTS.includes(slot)||!t.roster.includes(id))throw Error('Invalid player/slot.');
   const current=Object.entries(t.slots).find(([,value])=>value===id)?.[0];
   const displaced=t.slots[slot];
   if(current)t.slots[current]=displaced||null;
+  else if(duringDraft&&displaced){
+    // A newly drafted player can replace an occupied slot immediately.
+    // Keep the displaced player visible: prefer Sixth, Bench 1, Bench 2.
+    const destination=[...SLOTS.slice(5),...SLOTS.slice(0,5)].find(s=>s!==slot&&!t.slots[s]);
+    if(!destination)throw Error('No available roster slot for displaced player.');
+    t.slots[destination]=displaced;
+  }
   t.slots[slot]=id;
 }
 function fillSlots(t){
@@ -623,7 +630,7 @@ function action(room,i,data){
         g.active[i]=slotPlayers.slice(0,5);
         broadcast(room);break;
       }
-      assignSlot(t,id,slot);broadcast(room);break;
+      assignSlot(t,id,slot,room.phase==='placement');broadcast(room);break;
     }
     case 'next':{
       if(room.phase!=='placement'||room.pending?.winner!==i)throw Error('Only the winner may continue the draft.');

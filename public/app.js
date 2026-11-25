@@ -305,7 +305,7 @@
       const p=player(state.pending.playerId);const owner=state.pending.winner;
       center.innerHTML=`<div class="smallcaps">SOLD • SPIN ${state.spinIndex}</div><h2 class="auction-heading">${esc(state.teams[owner].name)} GETS THE PICK!</h2>
         <button class="pick-player" id="pick-new" type="button" ${isMine(owner)?'':'disabled'} style="background:transparent;padding:0">${portrait(p,'xl',owner===0?'blue':'red')}</button>
-        <h2 style="margin:10px 0">${esc(p.name)}</h2><p class="auction-sub">${isMine(owner)?'Drag this player into a position circle, or click the portrait and then the circle. Drag existing headshots to rearrange.':'Waiting for the drafting team to place their player.'}</p>
+        <h2 style="margin:10px 0">${esc(p.name)}</h2><p class="auction-sub">${isMine(owner)?'Drag this player into a position circle, or click the portrait and then the circle. Occupied spots send the replaced player to an empty bench spot first. Drag existing headshots to swap.':'Waiting for the drafting team to place their player.'}</p>
         ${isMine(owner)?'<button id="next-spin" class="primary">NEXT SPIN →</button>':''}`;
       const newPick=$('pick-new');
       if(newPick&&isMine(owner)){
