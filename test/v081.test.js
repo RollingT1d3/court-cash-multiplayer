@@ -84,7 +84,7 @@ test('two new defenses selectable in menu and timeout; both modify real server o
 
 test('blocks produce a single brief hand emoji exactly between rendered blocker and shooter',()=>{
  const app=read('public/app.js');
- assert.match(app,/event\?\.displayEvent==='block'&&event\?\.blockId&&eventAge<850/);
+ assert.match(app,/event\?\.displayEvent==='block'&&event\?\.blockId&&shotEffectAge>=0&&shotEffectAge<850/);
  assert.match(app,/canvasPositions\.has\(event\.blockId\)&&canvasPositions\.has\(event\.shooter\)/);
  assert.match(app,/const midX=\(defender\.x\+attacker\.x\)\/2,midY=\(defender\.y\+attacker\.y\)\/2/);
  assert.match(app,/ctx\.fillText\('🖐️',midX,midY\)/);

@@ -67,8 +67,9 @@ test('timeouts require server-side possession and preserve the ball on both resu
   assert.match(server,/room\.timeout=\{caller:i,possession:i,until:now\(\)\+30000\}/);
   assert.equal((server.match(/room\.game\.offense=room\.timeout\.possession/g)||[]).length,2);
   assert.equal((server.match(/room\.game\.timeoutInboundSide=room\.timeout\.possession/g)||[]).length,2);
-  assert.match(server,/passAttempt=inboundAfterTimeout\|\|hills/);
-  assert.match(server,/inboundAfterTimeout\?\{x:\.12,y:\.5\}/);
+  assert.match(server,/possessionTransition\(g\.event,offense,g\.quarter,shooters,inboundAfterTimeout,firstHandler/);
+  const transition=read('transition-rules.js');
+  assert.match(transition,/if\(timeout\)\{kind='inbound';reason='timeout';\}/);
   assert.match(app,/state\.game\.offense!==state\.you/);
   assert.match(app,/INBOUND AFTER TIMEOUT/);
 });

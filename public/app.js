@@ -656,7 +656,15 @@
         // Animate the actual sender and receiver for each pass.
         const activePass=passFrame?.pass||(transitioning?chain?.[0]:null);
         if(attacking&&activePass&&activePass.fromId===id){x=activePass.from.x*W;y=activePass.from.y*H;}
-        else if(attacking&&activePass&&activePass.toId===id){x=activePass.to.x*W;y=activePass.to.y*H;}
+        else if(attacking&&activePass&&activePass.toId===id){
+          x=activePass.to.x*W;y=activePass.to.y*H;
+          if(passFrame?.final&&passFrame.received&&activePass.outcome==='complete'&&id===event.shooter&&!event.foul&&!['steal','illegal-screen','eight-second-violation'].includes(event.displayEvent)){
+            const feet=event.shotDistanceFt??(event.type==='three'?25:12);
+            const settle=Math.min(1,Math.max(0,(eventAge-activePass.endMs)/310));
+            const shotX=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));
+            x+=(shotX-x)*settle;y+=(H*.50-y)*settle;
+          }
+        }
         else if(!Array.isArray(chain)&&event?.passerId===id&&attacking&&eventAge<event.passDurationMs+220){
           x=event.passFrom.x*W;y=event.passFrom.y*H;
         }else if(!Array.isArray(chain)&&event?.shooter===id&&attacking&&event.passerId&&eventAge<event.passDurationMs+220){
