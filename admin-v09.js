@@ -132,7 +132,7 @@ export function createAdminAPI({ root, players, wheelStore = null, onUpdate = ()
         const list = players.map(p => ({
           id: p.id, name: p.name, overall: p.overall, positions: p.positions,
           heightInches: p.heightInches, image: p.image,
-          courtPortrait: p.courtPortrait || null
+          courtPortrait: p.courtPortrait || null, defaultCourtPortrait: defaults.get(p.id) || null
         }));
         list.sort((a, b) => b.overall - a.overall || a.name.localeCompare(b.name));
         send(res, 200, { players: list });

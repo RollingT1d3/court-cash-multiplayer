@@ -79,3 +79,26 @@ test('v0.9 throttles incorrect admin code attempts', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('baked-in headshot defaults remain after admin reset, without altering player artwork or weights', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'court-cash-default-crops-'));
+  try {
+    const players = JSON.parse(readFileSync(new URL('../data/players.json', import.meta.url), 'utf8'));
+    assert.equal(players.length, 200);
+    assert.equal(players.filter(p => p.courtPortrait?.crop).length, 111);
+    const p = players.find(p => p.id === 'p019');
+    const base = structuredClone(p.courtPortrait);
+    assert.deepEqual(base.crop, { centerX: 0.57, top: 0, width: 0.5236 });
+    const art = p.image, weight = p.weight;
+    const api = createAdminAPI({ root: dir, players });
+    const token = (await call(api, '/api/admin/login', 'POST', {pin: '8371'})).body.token;
+    const edit = {centerX: .3, top: .1, width: .4};
+    assert.equal((await call(api, '/api/admin/portrait', 'POST', {id:p.id,crop:edit},token)).status,200);
+    assert.deepEqual(p.courtPortrait.crop,edit);
+    const list = await call(api, '/api/admin/players', 'GET', undefined, token);
+    assert.deepEqual(list.body.players.find(x=>x.id===p.id).defaultCourtPortrait,base);
+    assert.equal((await call(api, '/api/admin/portrait', 'POST', {id:p.id,crop:null},token)).status,200);
+    assert.deepEqual(p.courtPortrait,base);
+    assert.equal(p.image,art);assert.equal(p.weight,weight);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});

@@ -14,7 +14,7 @@
   const tierNames={star:'⭐ Star',gold:'Gold',green:'Green',blue:'Blue',silver:'Silver',poop:'💩 Poop'};
   const clamp = n => Math.max(0, Math.min(1, n));
   const formatHeight = inches => Math.floor(inches / 12) + "'" + inches % 12 + '"';
-  const defaultCrop = p => ({ ...window.CourtHeadshots.DEFAULT_CROP, width: p?.courtPortrait?.image ? 1 : window.CourtHeadshots.DEFAULT_CROP.width });
+  const defaultCrop = p => ({ ...window.CourtHeadshots.DEFAULT_CROP, width: p?.defaultCourtPortrait?.image || p?.courtPortrait?.image ? 1 : window.CourtHeadshots.DEFAULT_CROP.width, ...(p?.defaultCourtPortrait?.crop || {}) });
   const mainMenuVisible = () => !$('welcome').classList.contains('hide');
 
   function message(text, type = '') {
