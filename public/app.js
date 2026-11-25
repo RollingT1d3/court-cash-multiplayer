@@ -573,18 +573,19 @@
     const fourOneAnchors=[{x:.71,y:.17},{x:.73,y:.38},{x:.73,y:.62},{x:.71,y:.83},{x:.89,y:.50}];
     const twoTwoOneAnchors=[{x:.39,y:.29},{x:.39,y:.71},{x:.61,y:.30},{x:.61,y:.70},{x:.88,y:.50}];
     const pressAnchors=[{x:.32,y:.50},{x:.41,y:.22},{x:.42,y:.78},{x:.55,y:.37},{x:.55,y:.64}];
-    const scheme=state.teams[offense].offense;
+    const fb=event?.fastBreak,quickBreak=!!fb&&fb.mode!=='reset';
+    const scheme=quickBreak?'Fast Break':state.teams[offense].offense;
     const isChaos=scheme==='Pure Chaos';
     const isRunGun=scheme==='Run & Gun';
     const isOldSchool=scheme==='Old-School Buckets';
     const isHills=scheme==='Run For The Hills';
     const isPoint=scheme==='Play Through Point';
-    const isClog=state.teams[1-offense].defense==='Clog The Lanes';
-    const isPress=state.teams[1-offense].defense==='Full Court Press';
-    const isZone=state.teams[1-offense].defense==='3-2 Zone';
-    const isFourOne=state.teams[1-offense].defense==='4-1 Zone';
-    const isTwoTwoOne=state.teams[1-offense].defense==='2-2-1 Zone';
-    const isBox=state.teams[1-offense].defense==='Box-and-One';
+    const isClog=!quickBreak&&state.teams[1-offense].defense==='Clog The Lanes';
+    const isPress=!quickBreak&&state.teams[1-offense].defense==='Full Court Press';
+    const isZone=!quickBreak&&state.teams[1-offense].defense==='3-2 Zone';
+    const isFourOne=!quickBreak&&state.teams[1-offense].defense==='4-1 Zone';
+    const isTwoTwoOne=!quickBreak&&state.teams[1-offense].defense==='2-2-1 Zone';
+    const isBox=!quickBreak&&state.teams[1-offense].defense==='Box-and-One';
     const rawAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
     const tr=event?.transition,lead=tr?.durationMs||0,transitioning=!!tr&&rawAge<lead;
     const eventAge=rawAge-lead;
@@ -653,6 +654,11 @@
             y=(anchor.y+(route.y-anchor.y)*advance+curve)*H;
           }
         }
+        if(quickBreak){const target=(attacking?fb.targets:fb.recoveryTargets)?.[id];if(target){
+          const progress=fb.mode==='outlet'?Math.min(1,Math.max(0,rawAge/(lead+passLead||1))):1;
+          const origin=attacking?fb.starts[id]:null;
+          if(origin){x=(origin.x+(target.x-origin.x)*progress)*W;y=(origin.y+(target.y-origin.y)*progress)*H;}else{x=target.x*W;y=target.y*H;}
+        }}
         // Animate the actual sender and receiver for each pass.
         const activePass=passFrame?.pass||(transitioning?chain?.[0]:null);
         if(attacking&&activePass&&activePass.fromId===id){x=activePass.from.x*W;y=activePass.from.y*H;}
@@ -660,9 +666,9 @@
           x=activePass.to.x*W;y=activePass.to.y*H;
           if(passFrame?.final&&passFrame.received&&activePass.outcome==='complete'&&id===event.shooter&&!event.foul&&!['steal','illegal-screen','eight-second-violation'].includes(event.displayEvent)){
             const feet=event.shotDistanceFt??(event.type==='three'?25:12);
-            const settle=Math.min(1,Math.max(0,(eventAge-activePass.endMs)/310));
-            const shotX=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));
-            x+=(shotX-x)*settle;y+=(H*.50-y)*settle;
+            const settle=Math.min(1,Math.max(0,(eventAge-activePass.endMs)/(310+(quickBreak?fb.afterMs:0))));
+            const shotX=quickBreak?fb.shotTarget.x*W:Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));
+            x+=(shotX-x)*settle;y+=((quickBreak?fb.shotTarget.y:.50)*H-y)*settle;
           }
         }
         else if(!Array.isArray(chain)&&event?.passerId===id&&attacking&&eventAge<event.passDurationMs+220){
@@ -671,9 +677,9 @@
           x=event.passTo.x*W;y=event.passTo.y*H;
         }else if(event?.shooter===id&&attacking&&!activePass&&!['illegal-screen','pass-out-of-bounds','interception','eight-second-violation'].includes(event.displayEvent)){
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
-          x=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*.50;
+          x=quickBreak?fb.shotTarget.x*W:Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*(quickBreak?fb.shotTarget.y:.50);
         }
-        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress&&!isClog&&!isBox){x=.85*W;y=H*.53;}
+        if(!quickBreak&&event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress&&!isClog&&!isBox){x=.85*W;y=H*.53;}
         // The chaser tracks the target even off the ball; a zone defender closes out on other shooters.
         if(!attacking&&isBox&&event?.zoneDefense==='Box-and-One'){
           const follow=id===event.boxChaser?event.boxTarget:event.defender===id?event.shooter:null;
@@ -821,8 +827,11 @@
     }
     if(transitioning&&state.phase==='sim'){
       ctx.save();ctx.textAlign='center';ctx.font='900 18px system-ui';ctx.fillStyle='#d0ff62';
-      const title=tr.kind==='inbound'?(rawAge<650?'INBOUND PASS':'BRINGING THE BALL UP'):tr.kind==='reset'?'RESETTING THE OFFENSE':'TRANSITION';
+      const title=quickBreak?(fb.mode==='outlet'?'FAST BREAK · OUTLET':fb.mode==='kickout'?'FAST BREAK · DRIVE & KICK':'FAST BREAK'):fb?.mode==='reset'?'DEFENSE RECOVERS · SET OFFENSE':tr.kind==='inbound'?(rawAge<650?'INBOUND PASS':'BRINGING THE BALL UP'):tr.kind==='reset'?'RESETTING THE OFFENSE':'TRANSITION';
       ctx.fillText(title,W/2,31);ctx.restore();
+    }
+    if(quickBreak&&!transitioning&&state.phase==='sim'&&resultAge<850){
+      ctx.save();ctx.font='900 18px system-ui';ctx.textAlign='center';ctx.fillStyle='#d0ff62';ctx.fillText('⚡ FAST BREAK',W/2,31);ctx.restore();
     }
     if(passFrame&&state.phase==='sim'){
       const p=passFrame.pass;

@@ -27,5 +27,5 @@ export function possessionWindow(e,base){
   const end=e.foul?(Number(e.passDurationMs)||0)+350+(e.freeThrowResults?.length||0)*850:
     e.putbackAttempt?rebound+300+750:e.reboundId?rebound+220:
     e.deepThree?shot+1250:shot+850;
-  return lead+Math.max(base,end+100);
+  return lead+Math.max(e.fastBreak&&e.fastBreak.mode!=='reset'?Math.min(base,1750):base,end+100);
 }
