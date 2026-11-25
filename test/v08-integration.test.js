@@ -105,7 +105,7 @@ test('v0.8 two players: draft, Point vs Clog, award win, wait for two rematch co
   assert.deepEqual(snapshot.teams.map(t=>t.roster),originalRosters);
   assert.equal(snapshot.teams.reduce((total,t)=>total+t.wins,0),0);
   assert.deepEqual(snapshot.game.score,[0,0]);
-  assert.ok(snapshot.teams.every(t=>t.timeouts===5));
+  assert.ok(snapshot.teams.every(t=>t.timeouts===6));
   assert.equal(snapshot.teams[0].offense,'Play Through Point');
   assert.equal(snapshot.teams[1].defense,'Clog The Lanes');
  }finally{child.kill();}

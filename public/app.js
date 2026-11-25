@@ -428,7 +428,7 @@
     const panel=$('timeout-panel');if(state.phase!=='timeout'){panel.classList.add('hide');return;}
     const caller=state.timeout.caller;
     panel.classList.remove('hide');
-    panel.innerHTML=`<div class="timeout-card"><div class="timeout-info">⏸ ${esc(state.teams[caller].name)} CALLS TIMEOUT • <span data-timeout-count>30</span>s REMAINING</div>
+    panel.innerHTML=`<div class="timeout-card"><div class="timeout-info">⏸ ${esc(state.teams[caller].name)} CALLS TIMEOUT • <span data-timeout-count>${Math.max(0,Math.ceil((state.timeout.until-(Date.now()-syncOffset))/1000))}</span>s REMAINING</div>
     <p class="subtle">Both teams can change offensive and defensive schemes. Only the caller can manually substitute players.</p>
     <div class="flex-row" style="justify-content:flex-start;align-items:end;gap:16px">
       <label>OFFENSE <select id="timeout-offense">${OFFENSE.map(x=>`<option ${my().offense===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>

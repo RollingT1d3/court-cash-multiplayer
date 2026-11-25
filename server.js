@@ -44,7 +44,8 @@ const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
 const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT];
 const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS,CLOG_THE_LANES,FOUR_ONE_ZONE,TWO_TWO_ONE_ZONE,BOX_AND_ONE];
-const TIMEOUTS_PER_GAME = 5;
+const TIMEOUTS_PER_GAME = 6;
+const TIMEOUT_MS = 45000;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
 const COIN_MS = Math.max(20,Number(process.env.COIN_MS)||3200);
 const SPIN_MS = Math.max(20,Number(process.env.SPIN_MS)||2600);
@@ -739,7 +740,7 @@ function action(room,i,data){
             team.energy[id]=timeoutRecovery(team.energy[id]??100);
           }
         }
-        t.timeouts--;room.phase='timeout';room.timeout={caller:i,possession:i,until:now()+30000};
+        t.timeouts--;room.phase='timeout';room.timeout={caller:i,possession:i,until:now()+TIMEOUT_MS};
       room.game.timeoutInboundSide=i;
       log(room,`${t.name} calls timeout. Both teams may adjust schemes; only ${t.name} may substitute.`);broadcast(room);break;
     }

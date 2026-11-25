@@ -50,17 +50,17 @@ test('real two-client game: defending timeout rejected, offense inbounds after p
       s=await until(async()=>{const x=await state(a);return x.phase==='sim'?x:null;});
       const owner=s.game.offense;
       const caller=owner===0?a:b,defending=owner===0?b:a;
-      assert.equal(s.teams[1-owner].timeouts,5);
+      assert.equal(s.teams[1-owner].timeouts,6);
       await assert.rejects(()=>act(defending,'timeout'),/must have the ball/);
       let afterDenied=await state(a);
       assert.equal(afterDenied.phase,'sim');
-      assert.equal(afterDenied.teams[1-owner].timeouts,5);
+      assert.equal(afterDenied.teams[1-owner].timeouts,6);
       await act(caller,'timeout');
       s=await state(a);
       assert.equal(s.phase,'timeout');
       assert.equal(s.timeout.possession,owner);
       assert.equal(s.game.offense,owner);
-      assert.equal(s.teams[owner].timeouts,4);
+      assert.equal(s.teams[owner].timeouts,5);
       const oldPossessions=s.game.possessions;
       await sleep(190);
       s=await state(a);
@@ -96,6 +96,6 @@ test('real two-client game: defending timeout rejected, offense inbounds after p
       assert.equal(ankle.ankleBreakerDefender,ankle.defender);
       const after=await state(a);
       assert.ok(after.game.stats[ankle.shooter].ankleBreaks>=1);
-      assert.equal(after.teams[owner].timeouts,4);
+      assert.equal(after.teams[owner].timeouts,5);
     }finally{child.kill();}
   });

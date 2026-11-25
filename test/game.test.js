@@ -79,8 +79,8 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     assert.ok([0,1].includes(tip.winningTeam));
     assert.ok(Math.abs(tip.probabilities.reduce((a,b)=>a+b,0)-1)<1e-12);
     assert.equal(Math.abs(tip.centerHeights[0]-tip.centerHeights[1]),tip.heightDifference);
-    assert.equal(s.teams[0].timeouts,5);
-    assert.equal(s.teams[1].timeouts,5);
+    assert.equal(s.teams[0].timeouts,6);
+    assert.equal(s.teams[1].timeouts,6);
     // Only the team currently possessing the ball may call timeout.
     let callerIdx,caller,opponent;
     await until(async()=>{
@@ -91,7 +91,8 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
       catch(e){if(/must have the ball/.test(String(e)))return false;throw e;}
     },1800);
     s=await state(a);assert.equal(s.phase,'timeout');
-    assert.equal(s.teams[callerIdx].timeouts,4);
+    assert.ok(s.timeout.until-s.serverTime>44000 && s.timeout.until-s.serverTime<=45000);
+    assert.equal(s.teams[callerIdx].timeouts,5);
     assert.equal(s.timeout.possession,callerIdx);
     await action(opponent,'scheme',{offense:'Pure Chaos',defense:'3-2 Zone'});
     s=await state(a);
@@ -125,8 +126,8 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     },15000);
     assert.equal(s.game.quarter>=4,true);
     const overtimePeriods=Math.max(0,s.game.quarter-4);
-    assert.equal(s.teams[callerIdx].timeouts,4+overtimePeriods);
-    assert.equal(s.teams[1-callerIdx].timeouts,5+overtimePeriods);
+    assert.equal(s.teams[callerIdx].timeouts,5+overtimePeriods);
+    assert.equal(s.teams[1-callerIdx].timeouts,6+overtimePeriods);
     assert.equal(s.result.forfeit,false);
     assert.equal(s.teams.reduce((n,t)=>n+t.wins,0),1);
     assert.equal(s.game.score.reduce((n,v)=>n+v,0)>0,true);

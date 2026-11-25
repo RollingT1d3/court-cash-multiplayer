@@ -68,8 +68,8 @@ test('six personal fouls pause the live game until a legal manual bench substitu
     assert.equal(pause.game.stats[f.playerId].pf,6);
     assert.ok(pause.game.fouledOut.includes(f.playerId));
     assert.equal(pause.game.active[f.side][f.slot],f.playerId);
-    assert.equal(pause.teams[0].timeouts,5);
-    assert.equal(pause.teams[1].timeouts,5);
+    assert.equal(pause.teams[0].timeouts,6);
+    assert.equal(pause.teams[1].timeouts,6);
     const frozen=pause.game.possessions;
     await delay(200);
     let paused=await get(a);
@@ -85,8 +85,8 @@ test('six personal fouls pause the live game until a legal manual bench substitu
     assert.equal(resumed.foulout,null);
     assert.equal(resumed.game.active[f.side][f.slot],replacement);
     assert.ok(!resumed.game.active[f.side].includes(f.playerId));
-    assert.equal(resumed.teams[0].timeouts,5);
-    assert.equal(resumed.teams[1].timeouts,5);
+    assert.equal(resumed.teams[0].timeouts,6);
+    assert.equal(resumed.teams[1].timeouts,6);
     // Immediately during simulation, a timeout must not allow the disqualified player to return.
     const caller=resumed.game.offense===0?a:b;
     await action(caller,'timeout');

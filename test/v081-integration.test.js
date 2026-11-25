@@ -109,7 +109,7 @@ test('v0.8.2 two-player game: each new zone defends live plays, awards and remat
   assert.deepEqual(snapshot.teams.map(t=>t.roster),originalRosters);
   assert.equal(snapshot.teams.reduce((total,t)=>total+t.wins,0),0);
   assert.deepEqual(snapshot.game.score,[0,0]);
-  assert.ok(snapshot.teams.every(t=>t.timeouts===5));
+  assert.ok(snapshot.teams.every(t=>t.timeouts===6));
   assert.equal(snapshot.teams[0].offense,'Play Through Point');
   assert.equal(snapshot.teams[1].defense,'2-2-1 Zone');
  }finally{child.kill();}
