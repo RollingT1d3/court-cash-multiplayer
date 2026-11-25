@@ -118,8 +118,9 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
       return x.phase==='finished'?x:null;
     },15000);
     assert.equal(s.game.quarter>=4,true);
-    assert.equal(s.teams[callerIdx].timeouts,4);
-    assert.equal(s.teams[1-callerIdx].timeouts,5);
+    const overtimePeriods=Math.max(0,s.game.quarter-4);
+    assert.equal(s.teams[callerIdx].timeouts,4+overtimePeriods);
+    assert.equal(s.teams[1-callerIdx].timeouts,5+overtimePeriods);
     assert.equal(s.result.forfeit,false);
     assert.equal(s.teams.reduce((n,t)=>n+t.wins,0),1);
     assert.equal(s.game.score.reduce((n,v)=>n+v,0)>0,true);

@@ -3,6 +3,7 @@ import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-
 import { fastBreakPlan } from './fast-break-rules.js';
 import { passCount, passPath, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
 import { possessionTransition, possessionWindow } from './transition-rules.js';
+import { advancePeriod } from './period-rules.js';
 import { createAdminAPI } from './admin-v09.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
 import { BOX_AND_ONE, BOX_CHASER_FATIGUE, boxAssignments, boxShotDefenders, boxShotAdjustment } from './defense-box-one.js';
@@ -577,8 +578,9 @@ function simulatePlay(room){
   // All voluntary substitutions are manual and require a timeout.
   g.offense=!putbackMade&&reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){
-    if(g.quarter<4){g.quarter++;g.secondsLeft=720;g.period='Q'+g.quarter;log(room,`Start of quarter ${g.quarter}.`);}
-    else if(g.score[0]===g.score[1]){g.quarter++;g.period='OT'+(g.quarter-4);g.secondsLeft=300;log(room,'Overtime!');}
+    const nextPeriod=advancePeriod(g,room.teams);
+    if(nextPeriod==='regulation')log(room,`Start of quarter ${g.quarter}.`);
+    else if(nextPeriod==='overtime')log(room,'Overtime! Both teams receive one additional timeout.');
     else {finishAfterAnimation(room,()=>completeGame(room));return;}
   }
   if(fouledOutPlayer){
