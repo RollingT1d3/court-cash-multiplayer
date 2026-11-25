@@ -6,7 +6,8 @@
     green:'#3fae5a',yellow:'#d8c84b',purple:'#8a55d8',pink:'#d86fb0',orange:'#d8893f',
     sky:'#7f94ad',grass:'#6f8f6f',sun:'#ffd84a',
     poop:'#b58a5c','dog poop':'#624026',puke:'#aaff45',periwinkle:'#ccccff','other sky':'#a9d8f5',
-    highlighter:'#ffff00',rust:'#a34b32','night sky':'#303d52'
+    highlighter:'#ffff00',rust:'#a34b32','night sky':'#303d52',
+    flower:'#f6b9ce','burnt toast':'#82766c',fire:'#ff8000'
   });
   const valid=id=>typeof id==='string'&&Object.hasOwn(palette,id);
   function choose(preferred,side,occupied){
