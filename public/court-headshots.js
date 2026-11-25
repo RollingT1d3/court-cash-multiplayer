@@ -55,7 +55,7 @@
   }
 
   // A transparent canvas is the native drag image, not the entire roster row.
-  function drawDragPreview(ctx,image,player,size,side) {
+  function drawDragPreview(ctx,image,player,size,side,teamColor) {
     const center=size/2, inner=size-4;
     ctx.clearRect(0,0,size,size);
     ctx.save();
@@ -67,7 +67,7 @@
     }
     ctx.restore();
     ctx.beginPath();ctx.arc(center,center,center-1,0,Math.PI*2);
-    ctx.lineWidth=2;ctx.strokeStyle=side==='red'?'#ff859e':'#7cb7ff';ctx.stroke();
+    ctx.lineWidth=2;ctx.strokeStyle=teamColor||(side==='red'?'#ff859e':'#7cb7ff');ctx.stroke();
   }
 
   root.CourtHeadshots = Object.freeze({ DEFAULT_CROP, imageSource, cropRect, draw, drawDragPreview });

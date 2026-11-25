@@ -19,9 +19,12 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
   const until=async(predicate,timeout=12000)=>{const t=Date.now();while(Date.now()-t<timeout){const value=await predicate();if(value)return value;await delay(15);}throw Error('Timed out waiting for state. '+output);};
   try{
     await until(async()=>{try{const r=await fetch(base+'/health');return r.ok;}catch{return false;}},2500);
-    const a=await req('/api/create',{name:'Alpha',format:1});
-    const b=await req('/api/join',{code:a.code,name:'Bravo'});
+    const a=await req('/api/create',{name:'Alpha',format:1,color:'purple'});
+    await assert.rejects(()=>req('/api/join',{code:a.code,name:'Bravo',color:'purple'}),/already taken/);
+    const b=await req('/api/join',{code:a.code,name:'Bravo',color:'grass'});
     let s=await state(a);assert.equal(s.phase,'coinflip');assert.equal(s.teams.length,2);
+    assert.deepEqual(s.teams.map(t=>t.color),['purple','grass']);
+    assert.deepEqual((await state(b)).teams.map(t=>t.color),['purple','grass']);
     s=await until(async()=>{const x=await state(a);return x.phase==='auction'?x:null;});
     assert.equal(s.teams[s.coinWinner].name, s.teams[s.auction.opening].name);
     const initialChooser=s.auction.turn, winner=initialChooser===0?a:b,loser=initialChooser===0?b:a;

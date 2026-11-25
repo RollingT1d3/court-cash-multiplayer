@@ -124,3 +124,26 @@
 .portrait.auction-artwork.xl{width:192px;height:192px;border-radius:0;background:#0a121d}
 .portrait.auction-artwork>img{object-fit:contain}
 @media(max-width:590px){.portrait.auction-artwork.xl{width:112px;height:112px}}
+
+/* Personal team colors, scoped to the match so OVR tiers and warnings never change. */
+.welcome .team-color-entry{position:fixed;top:90px;left:max(20px,calc((100vw - 1740px)/2));z-index:8;display:grid;place-items:center;width:34px;height:34px;padding:0;background:#1876e9;border:1px solid #66b0ff;border-radius:4px;box-shadow:0 3px 13px #07172e99}
+.team-color-entry span{width:16px;height:16px;border-radius:50%;background:#fff}
+.team-color-picker{position:fixed;top:132px;left:max(20px,calc((100vw - 1740px)/2));z-index:20;width:min(320px,calc(100vw - 40px));max-height:calc(100dvh - 150px);overflow:auto;background:#101824;border:1px solid #35465b;border-radius:12px;padding:14px;box-shadow:0 12px 36px #0009;text-align:left}
+.team-color-picker[hidden]{display:none}
+.team-color-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.team-color-header button{padding:5px 9px;background:#26374d;color:#fff}
+.team-color-picker p{color:var(--muted);font-size:12px;margin:8px 0 12px}
+.team-color-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.team-color-options button{display:flex;flex-direction:column;align-items:center;gap:5px;background:#172337;border:1px solid #35465b;color:#fff;font-size:12px;padding:7px 4px}
+.team-color-swatch{width:28px;height:28px;border:1px solid #a9b5c7;border-radius:5px}
+.team-color-options button[aria-pressed="true"],#team-color-auto[aria-pressed="true"]{outline:2px solid var(--lime);outline-offset:-2px}
+#team-color-auto{margin-top:10px;width:100%;background:#26374d;color:#fff;font-size:12px}
+#gameview{--team-blue:#80b5ff;--team-red:#ff8999}
+#gameview .team-panel.left,#gameview .final-team-box.left{border-top:4px solid var(--team-blue)}
+#gameview .team-panel.right,#gameview .final-team-box.right{border-top:4px solid var(--team-red)}
+#gameview .portrait.blue:not(.fouled-out),#gameview .roster-headshot.blue:not(.fouled-out){border-color:var(--team-blue);box-shadow:0 0 0 1px #a6b2c4}
+#gameview .portrait.red:not(.fouled-out),#gameview .roster-headshot.red:not(.fouled-out){border-color:var(--team-red);box-shadow:0 0 0 1px #a6b2c4}
+#gameview .roster-list .slot:enabled:hover .roster-headshot,#gameview .roster-list .slot.selected-slot .roster-headshot,#gameview .roster-list .slot.drop-target .roster-headshot{outline:2px solid var(--lime)}
+#gameview .score-side:first-child .score-team,#gameview .room-versus>span:first-child{border-left:5px solid var(--team-blue);padding-left:8px}
+#gameview .score-side.end .score-team,#gameview .room-versus>span:last-child{border-right:5px solid var(--team-red);padding-right:8px}
+@media(max-width:750px){.welcome .team-color-entry{top:78px;left:14px}.team-color-picker{top:120px;left:14px;width:min(320px,calc(100vw - 28px));max-height:calc(100dvh - 134px)}}

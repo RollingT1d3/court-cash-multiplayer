@@ -16,6 +16,13 @@
     </header>
     <main id="app">
       <section id="welcome" class="welcome">
+        <button id="team-color-open" class="team-color-entry" type="button" aria-label="Choose team color" title="Team color" aria-expanded="false" aria-controls="team-color-picker"><span aria-hidden="true"></span></button>
+        <section id="team-color-picker" class="team-color-picker" aria-label="Choose team color" hidden>
+          <div class="team-color-header"><strong>TEAM COLOR</strong><button id="team-color-close" type="button" aria-label="Close color picker">✕</button></div>
+          <p>Choose your color before creating or joining a room.</p>
+          <div id="team-color-options" class="team-color-options"></div>
+          <button id="team-color-auto" type="button">Use default color</button>
+        </section>
         <button id="admin-open" class="admin-entry" type="button" aria-label="Open admin panel" title="Admin Panel">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
         </button>
@@ -162,6 +169,7 @@
   <script src="/court-headshots.js" defer></script>
   <script src="/court-motion.js" defer></script>
   <script src="/court-audio.js" defer></script>
+  <script src="/team-colors.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/admin-v09.js" defer></script>
 </body>

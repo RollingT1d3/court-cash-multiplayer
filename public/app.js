@@ -1,6 +1,40 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  const colors=window.CourtTeamColors;
+  const colorFor=side=>colors.valid(state?.teams?.[side]?.color)?state.teams[side].color:(side===0?'blue':'red');
+  let preferredColor=null;
+  try{const saved=localStorage.getItem('court-cash-team-color');if(colors.valid(saved))preferredColor=saved;}catch{}
+  function syncColorPicker(){
+    for(const button of $('team-color-options').querySelectorAll('button')){
+      button.setAttribute('aria-pressed',String(button.dataset.color===preferredColor));
+    }
+    $('team-color-auto').setAttribute('aria-pressed',String(preferredColor===null));
+    $('team-color-open').title=preferredColor?'Team color: '+preferredColor:'Team color: default';
+  }
+  function chooseColor(id){
+    preferredColor=id;
+    try{if(id===null)localStorage.removeItem('court-cash-team-color');else localStorage.setItem('court-cash-team-color',id);}catch{}
+    syncColorPicker();
+  }
+  function toggleColorPicker(open){
+    $('team-color-picker').hidden=!open;
+    $('team-color-open').setAttribute('aria-expanded',String(open));
+    if(open)$('team-color-options').querySelector('[aria-pressed="true"]')?.focus();
+  }
+  for(const [id,hex] of Object.entries(colors.palette)){
+    const button=document.createElement('button');
+    button.type='button';button.dataset.color=id;
+    const swatch=document.createElement('span');swatch.className='team-color-swatch';swatch.style.background=hex;
+    swatch.setAttribute('aria-hidden','true');button.append(swatch,id[0].toUpperCase()+id.slice(1));
+    button.addEventListener('click',()=>chooseColor(id));$('team-color-options').append(button);
+  }
+  syncColorPicker();
+  $('team-color-open').addEventListener('click',()=>toggleColorPicker($('team-color-picker').hidden));
+  $('team-color-close').addEventListener('click',()=>{toggleColorPicker(false);$('team-color-open').focus();});
+  $('team-color-auto').addEventListener('click',()=>chooseColor(null));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('team-color-picker').hidden){toggleColorPicker(false);$('team-color-open').focus();}});
+  document.addEventListener('click',e=>{if(!$('team-color-picker').hidden&&!$('team-color-picker').contains(e.target)&&!$('team-color-open').contains(e.target))toggleColorPicker(false);});
   const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
   const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets','Run For The Hills','Play Through Point'];
   const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press','Clog The Lanes','4-1 Zone','2-2-1 Zone','Box-and-One'];
@@ -97,7 +131,7 @@
     try {await api('/api/action',{code:identity.code,token:identity.token,type,...extra});}
     catch(e){toast(e.message);}
   }
-  function saveIdentity(v){identity=v;sessionStorage.setItem('court-cash-identity',JSON.stringify(v));connect();}
+  function saveIdentity(v){toggleColorPicker(false);identity=v;sessionStorage.setItem('court-cash-identity',JSON.stringify(v));connect();}
   function connect(){
     audio?.reset();
     if(stream)stream.close();
@@ -110,10 +144,10 @@
     };
   }
   $('create-form').addEventListener('submit',async e=>{
-    e.preventDefault();try{const result=await api('/api/create',{name:$('create-name').value,format:Number($('format').value)});saveIdentity(result);}catch(err){toast(err.message);}
+    e.preventDefault();try{const result=await api('/api/create',{name:$('create-name').value,format:Number($('format').value),color:preferredColor});saveIdentity(result);}catch(err){toast(err.message);}
   });
   $('join-form').addEventListener('submit',async e=>{
-    e.preventDefault();try{const result=await api('/api/join',{name:$('join-name').value,code:$('join-code').value.toUpperCase()});saveIdentity(result);}catch(err){toast(err.message);}
+    e.preventDefault();try{const result=await api('/api/join',{name:$('join-name').value,code:$('join-code').value.toUpperCase(),color:preferredColor});saveIdentity(result);}catch(err){toast(err.message);}
   });
   try {const old=JSON.parse(sessionStorage.getItem('court-cash-identity')||'null');if(old?.code&&old?.token)saveIdentity(old);}catch{}
   function tier(ovr){return ovr>=95?'star':ovr>=90?'gold':ovr>=85?'green':ovr>=80?'blue':ovr>=70?'silver':'poop';}
@@ -197,7 +231,7 @@
       const image=loaded||(src===p.image&&original?.complete&&original.naturalWidth>0?original:null);
       const ctx=canvas.getContext('2d');
       if(!ctx)return;
-      window.CourtHeadshots.drawDragPreview(ctx,image,p,size,side);
+      window.CourtHeadshots.drawDragPreview(ctx,image,p,size,side,colors.hex(colorFor(side==='red'?1:0)));
       // Keep it in the viewport for browsers that require a rendered drag image.
       const x=Math.max(0,Math.min(window.innerWidth-size,e.clientX-size/2));
       const y=Math.max(0,Math.min(window.innerHeight-size,e.clientY-size/2));
@@ -400,7 +434,7 @@
     </div>
     <div class="timeout-strategies" aria-live="polite"><div><span class="smallcaps">OFFENSE</span><div id="timeout-offense-description">${strategyInfo(my().offense,'offense')}</div></div>
     <div><span class="smallcaps">DEFENSE</span><div id="timeout-defense-description">${strategyInfo(my().defense,'defense')}</div></div></div>
-    ${caller===state.you?`<p class="subtle" style="margin-top:15px">Your active five and three bench players are below. Click a player and then the destination slot to substitute or change position.</p><div id="timeout-team" class="team-panel"></div>`:''}
+    ${caller===state.you?`<p class="subtle" style="margin-top:15px">Your active five and three bench players are below. Click a player and then the destination slot to substitute or change position.</p><div id="timeout-team" class="team-panel ${state.you===0?'left':'right'}"></div>`:''}
     </div>`;
     $('timeout-offense')?.addEventListener('change',e=>{$('timeout-offense-description').innerHTML=strategyInfo(e.target.value,'offense');act('scheme',{offense:e.target.value});});
     $('timeout-defense')?.addEventListener('change',e=>{$('timeout-defense-description').innerHTML=strategyInfo(e.target.value,'defense');act('scheme',{defense:e.target.value});});
@@ -481,7 +515,7 @@
   function teamBoxSummary(i,awards){
     const t=state.teams[i],s=awards?.totals?.[i],g=awards?.grades?.[i];
     if(!s||!g)return '';
-    return `<section class="final-team-box"><h3>${esc(t.name)}</h3>
+    return `<section class="final-team-box ${i===0?'left':'right'}"><h3>${esc(t.name)}</h3>
        <div class="final-grades"><div><strong>${esc(g.offense)}/100</strong><small>OFFENSE</small></div><div><strong>${esc(g.defense)}/100</strong><small>DEFENSE</small></div></div>
        <div class="final-team-stats">${[
          ['PTS',s.pts],['REB',s.reb],['AST',s.ast],['STL',s.stl],['BLK',s.blk],
@@ -519,12 +553,15 @@
     if(!state)return;
     if(state.phase==='intermission'&&lastRoomPhase!=='intermission')intermissionPrep=false;
     $('welcome').classList.add('hide');$('gameview').classList.remove('hide');
+    for(const [i,side] of [[0,'blue'],[1,'red']]){
+      $('gameview').style.setProperty('--team-'+side,colors.hex(colorFor(i)));
+    }
     $('room-header').innerHTML=`<span class="room-title">PRIVATE ROOM <span class="room-code" title="Share this code with your friend">${esc(state.code)}</span></span>
       <div class="room-versus"><span>${esc(state.teams[0]?.name)}</span><span class="vs">VS</span><span>${esc(state.teams[1]?.name||'WAITING...')}</span></div>
       <span class="smallcaps">${state.format===7?'BEST OF 7':'SINGLE GAME'} • ${state.teams.filter(Boolean).length}/2 PLAYERS</span>`;
     const banners={lobby:'Share your room code with your friend. The game starts once they join.',coinflip:'🪙 The coin determines who places the first opening bid.',wheel:'🎡 Spinning the weighted player wheel…',auction:'💰 Bid in $0.50 increments. Your turn lasts 30 seconds and resets after each new bid.',placement:'🃏 The drafted player can be placed into any roster slot, then the next spin begins.',lineup:'🧠 Set both game plans and organize your team before clicking Ready.',sim:'🏀 Live game • each marker is a player • the ball and sweat icons reflect gameplay.',timeout:'⏸ Timeout • both teams may change schemes, but only the caller may substitute.',foulout:'🚫 SIX FOULS • Game paused until the affected team selects an eligible bench replacement.',intermission:'🔁 Series break • both teams may adjust their schemes before the next game.',finished:'🏆 Final results.'};
     $('phase-banner').textContent=banners[state.phase]||'';
-    const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
+    const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.color,t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
       appearance:state.teams.flatMap(t=>(t?.roster||[]).map(id=>{const p=player(id);return [id,p?.image,p?.courtPortrait];})),
       pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,departed:state.departed,intermissionPrep});
@@ -760,12 +797,12 @@
           }
         }
         if(!painted){
-          ctx.fillStyle=side?'#b64e66':'#527baf';
+          ctx.fillStyle=colors.hex(colorFor(side));
           ctx.fillRect(prev.x-23,prev.y-23,46,46);
-          drawInitials(ctx,p,prev.x,prev.y);
+          drawInitials(ctx,p,prev.x,prev.y,colors.ink(colorFor(side)));
         }
         ctx.restore();
-        ctx.lineWidth=4;ctx.strokeStyle=side?'#ff889e':'#91c9ff';ctx.beginPath();ctx.arc(prev.x,prev.y,24,0,2*Math.PI);ctx.stroke();
+        ctx.beginPath();ctx.arc(prev.x,prev.y,24,0,2*Math.PI);ctx.lineWidth=7;ctx.strokeStyle='#f2f6fa';ctx.stroke();ctx.lineWidth=4;ctx.strokeStyle=colors.hex(colorFor(side));ctx.stroke();
         ctx.restore(); // keep names and comic reaction emojis upright
         ctx.textAlign='center';ctx.font='bold 12px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#122136';ctx.fillStyle='#fff';
         const first=p.name.split(' ')[0];ctx.strokeText(first,prev.x,prev.y+39);ctx.fillText(first,prev.x,prev.y+39);
@@ -972,7 +1009,7 @@
     if(['sim','timeout','foulout'].includes(state.phase))requestAnimationFrame(drawCourt);
     else frameRunning=false;
   }
-  function drawInitials(ctx,p,x,y){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='900 17px system-ui';ctx.fillText(p.name.split(' ').map(a=>a[0]).slice(0,2).join(''),x,y+6);}
+  function drawInitials(ctx,p,x,y,ink='#fff'){ctx.textAlign='center';ctx.fillStyle=ink;ctx.font='900 17px system-ui';ctx.fillText(p.name.split(' ').map(a=>a[0]).slice(0,2).join(''),x,y+6);}
   $('court').addEventListener('click',e=>{
     if(!state?.game)return;
     const rect=e.currentTarget.getBoundingClientRect();const x=(e.clientX-rect.left)*940/rect.width,y=(e.clientY-rect.top)*525/rect.height;

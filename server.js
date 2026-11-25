@@ -4,6 +4,8 @@ import { fastBreakPlan } from './fast-break-rules.js';
 import { passCount, passPath, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
 import { possessionTransition, possessionWindow } from './transition-rules.js';
 import { advancePeriod } from './period-rules.js';
+import './public/team-colors.js';
+const teamColors=globalThis.CourtTeamColors;
 import { createAdminAPI } from './admin-v09.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
 import { BOX_AND_ONE, BOX_CHASER_FATIGUE, boxAssignments, boxShotDefenders, boxShotAdjustment } from './defense-box-one.js';
@@ -71,27 +73,27 @@ const auth = (code,key) => {
   if (i<0) throw Error('Not authorized for this room.');
   return {room,i};
 };
-const teamNew = (name,key) => ({name:safeName(name),token:key,budget:5000,roster:[],slots:Object.fromEntries(SLOTS.map(s=>[s,null])),offense:OFFENSE[0],defense:DEFENSE[0],ready:false,wins:0,timeouts:TIMEOUTS_PER_GAME,connected:false,disconnectedAt:null,energy:{}});
-function create(name,format) {
+const teamNew = (name,key,color) => ({name:safeName(name),color,token:key,budget:5000,roster:[],slots:Object.fromEntries(SLOTS.map(s=>[s,null])),offense:OFFENSE[0],defense:DEFENSE[0],ready:false,wins:0,timeouts:TIMEOUTS_PER_GAME,connected:false,disconnectedAt:null,energy:{}});
+function create(name,format,color) {
   let code;
   do {code=randomBytes(4).toString('hex').slice(0,6).toUpperCase();} while(ROOMS.has(code));
   const key=token();
   const weights=wheelStore.snapshot();
-  const room={weights,code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.filter(p=>weights[p.id]>0).map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false],departed:[false,false]};
+  const room={weights,code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key,teamColors.choose(color,0)),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.filter(p=>weights[p.id]>0).map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false],departed:[false,false]};
   ROOMS.set(code,room);return {code,token:key,teamIndex:0};
 }
-function join(code,name){
+function join(code,name,color){
   const room=ROOMS.get(String(code||'').toUpperCase());
   if(!room)throw Error('That room code does not exist.');
   if(room.teams[1])throw Error('Room is already full.');
   if(room.phase!=='lobby')throw Error('That match has already started.');
-  const key=token();room.teams[1]=teamNew(name,key);
+  const key=token();room.teams[1]=teamNew(name,key,teamColors.choose(color,1,room.teams[0].color));
   room.phase='coinflip';room.coinWinner=randomInt(2);room.coinAt=now();room.lastActive=now();
   broadcast(room);
   return {code:room.code,token:key,teamIndex:1};
 }
 function publicState(room,i){
-  const removeSecret=t=>t?({name:t.name,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
+  const removeSecret=t=>t?({name:t.name,color:t.color,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
   return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS.map(p=>({...p,weight:room.weights[p.id]})),wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}
@@ -802,8 +804,8 @@ const server=http.createServer(async(req,res)=>{
   try{
     if(await adminAPI(req,res,url))return;
     if(req.method==='GET'&&url.pathname==='/health')return json(res,200,{ok:true,rooms:ROOMS.size,players:PLAYERS.length,version:BUILD_VERSION,gitCommit:process.env.RENDER_GIT_COMMIT||null});
-    if(req.method==='POST'&&url.pathname==='/api/create'){const v=await body(req);return json(res,200,create(v.name,v.format));}
-    if(req.method==='POST'&&url.pathname==='/api/join'){const v=await body(req);return json(res,200,join(v.code,v.name));}
+    if(req.method==='POST'&&url.pathname==='/api/create'){const v=await body(req);return json(res,200,create(v.name,v.format,v.color));}
+    if(req.method==='POST'&&url.pathname==='/api/join'){const v=await body(req);return json(res,200,join(v.code,v.name,v.color));}
     if(req.method==='POST'&&url.pathname==='/api/action'){
       const v=await body(req);const {room,i}=auth(v.code,v.token);action(room,i,v);return json(res,200,{ok:true});
     }
