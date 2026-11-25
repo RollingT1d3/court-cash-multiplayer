@@ -163,7 +163,7 @@
     "heightInches": 87,
     "archetype": "Two-Way Stretch Five",
     "overall": 96,
-    "weight": 0.15,
+    "weight": 0.12,
     "image": "/images/p005.webp",
     "stats": {
       "layup": 85,
@@ -244,7 +244,7 @@
     "heightInches": 81,
     "archetype": "2-Way Rim Running Anchor",
     "overall": 90,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p007.webp",
     "stats": {
       "layup": 79,
@@ -440,7 +440,7 @@
     "heightInches": 75,
     "archetype": "Sharpshooter",
     "overall": 74,
-    "weight": 0.1,
+    "weight": 0.15,
     "image": "/images/p012.webp",
     "stats": {
       "layup": 60,
@@ -597,7 +597,7 @@
     "heightInches": 79,
     "archetype": "Walking Bucket",
     "overall": 96,
-    "weight": 0.15,
+    "weight": 0.12,
     "image": "/images/p016.webp",
     "stats": {
       "layup": 98,
@@ -639,7 +639,7 @@
     "heightInches": 77,
     "archetype": "Lockdown Sharpshooter",
     "overall": 90,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p017.webp",
     "stats": {
       "layup": 79,
@@ -753,7 +753,7 @@
     "heightInches": 86,
     "archetype": "King Of The Paint",
     "overall": 98,
-    "weight": 0.15,
+    "weight": 0.17,
     "image": "/images/p020.webp",
     "stats": {
       "layup": 95,
@@ -828,7 +828,7 @@
     "heightInches": 81,
     "archetype": "Playmaking Titan",
     "overall": 95,
-    "weight": 0.15,
+    "weight": 0.2,
     "image": "/images/p022.webp",
     "stats": {
       "layup": 95,
@@ -1167,7 +1167,7 @@
     "heightInches": 83,
     "archetype": "Playmaking Titan",
     "overall": 92,
-    "weight": 0.26,
+    "weight": 0.2,
     "image": "/images/p031.webp",
     "stats": {
       "layup": 81,
@@ -1363,7 +1363,7 @@
     "heightInches": 76,
     "archetype": "High-Flying Shot Creator",
     "overall": 93,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p036.webp",
     "stats": {
       "layup": 95,
@@ -1396,7 +1396,7 @@
     "heightInches": 80,
     "archetype": "Explosive Paint Beast",
     "overall": 92,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p037.webp",
     "stats": {
       "layup": 90,
@@ -1480,7 +1480,7 @@
     "heightInches": 61,
     "archetype": "Athletic Anomaly",
     "overall": 92,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p039.webp",
     "stats": {
       "layup": 90,
@@ -1522,7 +1522,7 @@
     "heightInches": 78,
     "archetype": "Zen Sharpshooter",
     "overall": 91,
-    "weight": 0.3,
+    "weight": 0.21,
     "image": "/images/p040.webp",
     "stats": {
       "layup": 75,
@@ -1596,7 +1596,7 @@
     "heightInches": 71,
     "archetype": "Spot-Up Sniper",
     "overall": 78,
-    "weight": 2,
+    "weight": 1.5,
     "image": "/images/p042.webp",
     "stats": {
       "layup": 60,
@@ -1834,7 +1834,7 @@
     "heightInches": 82,
     "archetype": "Two-Way Interior Beast",
     "overall": 94,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p048.webp",
     "stats": {
       "layup": 89,
@@ -1903,7 +1903,7 @@
     "heightInches": 78,
     "archetype": "Two-Way Floor General",
     "overall": 90,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p050.webp",
     "stats": {
       "layup": 75,
@@ -2300,7 +2300,7 @@
     "heightInches": 89,
     "archetype": "Rim-Protecting Finisher",
     "overall": 91,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p061.webp",
     "stats": {
       "layup": 75,
@@ -2383,7 +2383,7 @@
     "heightInches": 80,
     "archetype": "Holiday Hooper",
     "overall": 97,
-    "weight": 0.15,
+    "weight": 0.07,
     "image": "/images/p063.webp",
     "stats": {
       "layup": 85,
@@ -2878,7 +2878,7 @@
     "heightInches": 72,
     "archetype": "Playmaker",
     "overall": 74,
-    "weight": 0.1,
+    "weight": 0.15,
     "image": "/images/p077.webp",
     "stats": {
       "layup": 60,
@@ -3066,7 +3066,7 @@
     "heightInches": 74,
     "archetype": "Sharpshooter",
     "overall": 75,
-    "weight": 0.2,
+    "weight": 0.25,
     "image": "/images/p082.webp",
     "stats": {
       "layup": 59,
@@ -3181,7 +3181,7 @@
     "heightInches": 81,
     "archetype": "2-Way Slasher",
     "overall": 92,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p085.webp",
     "stats": {
       "layup": 89,
@@ -3411,7 +3411,7 @@
     "heightInches": 76,
     "archetype": "Athletic Hustler",
     "overall": 74,
-    "weight": 0.1,
+    "weight": 0.2,
     "image": "/images/p091.webp",
     "stats": {
       "layup": 65,
@@ -3779,7 +3779,7 @@
     "heightInches": 71,
     "archetype": "Ball Hawk",
     "overall": 79,
-    "weight": 1,
+    "weight": 1.1,
     "image": "/images/p101.webp",
     "stats": {
       "layup": 70,
@@ -4076,7 +4076,7 @@
     "heightInches": 80,
     "archetype": "Walking Bucket",
     "overall": 91,
-    "weight": 0.3,
+    "weight": 0.2,
     "image": "/images/p109.webp",
     "stats": {
       "layup": 89,
@@ -4117,7 +4117,7 @@
     "heightInches": 75,
     "archetype": "Sharpshooter",
     "overall": 79,
-    "weight": 0.3,
+    "weight": 0.45,
     "image": "/images/p110.webp",
     "stats": {
       "layup": 65,
@@ -4546,7 +4546,7 @@
     "heightInches": 79,
     "archetype": "Offensive Engine",
     "overall": 94,
-    "weight": 0.25,
+    "weight": 0.2,
     "image": "/images/p121.webp",
     "stats": {
       "layup": 90,
@@ -5333,7 +5333,7 @@
     "heightInches": 85,
     "archetype": "Sharpshooting Paint Beast",
     "overall": 96,
-    "weight": 0.15,
+    "weight": 0.12,
     "image": "/images/p142.webp",
     "stats": {
       "layup": 82,
@@ -6115,7 +6115,7 @@
     "heightInches": 77,
     "archetype": "Shot Creator",
     "overall": 77,
-    "weight": 0.3,
+    "weight": 0.6,
     "image": "/images/p163.webp",
     "stats": {
       "layup": 80,
@@ -6148,7 +6148,7 @@
     "heightInches": 76,
     "archetype": "Sharpshooter",
     "overall": 78,
-    "weight": 0.4,
+    "weight": 0.5,
     "image": "/images/p164.webp",
     "stats": {
       "layup": 68,
@@ -6189,7 +6189,7 @@
     "heightInches": 77,
     "archetype": "Lockdown",
     "overall": 79,
-    "weight": 0.4,
+    "weight": 0.45,
     "image": "/images/p165.webp",
     "stats": {
       "layup": 75,
@@ -6303,7 +6303,7 @@
     "heightInches": 72,
     "archetype": "2-Way Playmaker",
     "overall": 78,
-    "weight": 0.2,
+    "weight": 0.25,
     "image": "/images/p168.webp",
     "stats": {
       "layup": 70,
@@ -6525,7 +6525,7 @@
     "heightInches": 83,
     "archetype": "Three-Level Scorer",
     "overall": 78,
-    "weight": 0.3,
+    "weight": 0.35,
     "image": "/images/p174.webp",
     "stats": {
       "layup": 80,
@@ -6715,7 +6715,7 @@
     "heightInches": 83,
     "archetype": "Stretch Big",
     "overall": 77,
-    "weight": 0.3,
+    "weight": 0.7,
     "image": "/images/p179.webp",
     "stats": {
       "layup": 70,
@@ -6966,7 +6966,7 @@
     "heightInches": 78,
     "archetype": "Offensive Engine",
     "overall": 95,
-    "weight": 0.25,
+    "weight": 0.15,
     "image": "/images/p186.webp",
     "stats": {
       "layup": 95,
@@ -7181,7 +7181,7 @@
     "heightInches": 72,
     "archetype": "Playmaker",
     "overall": 77,
-    "weight": 0.5,
+    "weight": 0.7,
     "image": "/images/p192.webp",
     "stats": {
       "layup": 70,
@@ -7431,7 +7431,7 @@
     "heightInches": 75,
     "archetype": "Playmaking Slasher",
     "overall": 83,
-    "weight": 1,
+    "weight": 0.8,
     "image": "/images/p199.webp",
     "stats": {
       "layup": 80,
