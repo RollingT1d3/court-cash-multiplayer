@@ -84,13 +84,18 @@
           </form>
         </section>
         <section id="admin-workspace" hidden>
+          <nav class="admin-tabs" aria-label="Admin tools">
+            <button id="admin-tab-portraits" type="button" aria-pressed="true">Headshots</button>
+            <button id="admin-tab-wheel" type="button" aria-pressed="false">Wheel Probabilities</button>
+            <button class="admin-tool-button" id="admin-signout" type="button">Sign out</button>
+          </nav>
+          <section id="admin-portraits-pane">
           <div class="admin-toolbar">
             <input id="admin-search" type="search" placeholder="Search players…" aria-label="Search players">
             <div class="admin-toolbar-right">
               <small id="admin-count"></small>
               <button class="admin-tool-button" id="admin-export" type="button">↓ Export settings</button>
               <label class="admin-import-label">↑ Import settings<input id="admin-import" type="file" accept=".json,application/json"></label>
-              <button class="admin-tool-button" id="admin-signout" type="button">Sign out</button>
             </div>
           </div>
           <div class="admin-layout">
@@ -127,7 +132,25 @@
               </div>
             </section>
           </div>
-          <p class="admin-footer">Edits change only the on-court circular crop, not player stats or original artwork. Export your crop settings for backup: free Render hosting may reset saved local files after a redeploy.</p>
+          <p class="admin-footer">Headshot edits preserve original artwork and player stats. Export your settings for backup: free Render hosting may reset saved local files after a redeploy.</p>
+          </section>
+          <section id="admin-wheel-pane" hidden>
+            <div class="wheel-admin-summary">
+              <h3>Wheel probabilities</h3>
+              <p>Adjust initial spin chances for new rooms. Existing rooms keep their original odds. A 0% player is excluded.</p>
+              <div class="wheel-admin-totals"><strong id="wheel-total">—</strong><span id="wheel-status" role="status"></span></div>
+              <div id="wheel-tier-totals" class="wheel-tier-totals"></div>
+              <div class="wheel-admin-actions">
+                <button id="wheel-save" type="button" disabled>Save probabilities</button>
+                <button id="wheel-reset" type="button" class="admin-tool-button">Reset to original</button>
+                <button id="wheel-export" type="button" class="admin-tool-button">↓ Export saved odds</button>
+                <label class="admin-import-label">↑ Import odds<input id="wheel-import" type="file" accept=".json,application/json"></label>
+              </div>
+            </div>
+            <div class="admin-toolbar"><input id="wheel-search" type="search" placeholder="Search players…" aria-label="Search probability players"><select id="wheel-tier-filter" aria-label="Filter OVR tier"><option value="all">All tiers</option><option value="star">Star</option><option value="gold">Gold</option><option value="green">Green</option><option value="blue">Blue</option><option value="silver">Silver</option><option value="poop">Poop</option></select><small id="wheel-count"></small></div>
+            <div class="wheel-admin-list" id="wheel-list"></div>
+            <p class="admin-footer">Save requires exactly 100.00% and at least 16 eligible players. Import and reset preview changes until you save. Export saved odds after edits; free Render storage can reset on restart or redeploy. This does not change OVR, attributes or artwork.</p>
+          </section>
         </section>
       </div>
     </section>

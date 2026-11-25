@@ -249,11 +249,12 @@
     const canvas=$('wheel-canvas');if(!canvas)return;
     const cx=canvas.width/2,cy=canvas.height/2,r=209,ctx=canvas.getContext('2d');
     ctx.clearRect(0,0,440,440);
-    const pool=(state.remaining||[]).map(player).filter(Boolean);
-    const total=pool.reduce((sum,p)=>sum+Math.max(p.weight||1,.001),0);
+    const pool=(state.remaining||[]).map(player).filter(p=>p&&p.weight>0);
+    const total=pool.reduce((sum,p)=>sum+Math.round(p.weight*100),0);
+    if(!total)return;
     let a=-Math.PI/2,selectedCenter=0;
     pool.forEach((p,i)=>{
-      const frac=Math.max(p.weight||1,.001)/total,arc=frac*2*Math.PI;
+      const frac=Math.round(p.weight*100)/total,arc=frac*2*Math.PI;
       ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a,a+arc);ctx.closePath();
       ctx.fillStyle=['#273e58','#39516c','#4a354c','#2c5d5a','#6b5a3e','#384c69','#576047'][i%7];ctx.fill();
       ctx.strokeStyle='#e6e9ef55';ctx.lineWidth=1;ctx.stroke();

@@ -1,0 +1,46 @@
+import {readFileSync,mkdirSync,writeFileSync,renameSync} from 'node:fs';
+import path from 'node:path';
+
+// Integer hundredths of one percent avoid floating-point total drift.
+export function validateWeights(weights,players){
+  if(!weights||typeof weights!=='object'||Array.isArray(weights))throw Error('Invalid probability settings.');
+  const ids=players.map(p=>String(p.id));
+  if(Object.keys(weights).length!==ids.length||ids.some(id=>!Object.hasOwn(weights,id)))throw Error('Backup must contain exactly the current player IDs.');
+  const next=Object.create(null);
+  let total=0,positive=0;
+  for(const id of ids){
+    const n=weights[id],units=Math.round(n*100);
+    if(typeof n!=='number'||!Number.isFinite(n)||n<0||n>100||Math.abs(n*100-units)>1e-7)throw Error('Use probabilities from 0 to 100 with at most two decimal places.');
+    next[id]=units/100;total+=units;if(units>0)positive++;
+  }
+  if(total!==10000)throw Error('Wheel probabilities must total exactly 100%.');
+  if(positive<16)throw Error('At least 16 players must have a positive probability.');
+  return next;
+}
+export function createWheelStore({root,players,file=process.env.COURT_CASH_WEIGHTS_FILE||path.join(root,'data','wheel-probabilities.json')}){
+  const original=validateWeights(Object.fromEntries(players.map(p=>[p.id,p.weight])),players);
+  let current={...original};
+  try{
+    const saved=JSON.parse(readFileSync(file,'utf8'));
+    if(saved.version!==1||saved.kind!=='court-cash-wheel-probabilities')throw Error('Unsupported probability backup.');
+    current=validateWeights(saved.weights,players);
+  }catch(error){if(error.code!=='ENOENT')console.error('Wheel probabilities not loaded:',error.message);}
+  const backup=()=>({version:1,kind:'court-cash-wheel-probabilities',weights:{...current}});
+  function save(data){
+    if(data?.version!==1||data.kind!=='court-cash-wheel-probabilities')throw Error('Unsupported probability backup.');
+    const next=validateWeights(data.weights,players);
+    mkdirSync(path.dirname(file),{recursive:true});
+    writeFileSync(file+'.tmp',JSON.stringify({version:1,kind:'court-cash-wheel-probabilities',weights:next},null,2)+'\n',{mode:0o600});
+    renameSync(file+'.tmp',file);current=next;
+    return backup();
+  }
+  return Object.freeze({snapshot:()=>({...current}),original:()=>({...original}),backup,save});
+}
+export function selectWeighted(remaining,weights,random=Math.random){
+  const eligible=remaining.filter(id=>weights[id]>0);
+  const total=eligible.reduce((n,id)=>n+Math.round(weights[id]*100),0);
+  if(total<=0)throw Error('No eligible players remain.');
+  let mark=random()*total;
+  for(const id of eligible){mark-=Math.round(weights[id]*100);if(mark<0)return id;}
+  return eligible.at(-1);
+}

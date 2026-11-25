@@ -3,8 +3,8 @@ import path from 'node:path';
 import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 
 // V0.9: server-authoritative admin access and per-player on-court portrait settings.
-// Edit only the crop. Full draft/roster portraits and every player stat remain unchanged.
-export function createAdminAPI({ root, players, onUpdate = () => {} }) {
+// Authenticated appearance and wheel probability editors; player attributes remain unchanged.
+export function createAdminAPI({ root, players, wheelStore = null, onUpdate = () => {} }) {
   const settingsFile = process.env.COURT_CASH_PORTRAITS_FILE ||
     path.join(root, 'data', 'court-portrait-overrides.json');
   const defaults = new Map(players.map(p => [p.id, p.courtPortrait ? structuredClone(p.courtPortrait) : null]));
@@ -137,6 +137,16 @@ export function createAdminAPI({ root, players, onUpdate = () => {} }) {
         list.sort((a, b) => b.overall - a.overall || a.name.localeCompare(b.name));
         send(res, 200, { players: list });
         return true;
+      }
+      if (wheelStore && req.method === 'GET' && url.pathname === '/api/admin/wheel') {
+        send(res,200,{...wheelStore.backup(),original:wheelStore.original()});return true;
+      }
+      if (wheelStore && req.method === 'GET' && url.pathname === '/api/admin/wheel/export') {
+        send(res,200,wheelStore.backup());return true;
+      }
+      if (wheelStore && req.method === 'POST' && url.pathname === '/api/admin/wheel') {
+        const data=await readBody(req);
+        send(res,200,{ok:true,...wheelStore.save(data)});return true;
       }
       if (req.method === 'GET' && url.pathname === '/api/admin/export') {
         send(res, 200, { version: 1, overrides });

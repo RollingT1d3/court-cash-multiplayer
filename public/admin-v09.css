@@ -60,3 +60,20 @@ body.admin-open{overflow:hidden}
 .admin-editor-actions #admin-save{background:#1d83e7;color:#fff}
 .admin-footer{font-size:11px;line-height:1.5;color:#9faec0;padding:11px 23px;border-top:1px solid #293952}
 @media(max-width:750px){.admin-overlay{padding:6px}.admin-window{max-height:calc(100dvh - 12px)}.admin-layout{grid-template-columns:1fr;max-height:none;min-height:0}.admin-left{border-right:0;border-bottom:1px solid #35465b;max-height:200px}.admin-editor{max-height:55vh}.admin-toolbar{padding:10px;gap:8px}.admin-header{padding:12px}.admin-original-thumb{width:48px;height:48px}.admin-art-block img{height:155px}.welcome .admin-entry{top:78px;right:14px}}
+
+/* Separate admin tools and exact percentage editor. */
+.admin-tabs{display:flex;gap:9px;padding:10px 23px;border-bottom:1px solid #314158;flex-wrap:wrap}
+.admin-tabs button{background:#23374e;color:#e4edfa;border:1px solid #3a5373;border-radius:8px}
+.admin-tabs button[aria-pressed=true]{background:#1976df;border-color:#6db9ff;color:white}
+.admin-tabs #admin-signout{margin-left:auto}
+.wheel-admin-summary{padding:18px 23px}.wheel-admin-summary h3{margin:0 0 8px}.wheel-admin-summary p{color:#a9bbd2;font-size:13px;margin-bottom:12px}
+.wheel-admin-totals{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:12px 0}.wheel-admin-totals strong{font-size:28px;font-variant-numeric:tabular-nums}.wheel-admin-totals .valid{color:#c8ff83}.wheel-admin-totals .invalid{color:#ff9ca8}.wheel-admin-totals span{color:#a9bbd2;font-size:13px}
+.wheel-tier-totals{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:14px 0}
+.wheel-tier{background:#182637;border:1px solid #314158;border-radius:8px;padding:9px;display:grid;gap:5px}.wheel-tier small{font-size:11px;color:#b1bfd1}.wheel-tier strong{font-size:18px;font-variant-numeric:tabular-nums}
+.wheel-tier.star strong,.wheel-tier.gold strong{color:#ffcb55}.wheel-tier.green strong{color:#7fe090}.wheel-tier.blue strong{color:#75b6ff}.wheel-tier.silver strong{color:#c7cbd1}.wheel-tier.poop strong{color:#c99a74}
+.wheel-admin-actions{display:flex;flex-wrap:wrap;gap:8px}.wheel-admin-actions #wheel-save{background:#1976df;color:white}
+#admin-wheel-pane .admin-toolbar select{width:auto;max-width:100%}
+.wheel-admin-list{max-height:44vh;overflow:auto;padding:8px 23px}
+.wheel-player-row{display:grid;grid-template-columns:minmax(0,1fr) 95px 14px;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid #293952}
+.wheel-player-row strong,.wheel-player-row small{display:block;overflow-wrap:anywhere}.wheel-player-row small{color:#9eb3cb;font-size:11px;margin-top:4px}.wheel-player-row input{padding:8px;min-width:0;font-variant-numeric:tabular-nums;text-align:right}.wheel-player-row input[aria-invalid=true]{border-color:#ff7087}
+@media(max-width:750px){.admin-tabs,.wheel-admin-summary,.wheel-admin-list{padding:10px}.wheel-tier-totals{grid-template-columns:repeat(3,minmax(0,1fr))}.wheel-player-row{grid-template-columns:minmax(0,1fr) 75px 12px}}

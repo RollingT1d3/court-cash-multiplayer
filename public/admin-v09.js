@@ -9,6 +9,9 @@
   let authToken = sessionStorage.getItem('court-cash-admin-token') || '';
   let roster = [], selected = null, crop = null, resetPending = false;
   const imageCache = new Map();
+  let wheelDraft=null,wheelOriginal=null,wheelSaved=null,wheelBusy=false;
+  const wheelTier=p=>p.overall>=95?'star':p.overall>=90?'gold':p.overall>=85?'green':p.overall>=80?'blue':p.overall>=70?'silver':'poop';
+  const tierNames={star:'⭐ Star',gold:'Gold',green:'Green',blue:'Blue',silver:'Silver',poop:'💩 Poop'};
   const clamp = n => Math.max(0, Math.min(1, n));
   const formatHeight = inches => Math.floor(inches / 12) + "'" + inches % 12 + '"';
   const defaultCrop = p => ({ ...window.CourtHeadshots.DEFAULT_CROP, width: p?.courtPortrait?.image ? 1 : window.CourtHeadshots.DEFAULT_CROP.width });
@@ -43,6 +46,8 @@
     $('admin-auth').hidden = false;
     $('admin-workspace').hidden = true;
     $('admin-pin').value = '';
+    wheelDraft=wheelOriginal=wheelSaved=null;
+    switchTab(false);
   }
   function showWorkspace() {
     $('admin-auth').hidden = true;
@@ -59,7 +64,7 @@
     screen.hidden = false;
     document.body.classList.add('admin-open');
     if (authToken) {
-      try { await loadRoster(); return; }
+      try { await loadRoster(); if (!$('admin-wheel-pane').hidden && !wheelDraft) await loadWheel(); return; }
       catch (error) { message(error.message, 'error'); }
     }
     showLogin();
@@ -100,7 +105,7 @@
     if (selected) selectPlayer(selected.id);
     else if (roster[0]) selectPlayer(roster[0].id);
     else $('admin-editor-empty').hidden = false;
-    message('Showing the current live roster. Custom players will appear after import.');
+    message('Showing the current live roster.');
   }
 
   function photo(src, onReady) {
@@ -330,6 +335,119 @@
     } catch (error) { message(error.message, 'error'); }
     finally { event.target.value = ''; }
   });
+
+  function switchTab(wheel){
+    $('admin-portraits-pane').hidden=wheel;
+    $('admin-wheel-pane').hidden=!wheel;
+    $('admin-tab-portraits').setAttribute('aria-pressed',String(!wheel));
+    $('admin-tab-wheel').setAttribute('aria-pressed',String(wheel));
+  }
+  const units=value=>{
+    if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>100||Math.abs(value*100-Math.round(value*100))>1e-7)return null;
+    return Math.round(value*100);
+  };
+  const pct=n=>(n/100).toFixed(2)+'%';
+  const backup=weights=>({version:1,kind:'court-cash-wheel-probabilities',weights});
+  function validBackup(data){
+    if(data?.version!==1||data.kind!=='court-cash-wheel-probabilities'||!data.weights||Array.isArray(data.weights)||typeof data.weights!=='object')throw Error('Not a Court Cash probability backup.');
+    if(Object.keys(data.weights).length!==roster.length||roster.some(p=>!Object.hasOwn(data.weights,p.id)||units(data.weights[p.id])===null))throw Error('Backup does not match the current roster or contains invalid odds.');
+    return {...data.weights};
+  }
+  function updateWheelTotals(){
+    if(!wheelDraft)return;
+    const totals=Object.fromEntries(Object.keys(tierNames).map(k=>[k,{units:0,count:0}]));
+    let total=0,positive=0,invalid=0;
+    for(const p of roster){
+      const u=units(wheelDraft[p.id]),t=totals[wheelTier(p)];
+      t.count++;
+      if(u===null){invalid++;continue;}
+      total+=u;t.units+=u;if(u>0)positive++;
+    }
+    const dirty=roster.some(p=>wheelDraft[p.id]!==wheelSaved[p.id]);
+    const valid=!invalid&&total===10000&&positive>=16;
+    $('wheel-total').textContent=pct(total);
+    $('wheel-total').className=valid?'valid':'invalid';
+    $('wheel-status').textContent=invalid?invalid+' invalid value(s)':total<10000?pct(10000-total)+' unallocated':total>10000?pct(total-10000)+' overallocated':positive<16?'At least 16 eligible players required':(dirty?'Ready to save • ':'Saved • ')+positive+' eligible players';
+    $('wheel-save').disabled=wheelBusy||!valid||!dirty;
+    $('wheel-tier-totals').replaceChildren();
+    for(const [key,t] of Object.entries(totals)){
+      const cell=document.createElement('div');cell.className='wheel-tier '+key;
+      const title=document.createElement('small');title.textContent=tierNames[key]+' · '+t.count;
+      const value=document.createElement('strong');value.textContent=pct(t.units);
+      cell.append(title,value);$('wheel-tier-totals').append(cell);
+    }
+  }
+  function drawWheelEditor(){
+    const list=$('wheel-list');list.replaceChildren();
+    if(!wheelDraft)return;
+    const term=$('wheel-search').value.trim().toLowerCase(),filter=$('wheel-tier-filter').value;
+    const players=roster.filter(p=>p.name.toLowerCase().includes(term)&&(filter==='all'||wheelTier(p)===filter));
+    $('wheel-count').textContent=players.length+' / '+roster.length+' players';
+    for(const p of players){
+      const row=document.createElement('div');row.className='wheel-player-row';
+      const info=document.createElement('div'),name=document.createElement('strong'),detail=document.createElement('small');
+      name.textContent=p.name;detail.textContent=p.overall+' OVR · '+tierNames[wheelTier(p)]+' · Original '+pct(Math.round(wheelOriginal[p.id]*100));
+      info.append(name,detail);
+      const input=document.createElement('input');input.type='number';input.min='0';input.max='100';input.step='0.01';input.value=String(wheelDraft[p.id]);input.setAttribute('aria-label',p.name+' wheel probability percent');
+      input.disabled=wheelBusy;
+      input.addEventListener('input',()=>{
+        wheelDraft[p.id]=input.value===''||!input.validity.valid?null:Number(input.value);
+        input.setAttribute('aria-invalid',String(units(wheelDraft[p.id])===null));
+        updateWheelTotals();
+      });
+      const suffix=document.createElement('span');suffix.textContent='%';
+      row.append(info,input,suffix);list.append(row);
+    }
+    updateWheelTotals();
+  }
+  async function loadWheel(){
+    const data=await request('wheel');
+    wheelSaved=validBackup(data);wheelDraft={...wheelSaved};wheelOriginal={...data.original};
+    drawWheelEditor();
+  }
+  $('admin-tab-portraits').addEventListener('click',()=>switchTab(false));
+  $('admin-tab-wheel').addEventListener('click',async()=>{
+    switchTab(true);
+    try{if(!wheelDraft)await loadWheel();message('Wheel odds apply to new rooms only.');}
+    catch(error){message(error.message,'error');}
+  });
+  $('wheel-search').addEventListener('input',drawWheelEditor);
+  $('wheel-tier-filter').addEventListener('change',drawWheelEditor);
+  $('wheel-reset').addEventListener('click',()=>{
+    if(!wheelOriginal||wheelBusy||!confirm('Preview original wheel probabilities? Save to apply them.'))return;
+    wheelDraft={...wheelOriginal};drawWheelEditor();message('Original probabilities previewed. Save to apply.');
+  });
+  $('wheel-save').addEventListener('click',async()=>{
+    if(!wheelDraft||wheelBusy||$('wheel-save').disabled)return;
+    wheelBusy=true;drawWheelEditor();
+    try{
+      const data=await request('wheel','POST',backup(wheelDraft));
+      wheelSaved=validBackup(data);wheelDraft={...wheelSaved};
+      message('Saved! New rooms now use these probabilities. Export a backup to protect your changes.','success');
+    }catch(error){message(error.message,'error');}
+    finally{wheelBusy=false;drawWheelEditor();}
+  });
+  $('wheel-export').addEventListener('click',async()=>{
+    try{
+      const data=await request('wheel/export');
+      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+      const a=document.createElement('a');a.href=url;a.download='court-cash-wheel-probabilities.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      message('Downloaded saved probability settings.','success');
+    }catch(error){message(error.message,'error');}
+  });
+  $('wheel-import').addEventListener('change',async event=>{
+    const file=event.target.files?.[0];
+    try{
+      if(!file||wheelBusy)return;
+      if(file.size>100000)throw Error('Probability backup is too large.');
+      if(!wheelOriginal)await loadWheel();
+      const imported=validBackup(JSON.parse(await file.text()));
+      if(!confirm('Preview this probability backup? Save to apply it.'))return;
+      wheelDraft=imported;drawWheelEditor();message('Backup previewed. Check total and save to apply.');
+    }catch(error){message(error.message,'error');}
+    finally{event.target.value='';}
+  });
+
   $('admin-signout').addEventListener('click', async () => {
     try { await request('logout', 'POST'); } catch {}
     authToken = '';

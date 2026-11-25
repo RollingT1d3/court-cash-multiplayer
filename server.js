@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { createAdminAPI } from './admin-v09.js';
+import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
 import { readFileSync, createReadStream, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +31,7 @@ const PLAYERS = JSON.parse(readFileSync(path.join(ROOT, 'data/players.json'), 'u
 const BUILD_VERSION = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const BY_ID = new Map(PLAYERS.map(p => [p.id, p]));
 if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 16) throw Error('Players need unique IDs; at least 16 required.');
+const wheelStore = createWheelStore({root:ROOT,players:PLAYERS});
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
 const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT];
@@ -68,7 +70,8 @@ function create(name,format) {
   let code;
   do {code=randomBytes(4).toString('hex').slice(0,6).toUpperCase();} while(ROOMS.has(code));
   const key=token();
-  const room={code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false],departed:[false,false]};
+  const weights=wheelStore.snapshot();
+  const room={weights,code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.filter(p=>weights[p.id]>0).map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false],departed:[false,false]};
   ROOMS.set(code,room);return {code,token:key,teamIndex:0};
 }
 function join(code,name){
@@ -83,15 +86,12 @@ function join(code,name){
 }
 function publicState(room,i){
   const removeSecret=t=>t?({name:t.name,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
-  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS,wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
+  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS.map(p=>({...p,weight:room.weights[p.id]})),wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}
 function log(room,msg){room.log.push(msg);if(room.log.length>120)room.log.shift();}
 function pickPlayer(room){
-  const rem=room.remaining;const total=rem.reduce((n,id)=>n+Math.max(.000001,BY_ID.get(id).weight||1),0);
-  let mark=rnd()*total;
-  for(const id of rem){mark-=Math.max(.000001,BY_ID.get(id).weight||1);if(mark<=0)return id;}
-  return rem.at(-1);
+  return selectWeighted(room.remaining,room.weights,rnd);
 }
 function startSpin(room){
   if(account(room))return finishDraft(room);
@@ -723,7 +723,7 @@ setInterval(()=>{
   if(ms-lastBroadcastAt>=1000)lastBroadcastAt=ms;
 },TICK_MS);
 
-const adminAPI = createAdminAPI({ root: ROOT, players: PLAYERS, onUpdate: () => {
+const adminAPI = createAdminAPI({ root: ROOT, players: PLAYERS, wheelStore, onUpdate: () => {
   for (const room of ROOMS.values()) broadcast(room);
 } });
 
