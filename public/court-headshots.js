@@ -1,6 +1,6 @@
 /* COURT CASH: face-and-hair-only framing for ON-COURT player circles.
  *
- * The draft, roster and detail cards intentionally keep the original p.image.
+ * The auction and detail cards keep the original p.image; roster circles reuse the court crop.
  * For each custom player, optionally configure:
  *   "courtPortrait": {
  *     "image": "/player-headshots/de-vawn.png", // optional dedicated square headshot

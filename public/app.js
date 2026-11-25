@@ -37,7 +37,7 @@
   };
   let identity = null, stream = null, state = null, lastRenderKey='', currentPicked=null, expanded=new Set(), selectedFocus=null;
   let lastRoomPhase=null, wheelSize=390, noticeTimer=null, intermissionPrep=false;
-  let canvasPositions = new Map(), courtImages = new Map(), frameRunning=false;
+  let canvasPositions = new Map(), courtImages = new Map(), rosterImages = new Map(), frameRunning=false;
   let syncOffset=0;
   const ANKLE_STUMBLE_MS=1050, ANKLE_REACTIONS_MS=1150, POSTER_REACTIONS_MS=1250;
   // Fixed normalized positions for short comic reactions along the sidelines;
@@ -116,6 +116,40 @@
     const out=state?.game?.fouledOut?.includes(p.id);
     return `<span class="portrait ${size} ${side} ${out?'fouled-out':''}" ${out?'title="FOULED OUT — INELIGIBLE"':''}>${p.image?`<img src="${esc(p.image)}" alt="" onerror="this.style.display='none'">`:''}<span>${esc(initials)}</span></span>`;
   }
+  // Roster targets reuse the exact same square crop as the court and admin preview.
+  function rosterHeadshot(p,side,position){
+    if(!p)return '<span class="roster-headshot empty '+side+'" aria-hidden="true"><span>+</span></span>';
+    const initials=p.name.split(/\s+/).map(a=>a[0]).slice(0,2).join('').toUpperCase();
+    const out=state?.game?.fouledOut?.includes(p.id);
+    return `<span class="portrait roster-headshot ${side} ${out?'fouled-out':''}" ${out?'title="FOULED OUT — INELIGIBLE"':''}><span class="roster-initials">${esc(initials)}</span><canvas class="roster-headshot-canvas" width="128" height="128" data-headshot-id="${esc(p.id)}" aria-hidden="true"></canvas></span>`;
+  }
+  function rosterImage(src){
+    if(!rosterImages.has(src)){
+      rosterImages.set(src,new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>resolve(img);
+        img.onerror=()=>{rosterImages.delete(src);resolve(null);};
+        img.src=src;
+      }));
+    }
+    return rosterImages.get(src);
+  }
+  function paintRosterHeadshots(container){
+    for(const canvas of container.querySelectorAll('canvas[data-headshot-id]')){
+      const p=state?.players?.find(p=>String(p.id)===canvas.dataset.headshotId);
+      const src=window.CourtHeadshots.imageSource(p);
+      if(!src)continue;
+      rosterImage(src).then(img=>{
+        if(!img||!canvas.isConnected)return;
+        const ctx=canvas.getContext('2d');
+        if(!ctx)return;
+        const size=canvas.width;
+        if(window.CourtHeadshots.draw(ctx,img,p,size/2,size/2,size)){
+          canvas.classList.add('ready');
+        }
+      });
+    }
+  }
   function rosterDisplaySlots(i){
     const t=state.teams[i];if(!t)return {};
     if(state.phase==='timeout'&&state.game){
@@ -130,9 +164,9 @@
     const roster=rosterDisplaySlots(i);
     const rows=SLOTS.map(s=>{
       const id=roster[s],p=player(id);
-      const selected=currentPicked===id&&change?'selected-slot':'';
+      const selected=id&&currentPicked===id&&change?'selected-slot':'';
       return `<button class="slot ${side} ${id?'owned':''} ${selected}" type="button" data-slot="${esc(s)}" data-team="${i}" ${change?'':'disabled'} aria-label="${esc(s)}: ${p?esc(p.name):'Empty'}">
-        <span class="slot-label">${esc(s)}</span>${p?`${portrait(p,'sm',i?'red':'blue')}<span class="slot-center"><b>${esc(p.name)}</b><small>${esc(p.positions.join('/'))}${state?.game?.fouledOut?.includes(id)?' • FOULED OUT':''}</small></span>${badge(p,s)}`:'<span class="slot-center"><small>EMPTY • DROP HERE</small></span>'}
+        <span class="slot-label">${esc(s)}</span><span class="slot-circle">${rosterHeadshot(p,i?'red':'blue',s)}${p?badge(p,s):''}</span>${p?`<span class="slot-center"><b title="${esc(p.name)}">${esc(p.name)}</b><small>${esc(p.positions.join('/'))}${state?.game?.fouledOut?.includes(id)?' • FOULED OUT':''}</small></span>`:'<span class="slot-center"><small>DROP HERE</small></span>'}
       </button>`;
     }).join('');
     return `<div class="team-title"><strong>${esc(t.name)}</strong><span class="team-money">${money(t.budget)}</span></div>
@@ -142,6 +176,7 @@
   }
   function bindRoster(container){
     if(!container)return;
+    paintRosterHeadshots(container);
     for(const slot of container.querySelectorAll('[data-slot]')){
       if(slot.disabled)continue;
       slot.addEventListener('click',()=>{
@@ -251,9 +286,14 @@
       const p=player(state.pending.playerId);const owner=state.pending.winner;
       center.innerHTML=`<div class="smallcaps">SOLD • SPIN ${state.spinIndex}</div><h2 class="auction-heading">${esc(state.teams[owner].name)} GETS THE PICK!</h2>
         <button class="pick-player" id="pick-new" type="button" ${isMine(owner)?'':'disabled'} style="background:transparent;padding:0">${portrait(p,'xl',owner===0?'blue':'red')}</button>
-        <h2 style="margin:10px 0">${esc(p.name)}</h2><p class="auction-sub">${isMine(owner)?'Click the portrait, then click a roster box to place him. Or drag from a roster box to rearrange.':'Waiting for the drafting team to place their player.'}</p>
+        <h2 style="margin:10px 0">${esc(p.name)}</h2><p class="auction-sub">${isMine(owner)?'Drag this player into a position circle, or click the portrait and then the circle. Drag existing headshots to rearrange.':'Waiting for the drafting team to place their player.'}</p>
         ${isMine(owner)?'<button id="next-spin" class="primary">NEXT SPIN →</button>':''}`;
-      $('pick-new')?.addEventListener('click',()=>{currentPicked=p.id;render(true);});
+      const newPick=$('pick-new');
+      if(newPick&&isMine(owner)){
+        newPick.draggable=true;
+        newPick.addEventListener('dragstart',e=>{currentPicked=p.id;e.dataTransfer.setData('text/plain',String(p.id));e.dataTransfer.effectAllowed='move';});
+        newPick.addEventListener('click',()=>{currentPicked=p.id;render(true);});
+      }
       $('next-spin')?.addEventListener('click',()=>{currentPicked=null;act('next');});
       return;
     }
@@ -342,7 +382,7 @@
     if(stream){stream.close();stream=null;}
     identity=null;state=null;sessionStorage.removeItem('court-cash-identity');
     lastRenderKey='';lastRoomPhase=null;selectedFocus=null;currentPicked=null;
-    canvasPositions.clear();courtImages.clear();intermissionPrep=false;
+    canvasPositions.clear();courtImages.clear();rosterImages.clear();intermissionPrep=false;
     $('status-label').textContent='Not in a room';$('status-dot').classList.remove('on');
     $('gameview').classList.add('hide');$('welcome').classList.remove('hide');
     window.scrollTo({top:0,behavior:'smooth'});
@@ -404,6 +444,7 @@
     $('phase-banner').textContent=banners[state.phase]||'';
     const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
+      appearance:state.teams.flatMap(t=>(t?.roster||[]).map(id=>{const p=player(id);return [id,p?.image,p?.courtPortrait];})),
       pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,intermissionPrep});
     if(!force&&sig===lastRenderKey){updateClocks();return;}
     lastRenderKey=sig;

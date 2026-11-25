@@ -68,7 +68,7 @@ test('on-court draw calls the 9-argument image crop API without stretching the h
   assert.equal(draw(ctx,{naturalWidth:0,naturalHeight:0},null,10,10,44),false);
 });
 
-test('browser loads face-only crop helper before app; main draft portraits stay full-art',()=>{
+test('browser loads the headshot helper before app; auction portraits keep original art and roster circles share the crop',()=>{
   const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
   const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
   const headScript='<script src="/court-headshots.js" defer></script>';
@@ -76,7 +76,36 @@ test('browser loads face-only crop helper before app; main draft portraits stay 
   assert.ok(html.indexOf(headScript)>0&&html.indexOf(headScript)<html.indexOf(appScript));
   assert.match(app,/window\.CourtHeadshots\.imageSource\(p\)/);
   assert.match(app,/window\.CourtHeadshots\.draw\(ctx,entry\.img,p,prev\.x,prev\.y,44\)/);
-  const rosterPortraitCode=app.slice(app.indexOf('function portrait('),app.indexOf('function rosterDisplaySlots('));
+  const rosterPortraitCode=app.slice(app.indexOf('function portrait('),app.indexOf('function rosterHeadshot('));
   assert.match(rosterPortraitCode,/p\.image/);
   assert.ok(!rosterPortraitCode.includes('CourtHeadshots'));
+  assert.match(app,/window\.CourtHeadshots\.draw\(ctx,img,p,size\/2,size\/2,size\)/);
+  assert.match(app,/rosterHeadshot\(p,i\?'red':'blue',s\)/);
+  assert.match(app,/paintRosterHeadshots\(container\)/);
+  assert.match(app,/newPick\.draggable=true/);
+  assert.match(app,/appearance:state\.teams\.flatMap/);
+  const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+  assert.match(css,/\.roster-list \.roster-headshot\{[^}]*border-radius:50%/);
+  assert.match(css,/\.roster-list \.slot\.drop-target \.roster-headshot/);
+});
+
+
+test('roster headshots paint saved crops using the shared draw helper and safely keep initials on missing images', async ()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  const source=app.slice(app.indexOf('  function rosterImage('),app.indexOf('  function rosterDisplaySlots('));
+  const p={id:'p001',image:'/full.webp',courtPortrait:{crop:{centerX:.75,top:.1,width:.6}}};
+  const calls=[];const classes=[];
+  const ctx={drawImage(...args){calls.push(args);}};
+  const canvas={width:128,isConnected:true,dataset:{headshotId:p.id},getContext:()=>ctx,classList:{add:v=>classes.push(v)}};
+  const missing={...canvas,dataset:{headshotId:'p002'}};
+  class FakeImage {
+    constructor(){this.naturalWidth=1000;this.naturalHeight=1500;}
+    set src(value){queueMicrotask(()=>this.onload());}
+  }
+  const scope={state:{players:[p,{id:'p002',image:null}]},window:browser,rosterImages:new Map(),Image:FakeImage};
+  runInNewContext(source+'\npaintRosterHeadshots({querySelectorAll:()=>[canvas,missing]});',{...scope,canvas,missing});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls.length,1);
+  assert.deepEqual(calls[0].slice(1),[400,150,600,600,0,0,128,128]);
+  assert.deepEqual(classes,['ready']);
 });
