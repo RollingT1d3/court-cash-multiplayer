@@ -72,7 +72,8 @@ test('real two-client game: defending timeout rejected, offense inbounds after p
       s=await until(async()=>{const x=await state(a);return x.game?.possessions>oldPossessions?x:null;},2000);
       assert.equal(s.game.event.inboundAfterTimeout,true);
       assert.equal(s.game.event.offense,owner);
-      assert.ok(s.game.event.passerId,'there must be a real inbound pass after the timeout');
+      assert.equal(s.game.event.transition.kind,'inbound');
+      assert.ok(s.game.event.transition.inbounderId&&s.game.event.transition.receiverId,'there must be a visible inbound pass after the timeout');
       const ids=new Set([s.game.event.id]);
       let ankle=s.game.event.ankleBreaker?s.game.event:null;
       await until(async()=>{

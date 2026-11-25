@@ -24,7 +24,7 @@ export function possessionWindow(e,base){
   if(base<3000||!e)return base; // accelerated tests retain their original clocks
   const lead=e.transition?.durationMs||0,shot=(Number(e.passDurationMs)||0)+470;
   const rebound=shot+(e.displayEvent==='block'?0:(e.rimBounces||1)*180)+260;
-  const end=e.foul?350+(e.freeThrowResults?.length||0)*850:
+  const end=e.foul?(Number(e.passDurationMs)||0)+350+(e.freeThrowResults?.length||0)*850:
     e.putbackAttempt?rebound+300+750:e.reboundId?rebound+220:
     e.deepThree?shot+1250:shot+850;
   return lead+Math.max(base,end+100);

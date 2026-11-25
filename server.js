@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { passCount, passPath, resolvePassChain } from './passing-rules.js';
 import { possessionTransition, possessionWindow } from './transition-rules.js';
 import { createAdminAPI } from './admin-v09.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
@@ -324,20 +325,18 @@ function simulatePlay(room){
   const defender=(process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1')?defenders[0]:huntMismatch?weightedId(box?zoneTargets:defenders,id=>.15+shotMismatch(shooter,id,type)*120):
     weightedId(zoneTargets,id=>1+rating(id,inPaint?'paintDef':'perimeterDef')/200);
   const mismatchBonus=huntMismatch?shotMismatch(shooter,defender,type):0;
-  // A possession may include a real pass before the chosen shot, unless a
-  // dribble/isolation play is called. A passer is an actual on-court teammate.
-  const passAttempt=inboundAfterTimeout||hills||(point&&pointAction.passer!==null)||shooters.length>1&&rnd()<(scheme===OFFENSE[2]?.94:runGun||oldSchool?.89:.76);
-  const passerCandidates=shooters.filter(id=>id!==shooter);
-  const passerId=point?(pointAction.passer||(inboundAfterTimeout?(shooter===pointAction.pg?pointAction.center:pointAction.pg):null)):hills?hillsPlay.inbounder:passAttempt?weightedId(passerCandidates,id=>rating(id,'passing')*planDiscipline(id)*
-    (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1)):null;
-  const passerRating=passerId?rating(passerId,'passing'):null; // raw listed Passing: 90+ always immune
-  const passDurationMs=passerId?passFlightMs(passerRating):0;
-  const passFrom=passerId?(inboundAfterTimeout?{x:.12,y:.5}:point?pointAction.targets[passerId]:hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
-  const passTo=passerId?(point?pointAction.targets[shooter]:hills?hillsPlay.targets[shooter]:OFFENSE_ANCHORS[shooters.indexOf(shooter)]):null;
-  const clogTargets=clog?clogPositions(passFrom,passTo,defenders):null;
+  // Strategy and teamwork control a varied number of half-court passes.
+  const plannedPassCount=passCount(scheme,teamDiscipline,seconds,rnd,pointAction?.passer?1:0);
+  const preferredFinal=point?pointAction.passer:null;
+  const preferredFirst=hills?hillsPlay.inbounder:null;
+  const path=passPath(shooters,shooter,plannedPassCount,preferredFinal,preferredFirst,id=>rating(id,'passing')*planDiscipline(id)*
+    (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1),rnd);
+  const firstHandler=path[0];
+  const passAnchor=id=>point?pointAction.targets[id]:hills?(hillsPlay.targets[id]||{x:.60,y:.50}):OFFENSE_ANCHORS[shooters.indexOf(id)];
+  let passerId=path.length>1?path.at(-2):null,passFrom=passerId?passAnchor(passerId):null,passTo=passerId?passAnchor(shooter):null;
+  let passDurationMs=0,passes=[],interceptorId=null,interceptionAt=null,passOutcome=null;
+  let clogTargets=clog?clogPositions(passFrom,passTo,defenders):null;
   const zonePositions=box?box.positions:zoneAnchorOverrides(dscheme,defenders);
-  const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress,clogTargets||zonePositions):[];
-  let interceptorId=null,interceptionAt=null,passOutcome=null;
   let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false,ankleBreaker=false;
   let putbackAttempt=false,putbackMade=false,putbackShooter=null;
   const eightSecondViolation=fullCourtPress?pressForcesEightSeconds(rnd):
@@ -361,27 +360,33 @@ function simulatePlay(room){
     if(g.stats[screenSetterId].pf>=6){
       g.fouledOut.push(screenSetterId);fouledOutPlayer=screenSetterId;fouledOutSide=offense;
     }
-  } else if(passerId && rnd()<passingOutChance(passerRating)){
-    event='pass-out-of-bounds';passOutcome='out-of-bounds';g.stats[passerId].tov++;
   } else {
-    if(passerId && passerRating<90){
-      // Only defenders geometrically in the pass lane can attempt this type
-      // of steal. The server uses actual, scheme-dependent court coordinates.
-      for(const lanePlayer of inLane){
-        const baseLaneChance=interceptionChance(fatiguedSkill(rating(lanePlayer.id,'steal'),dt.energy[lanePlayer.id]??100,'defense'),passerRating,true);
-        const interceptChance=clog?clogInterceptionChance(baseLaneChance,passerRating):
-          zoneLaneInterceptionChance(baseLaneChance,passerRating,dscheme);
-        if(rnd()<interceptChance){
-          interceptorId=lanePlayer.id;interceptionAt=lanePlayer.at;
-          break;
+    const resolved=resolvePassChain(path,(fromId,toId)=>{
+      const from=passAnchor(fromId),to=passAnchor(toId),passerRating=rating(fromId,'passing');
+      const coverage=clog?clogPositions(from,to,defenders):null;
+      const inLane=passingLaneDefenders(from,to,defenders,dscheme==='3-2 Zone',fullCourtPress,coverage||zonePositions);
+      const pass={from,to,durationMs:passFlightMs(passerRating),outcome:'complete',interceptorId:null,interceptionAt:null,clogPositions:coverage};
+      if(rnd()<passingOutChance(passerRating))pass.outcome='out-of-bounds';
+      else if(passerRating<90){
+        for(const lanePlayer of inLane){
+          const baseLaneChance=interceptionChance(fatiguedSkill(rating(lanePlayer.id,'steal'),dt.energy[lanePlayer.id]??100,'defense'),passerRating,true);
+          const chance=clog?clogInterceptionChance(baseLaneChance,passerRating):zoneLaneInterceptionChance(baseLaneChance,passerRating,dscheme);
+          if(rnd()<chance){pass.outcome='intercepted';pass.interceptorId=lanePlayer.id;pass.interceptionAt=lanePlayer.at;break;}
         }
       }
-    }
-    if(interceptorId){
-      event='interception';passOutcome='intercepted';stealId=interceptorId;
+      return pass;
+    });
+    passes=resolved.attempts;passDurationMs=resolved.durationMs;
+    const last=passes.at(-1);
+    passerId=last?.fromId??null;passFrom=last?.from??null;passTo=last?.to??null;passOutcome=last?.outcome??null;
+    interceptorId=last?.interceptorId??null;interceptionAt=last?.interceptionAt??null;
+    clogTargets=last?.clogPositions||clogTargets;
+    if(passOutcome==='out-of-bounds'){
+      event='pass-out-of-bounds';g.stats[passerId].tov++;
+    }else if(interceptorId){
+      event='interception';stealId=interceptorId;
       g.stats[interceptorId].stl++;g.stats[passerId].tov++;
-    } else {
-      if(passerId)passOutcome='complete';
+    }else{
       // On-ball defender is matched with the shooter/handler; Steal chance
       // is the exact Steal bracket minus the handler's Dribbling deduction.
       const ballSteal=zoneOnBallStealChance(
@@ -501,6 +506,7 @@ function simulatePlay(room){
     runGun&&screen?'Run & Gun screens spring a scorer! ':
     oldSchool&&kickout?'Old-School kickout to the arc! ':
     oldSchool&&screen?'Old-School cuts create an opening! ':'';
+  if(passes.length)log(room,`🏀 ${ot.name}: ${passes.filter(p=>p.outcome==='complete').length}/${passes.length} passes completed (${scheme}).`);
   if(ankleBreaker)log(room,`😵‍💫 ANKLE BREAKER! ${shooterName} makes ${getPlayer(defender).name} stumble — wide open!`);
   if(inboundAfterTimeout)log(room,`🏀 ${ot.name} inbounds after its timeout and keeps possession.`);
   if(event==='eight-second-violation')log(room,`⏱️ ${twoTwoOne?'2-2-1 ZONE PRESS':'FULL COURT PRESS'}! ${ot.name} cannot cross half court in 8 seconds. Turnover!`);
@@ -515,12 +521,13 @@ function simulatePlay(room){
   else if(deepThree)log(room,`🔥 FROM DEEP! 🔥 ${shooterName} drains a ${shotDistanceFt}-foot three-pointer!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else if(made)log(room,`${actionPrefix}${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
-  const transition=possessionTransition(g.event,offense,g.quarter,shooters,inboundAfterTimeout,passerId||shooter,hills?hillsPlay.inbounder:null);
+  const transition=possessionTransition(g.event,offense,g.quarter,shooters,inboundAfterTimeout,firstHandler,hills?hillsPlay.inbounder:null);
   g.event={id:g.possessions,quarter:g.quarter,transition,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,ankleBreaker,ankleBreakerHandler:ankleBreaker?shooter:null,ankleBreakerDefender:ankleBreaker?defender:null,deepThree,shotDistanceFt,shotClockRemaining,inboundAfterTimeout,
     screen,screenSetterId,screenBonus,illegalScreen,mismatch:huntMismatch&&!illegalScreen,kickout,
     passerId:illegalScreen||eightSecondViolation?null:passerId,passFrom:illegalScreen||eightSecondViolation?null:passFrom,
     passTo:illegalScreen||eightSecondViolation?null:passTo,passDurationMs:illegalScreen||eightSecondViolation?0:passDurationMs,
     passOutcome: eightSecondViolation?null:passOutcome,interceptorId,interceptionAt,
+    passes,plannedPassCount,firstHandler,
     hillsMode:hills?(hillsPlay.perimeterShot?'kickout':hillsPlay.paintCrash?'paint-crash':'paint-after-kickout'):null,
     hillsRoutes:hills?hillsPlay.targets:null,hillsInbounder:hills?hillsPlay.inbounder:null,
     hillsShooters:hills?hillsPlay.shooters:[],hillsPaintPlayers:hills?hillsPlay.paintPlayers:[],

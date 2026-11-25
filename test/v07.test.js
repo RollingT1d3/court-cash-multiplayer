@@ -75,8 +75,8 @@ test('timeouts require server-side possession and preserve the ball on both resu
 
 test('poster fires are replaced with requested distinct dunker/defender/hoop/crowd emoji effects',()=>{
   const app=read('public/app.js');
-  const start=app.indexOf("if(event?.posterDunk&&eventAge<POSTER_REACTIONS_MS){");
-  const end=app.indexOf('if(event?.ankleBreaker&&state.phase',start);
+  const start=app.indexOf("if(!transitioning&&event?.posterDunk&&resultAge>=0&&resultAge<POSTER_REACTIONS_MS){");
+  const end=app.indexOf("if(!transitioning&&resultAge>=0&&event?.ankleBreaker&&state.phase",start);
   assert.ok(start>=0&&end>start);
   const portraitEffects=app.slice(start,end);
   assert.ok(portraitEffects.includes("ctx.fillText('🗣️'"));

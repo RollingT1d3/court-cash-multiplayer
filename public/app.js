@@ -563,7 +563,7 @@
     // The server's pass geometry remains authoritative for gameplay. For the
     // presentation, backcourt inbound anchors become frontcourt pass anchors
     // after the separate visible inbound/advance stage.
-    const event=rawEvent?.transition&&rawEvent.passFrom?.x<.25?{...rawEvent,passFrom:{x:.60,y:rawEvent.passFrom.y}}:rawEvent;
+    const event=!Array.isArray(rawEvent?.passes)&&rawEvent?.transition&&rawEvent.passFrom?.x<.25?{...rawEvent,passFrom:{x:.60,y:rawEvent.passFrom.y}}:rawEvent;
     const offense=event?.offense??game.offense;
     const attackRight=event?.attackRight??(offense===0?(game.quarter<=2):!(game.quarter<=2));
     const targetGoal=attackRight?W-(17+5.25*(W/94)):(17+5.25*(W/94));
@@ -595,7 +595,10 @@
     const tipAge=game.tipoff?Math.max(0,Date.now()-syncOffset-game.tipoff.at):Infinity;
     const tipping=!event&&tipAge<motion.TIP_MS&&state.phase==='sim';
     const tip=tipping?motion.tipFrame(tipAge,W,H,game.tipoff.winningTeam):null;
-    const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&eventAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
+    const chain=event?.passes,passFrame=event&&!transitioning?motion.passFrame(event,eventAge):null;
+    const passLead=Array.isArray(chain)?event.passDurationMs||0:0;
+    const resultAge=eventAge-passLead;
+    const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&resultAge>=0&&resultAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
     const shotEffectAge=eventAge-(event?motion.shotEnd(event):0);
     const putbackEffectAge=eventAge-(event?motion.putbackEnd(event):0);
     const present=new Set();
@@ -610,7 +613,7 @@
           const target=event.zonePositions[id];x=target.x*W;y=target.y*H;
         }
         if(!attacking&&isClog){
-          const coverage=event?.clogPositions?.[id];
+          const coverage=(passFrame?.pass.clogPositions||event?.clogPositions)?.[id];
           if(coverage){x=coverage.x*W;y=coverage.y*H;}
           else {x=(.65+pos*.025)*W;y=(pos%2?.77:.23)*H;}
         }
@@ -650,15 +653,15 @@
             y=(anchor.y+(route.y-anchor.y)*advance+curve)*H;
           }
         }
-        // During a pass, show passer and receiver at their actual lane anchors.
-        // For a turnover, don't teleport the intended receiver to a shot location.
-        if(event?.passerId===id&&attacking&&eventAge<event.passDurationMs+220){
+        // Animate the actual sender and receiver for each pass.
+        const activePass=passFrame?.pass||(transitioning?chain?.[0]:null);
+        if(attacking&&activePass&&activePass.fromId===id){x=activePass.from.x*W;y=activePass.from.y*H;}
+        else if(attacking&&activePass&&activePass.toId===id){x=activePass.to.x*W;y=activePass.to.y*H;}
+        else if(!Array.isArray(chain)&&event?.passerId===id&&attacking&&eventAge<event.passDurationMs+220){
           x=event.passFrom.x*W;y=event.passFrom.y*H;
-        }
-        if(event?.shooter===id&&attacking&&event.passerId&&eventAge<event.passDurationMs+220){
+        }else if(!Array.isArray(chain)&&event?.shooter===id&&attacking&&event.passerId&&eventAge<event.passDurationMs+220){
           x=event.passTo.x*W;y=event.passTo.y*H;
-        } else if(event?.shooter===id&&attacking&&!['illegal-screen','pass-out-of-bounds','interception','eight-second-violation'].includes(event.displayEvent)&&!(isHills&&eventAge<1600)&&!(isPoint&&eventAge<1100)){
-          // From ordinary paint attempts to 60-foot heaves, draw the actual shot position.
+        }else if(event?.shooter===id&&attacking&&!activePass&&!['illegal-screen','pass-out-of-bounds','interception','eight-second-violation'].includes(event.displayEvent)){
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
           x=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*.50;
         }
@@ -669,7 +672,7 @@
           const at=follow?canvasPositions.get(follow):null;
           if(at){x=Math.min(.96*W,(attackRight?at.x:W-at.x)+.045*W);y=at.y;}
         }
-        if(event?.interceptorId===id&&!attacking&&event.interceptionAt){
+        if(event?.interceptorId===id&&!attacking&&event.interceptionAt&&(!Array.isArray(chain)||passFrame?.pass.interceptorId===id||resultAge>=0)){
           x=event.interceptionAt.x*W;y=event.interceptionAt.y*H;
         }
         if(event?.reboundId===id&&!transitioning&&eventAge>=motion.shotEnd(event)){x=.88*W;y=H*.58;}
@@ -679,9 +682,9 @@
           else {const laneIndex=game.active[side].filter(pid=>pid!==event.shooter).indexOf(id);x=(.79+.045*Math.floor(laneIndex/2))*W;y=(laneIndex%2?.67:.33)*H; if(side===offense)y+=(laneIndex%2?1:-1)*.09*H;}
         }
         // Defender stumbles out of their assignment on a successful crossover.
-        const ankleStumble=!transitioning&&event?.ankleBreaker&&event?.defender===id&&!attacking&&eventAge<ANKLE_STUMBLE_MS;
+        const ankleStumble=!transitioning&&event?.ankleBreaker&&event?.defender===id&&!attacking&&resultAge>=0&&resultAge<ANKLE_STUMBLE_MS;
         if(ankleStumble){
-          const sway=Math.sin(Math.PI*eventAge/ANKLE_STUMBLE_MS);
+          const sway=Math.sin(Math.PI*resultAge/ANKLE_STUMBLE_MS);
           x+=((pos%2)?1:-1)*23*sway;y+=14*sway;
         }
         if(!attackRight)x=W-x;
@@ -704,7 +707,7 @@
         ctx.save();
         if(ankleStumble){
           // Brief visible spin/stagger of the circular player portrait.
-          const spin=Math.sin(Math.PI*eventAge/ANKLE_STUMBLE_MS);
+          const spin=Math.sin(Math.PI*resultAge/ANKLE_STUMBLE_MS);
           ctx.translate(prev.x,prev.y);
           ctx.rotate((pos%2?1:-1)*.32*spin);
           ctx.translate(-prev.x,-prev.y);
@@ -753,13 +756,13 @@
           ctx.font='36px system-ui';ctx.textAlign='center';ctx.fillText('🔥',prev.x,prev.y-45);
           ctx.restore();
         }
-        if(!transitioning&&event?.ankleBreaker&&eventAge<ANKLE_STUMBLE_MS&&id===event.defender){
-          ctx.save();ctx.globalAlpha=Math.min(1,(ANKLE_STUMBLE_MS-eventAge)/240);
+        if(!transitioning&&event?.ankleBreaker&&resultAge>=0&&resultAge<ANKLE_STUMBLE_MS&&id===event.defender){
+          ctx.save();ctx.globalAlpha=Math.min(1,(ANKLE_STUMBLE_MS-resultAge)/240);
           ctx.font='29px system-ui';ctx.textAlign='center';
           ctx.fillText('😵‍💫',prev.x,prev.y-44);ctx.restore();
         }
-        if(!transitioning&&event?.posterDunk&&eventAge<POSTER_REACTIONS_MS){
-          ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-eventAge)/290);
+        if(!transitioning&&event?.posterDunk&&resultAge>=0&&resultAge<POSTER_REACTIONS_MS){
+          ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-resultAge)/290);
           ctx.font='27px system-ui';ctx.textAlign='center';
           if(id===event.shooter)ctx.fillText('🗣️',prev.x,prev.y-44);
           if(id===event.defender)ctx.fillText('😢',prev.x+31,prev.y+3);
@@ -778,10 +781,11 @@
     } else if(event&&canvasPositions.has(event.shooter)){
       const d=canvasPositions.get(event.shooter),t=eventAge;
       const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event.displayEvent);
-      if(event.foul&&event.freeThrowResults?.length){
+      if(passFrame){ball=motion.passBall(passFrame,canvasPositions,W,H,direction);}
+      else if(event.foul&&event.freeThrowResults?.length){
         const line={x:targetGoal-direction*14*(W/94),y:H/2};
-        ftFrame=motion.freeThrowFrame(event.freeThrowResults,t,line,goal,direction);ball=ftFrame?.ball;
-      } else if(event.passerId&&event.passFrom&&event.passTo&&t<event.passDurationMs&&!event.illegalScreen&&!event.eightSecondViolation){
+        ftFrame=motion.freeThrowFrame(event.freeThrowResults,resultAge,line,goal,direction);ball=ftFrame?.ball;
+      } else if(!Array.isArray(chain)&&event.passerId&&event.passFrom&&event.passTo&&t<event.passDurationMs&&!event.illegalScreen&&!event.eightSecondViolation){
         const from=event.passFrom,to=event.passOutcome==='intercepted'&&event.interceptionAt?event.interceptionAt:event.passTo;
         const progress=Math.min(1,t/Math.max(1,event.passDurationMs));
         const fx=attackRight?from.x*W:(1-from.x)*W,tx=attackRight?to.x*W:(1-to.x)*W;
@@ -812,18 +816,24 @@
       const title=tr.kind==='inbound'?(rawAge<650?'INBOUND PASS':'BRINGING THE BALL UP'):tr.kind==='reset'?'RESETTING THE OFFENSE':'TRANSITION';
       ctx.fillText(title,W/2,31);ctx.restore();
     }
+    if(passFrame&&state.phase==='sim'){
+      const p=passFrame.pass;
+      ctx.save();ctx.font='900 14px system-ui';ctx.textAlign='center';ctx.fillStyle='#e8f4ff';ctx.strokeStyle='#101824';ctx.lineWidth=4;
+      const label=`PASS ${chain.indexOf(p)+1}/${chain.length} · ${player(p.fromId)?.name.split(' ')[0]||'PLAYER'} → ${player(p.toId)?.name.split(' ')[0]||'PLAYER'}`;
+      ctx.strokeText(label,W/2,H-26);ctx.fillText(label,W/2,H-26);ctx.restore();
+    }
     // One short 🖐️ centered between the actual blocker and the blocked shooter.
     // Positions are the rendered, interpolated circle coordinates on this frame.
-    if(!transitioning&&event?.displayEvent==='block'&&event?.blockId&&eventAge<850&&state.phase==='sim'&&
+    if(!transitioning&&event?.displayEvent==='block'&&event?.blockId&&shotEffectAge>=0&&shotEffectAge<850&&state.phase==='sim'&&
        canvasPositions.has(event.blockId)&&canvasPositions.has(event.shooter)){
       const defender=canvasPositions.get(event.blockId),attacker=canvasPositions.get(event.shooter);
       const midX=(defender.x+attacker.x)/2,midY=(defender.y+attacker.y)/2;
-      ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,eventAge/110,(850-eventAge)/200));
+      ctx.save();ctx.globalAlpha=Math.max(0,Math.min(1,shotEffectAge/110,(850-shotEffectAge)/200));
       ctx.font='32px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText('🖐️',midX,midY);ctx.restore();
     }
-    if(!transitioning&&event?.ankleBreaker&&state.phase==='sim'){
-      courtReactionBurst(ctx,W,H,['🫪','😱','😯'],eventAge,ANKLE_REACTIONS_MS);
+    if(!transitioning&&resultAge>=0&&event?.ankleBreaker&&state.phase==='sim'){
+      courtReactionBurst(ctx,W,H,['🫪','😱','😯'],resultAge,ANKLE_REACTIONS_MS);
     }
     // Mid-range and three-point baskets use a brief WHITE scoreboard label at
     // the rim (not on fouls, misses, or made putbacks).
@@ -835,10 +845,10 @@
       ctx.strokeText(text,targetGoal,H/2-58);ctx.fillText(text,targetGoal,H/2-58);
       ctx.restore();
     }
-    if(!transitioning&&event?.posterDunk&&state.phase==='sim'){
-      courtReactionBurst(ctx,W,H,['📸😯','📸','🫪'],eventAge,POSTER_REACTIONS_MS);
-      if(eventAge<POSTER_REACTIONS_MS){
-        ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-eventAge)/260);
+    if(!transitioning&&resultAge>=0&&event?.posterDunk&&state.phase==='sim'){
+      courtReactionBurst(ctx,W,H,['📸😯','📸','🫪'],resultAge,POSTER_REACTIONS_MS);
+      if(resultAge>=0&&resultAge<POSTER_REACTIONS_MS){
+        ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-resultAge)/260);
         ctx.font='28px system-ui';ctx.textAlign='center';
         ctx.fillText('💪',targetGoal,H/2-41);ctx.restore();
       }
@@ -850,8 +860,8 @@
       'steal':'✋ BALL STOLEN!',
       'eight-second-violation':'⏱ 8 SECOND VIOLATION!'
     }[event?.displayEvent];
-    if(!transitioning&&turnoverBanner&&eventAge<1900&&state.phase==='sim'){
-      ctx.save();ctx.globalAlpha=Math.min(1,(1900-eventAge)/300);
+    if(!transitioning&&turnoverBanner&&resultAge>=0&&resultAge<1900&&state.phase==='sim'){
+      ctx.save();ctx.globalAlpha=Math.min(1,(1900-resultAge)/300);
       ctx.fillStyle='#101824e5';ctx.fillRect(W/2-230,H*.14,460,48);
       ctx.font='900 22px system-ui';ctx.fillStyle='#ffdb84';ctx.textAlign='center';
       ctx.fillText(turnoverBanner,W/2,H*.14+31);ctx.restore();
@@ -898,14 +908,14 @@
       ctx.fillText('🔥FROM DEEP!🔥',W/2,H*.43);
       ctx.restore();
     }
-    if(!transitioning&&event?.foul&&eventAge<350){
-      ctx.save();ctx.globalAlpha=Math.min(1,(2250-eventAge)/450);
+    if(!transitioning&&event?.foul&&resultAge>=0&&resultAge<350){
+      ctx.save();ctx.globalAlpha=Math.min(1,(2250-resultAge)/450);
       ctx.fillStyle='#0c1726e0';ctx.fillRect(W/2-190,16,380,42);
       ctx.fillStyle='#ffcc58';ctx.font='900 21px system-ui';ctx.textAlign='center';
       ctx.fillText(`📣 SHOOTING FOUL • ${event.freeThrowsAttempted} FT`,W/2,45);
       ctx.restore();
     }
-    if(freeThrow&&ftFrame&&eventAge>=motion.FT_START){
+    if(freeThrow&&ftFrame&&resultAge>=motion.FT_START){
       ctx.save();ctx.fillStyle='#0c1726e8';ctx.fillRect(W/2-145,16,290,65);
       ctx.textAlign='center';ctx.font='900 19px system-ui';ctx.fillStyle='#fff';ctx.fillText('FREE THROW '+(ftFrame.index+1)+' / '+event.freeThrowResults.length,W/2,40);
       ctx.fillStyle=ftFrame.revealed?(ftFrame.made?'#d0ff62':'#ff8999'):'#b7c7da';ctx.fillText(ftFrame.revealed?(ftFrame.made?'MADE!':'MISS!'):'AT THE LINE',W/2,66);ctx.restore();

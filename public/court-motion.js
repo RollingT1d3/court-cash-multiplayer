@@ -80,5 +80,18 @@
    if(carrier&&handler&&carrier!==handler&&age>=exchange)return between(hold(carrier),hold(handler),clamp((age-exchange)/240,0,1),10);
    return hold(carrier||handler||from);
  }
- root.CourtMotion=Object.freeze({transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ function passFrame(e,age){
+   if(!Array.isArray(e.passes)||!e.passes.length||age>=e.passDurationMs)return null;
+   const pass=e.passes.find(p=>age<p.endMs+130)||e.passes.at(-1);
+   return {pass,flying:age>=pass.startMs&&age<pass.endMs,progress:clamp((age-pass.startMs)/Math.max(1,pass.durationMs),0,1),received:age>=pass.endMs,final:pass===e.passes.at(-1)};
+ }
+ function passBall(frame,positions,W,H,direction){
+   const p=frame.pass,point=q=>({x:(direction===1?q.x:1-q.x)*W,y:q.y*H});
+   const from=positions.get(p.fromId)||point(p.from),to=positions.get(p.toId)||point(p.to);
+   const target=p.outcome==='intercepted'?(positions.get(p.interceptorId)||point(p.interceptionAt)):p.outcome==='out-of-bounds'?{x:to.x,y:p.to.y>.5?H+18:-18}:to;
+   if(!frame.received&&!frame.flying)return from;
+   if(frame.flying)return between(from,target,frame.progress,8);
+   return target;
+ }
+ root.CourtMotion=Object.freeze({passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);

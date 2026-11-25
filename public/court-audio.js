@@ -37,11 +37,13 @@
         if(age<1800+lead){
           const at=(name,ms)=>add(name,Math.max(0,lead+ms-age));
           if(lead&&age<lead){for(let ms=e.transition.kind==='inbound'?650:200;ms<lead;ms+=300){if(ms>=age)add('bounce',ms-age);}}
-          const end=clamp(Number(e.passDurationMs)||0,0,1700)+470;
+          const passLead=Array.isArray(e.passes)?Number(e.passDurationMs)||0:0;
+          const end=(Number(e.passDurationMs)||0)+470;
+          if(e.passes?.length)for(const p of e.passes){if(lead+p.startMs>=age)at('bounce',p.startMs);}
           const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(e.displayEvent);
           if(!turnover&&!e.foul){if(age<250)at('bounce',0);if(end>650&&age<500)at('bounce',300);}
-          if(e.ankleBreaker)at('reaction',70);
-          if(e.foul||e.illegalScreen||e.displayEvent==='illegal-screen'||e.displayEvent==='eight-second-violation'){at('whistle',e.foul?0:Math.min(end,600));if(e.foul&&Array.isArray(e.freeThrowResults))e.freeThrowResults.forEach((made,i)=>at(made?'swish':'rim',350+i*850+550));}
+          if(e.ankleBreaker)at('reaction',passLead+70);
+          if(e.foul||e.illegalScreen||e.displayEvent==='illegal-screen'||e.displayEvent==='eight-second-violation'){at('whistle',e.foul?passLead:Math.min(end,600));if(e.foul&&Array.isArray(e.freeThrowResults))e.freeThrowResults.forEach((made,i)=>at(made?'swish':'rim',passLead+350+i*850+550));}
           else if(!turnover){
             if(e.putbackMade){const count=e.rimBounces||1;for(let i=0;i<count;i++)at('rim',end+i*180);at('dunk',e.rimBounces?end+count*180+260+300:end+260);}
             else if(e.made)at(e.type==='dunk'||e.displayEvent==='dunk'?'dunk':'swish',end);
