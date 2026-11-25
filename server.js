@@ -1,6 +1,7 @@
 import http from 'node:http';
 import { createAdminAPI } from './admin-v09.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
+import { BOX_AND_ONE, BOX_CHASER_FATIGUE, boxAssignments, boxShotDefenders, boxShotAdjustment } from './defense-box-one.js';
 import { readFileSync, createReadStream, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,7 +36,7 @@ const wheelStore = createWheelStore({root:ROOT,players:PLAYERS});
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
 const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT];
-const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS,CLOG_THE_LANES,FOUR_ONE_ZONE,TWO_TWO_ONE_ZONE];
+const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone',FULL_COURT_PRESS,CLOG_THE_LANES,FOUR_ONE_ZONE,TWO_TWO_ONE_ZONE,BOX_AND_ONE];
 const BASE_SECONDS = 48*60;
 const TIMEOUTS_PER_GAME = 5;
 // Optional short durations for automated integration tests. Production defaults remain unchanged.
@@ -191,7 +192,7 @@ function defensiveSkill(room,side,id,key){
   return fatiguedSkill(effectiveOnCourt(room,side,id,key),room.teams[side].energy[id]??100,'defense');
 }
 function weightedId(ids,fun){const weights=ids.map(id=>Math.max(.01,fun(id)));let r=rnd()*weights.reduce((a,b)=>a+b,0);for(let i=0;i<ids.length;i++){r-=weights[i];if(r<=0)return ids[i];}return ids.at(-1);}
-function fatigue(room,seconds){
+function fatigue(room,seconds,boxChaser=null){
   const g=room.game;
   for(let i=0;i<2;i++){
     const t=room.teams[i];
@@ -203,6 +204,7 @@ function fatigue(room,seconds){
         if(room.teams[other(i)].defense===FULL_COURT_PRESS)drain*=PRESS_OFFENSE_STAMINA_MULTIPLIER;
         if(i===g.offense&&t.offense===RUN_FOR_THE_HILLS)drain*=HILLS_STAMINA_MULTIPLIER;
         if(i!==g.offense&&t.defense===TWO_TWO_ONE_ZONE)drain*=TWO_TWO_ONE_DEFENDER_FATIGUE_FACTOR;
+        if(i!==g.offense&&t.defense===BOX_AND_ONE&&id===boxChaser)drain*=BOX_CHASER_FATIGUE;
         if(i===g.offense&&room.teams[other(i)].defense===TWO_TWO_ONE_ZONE)drain*=TWO_TWO_ONE_ATTACKER_FATIGUE_FACTOR;
         t.energy[id]=clamp((t.energy[id]??100)-drain,0,100);
         g.stats[id].seconds+=seconds;
@@ -240,6 +242,7 @@ function simulatePlay(room){
   const fourOne=dscheme===FOUR_ONE_ZONE,twoTwoOne=dscheme===TWO_TWO_ONE_ZONE;
   const pointAction=point?pointPlay(shooters,rating,rnd):null;
   const hillsPlay=hills?hillsRoutes(shooters,hillsInbounder(shooters,rating),rating,rnd):null;
+  const box=dscheme===BOX_AND_ONE?boxAssignments(shooters,defenders,ov,rating,pointAction?.targets||hillsPlay?.targets||Object.fromEntries(shooters.map((id,i)=>[id,OFFENSE_ANCHORS[i]]))):null;
   const roles=offenseRoles(shooters,rating);
   // Shot-clock pressure is modeled within each possession. A late or open kickout
   // sends the ball to the designated arc specialist in Old-School Buckets.
@@ -296,7 +299,7 @@ function simulatePlay(room){
     type==='mid'?12+Math.floor(rnd()*11):3+Math.floor(rnd()*7);
   // A zone keeps three defenders up top and two close to the rim. Pure Chaos deliberately
   // searches across defenders for favorable size/scoring mismatches using off-ball screens.
-  const zoneTargets=dscheme==='3-2 Zone'?(inPaint?defenders.slice(3):defenders.slice(0,3)):
+  const zoneTargets=box?boxShotDefenders(box,shooter,inPaint):dscheme==='3-2 Zone'?(inPaint?defenders.slice(3):defenders.slice(0,3)):
     zoneDefendersForShot(dscheme,defenders,inPaint);
   // Screen execution is influenced by role specialists, their Teamwork and energy.
   const screenRequested=(chaos&&rnd()<.18+.72*adherence)||
@@ -310,7 +313,7 @@ function simulatePlay(room){
   const screenSetterId=screen?(point?pointAction.center:weightedId(availableScreeners,id=>Math.max(1,rating(id,'strength'))*planDiscipline(id))):null;
   const screenBonus=screen?screenStrengthBonus(rating(screenSetterId,'strength')):0;
   const huntMismatch=chaos&&screen&&rnd()<.25+.62*adherence;
-  const defender=(process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1')?defenders[0]:huntMismatch?weightedId(defenders,id=>.15+shotMismatch(shooter,id,type)*120):
+  const defender=(process.env.NODE_ENV==='test'&&process.env.CC_TEST_ALWAYS_FOUL==='1')?defenders[0]:huntMismatch?weightedId(box?zoneTargets:defenders,id=>.15+shotMismatch(shooter,id,type)*120):
     weightedId(zoneTargets,id=>1+rating(id,inPaint?'paintDef':'perimeterDef')/200);
   const mismatchBonus=huntMismatch?shotMismatch(shooter,defender,type):0;
   // A possession may include a real pass before the chosen shot, unless a
@@ -324,7 +327,7 @@ function simulatePlay(room){
   const passFrom=passerId?(inboundAfterTimeout?{x:.12,y:.5}:point?pointAction.targets[passerId]:hills?{x:.18,y:.5}:OFFENSE_ANCHORS[shooters.indexOf(passerId)]):null;
   const passTo=passerId?(point?pointAction.targets[shooter]:hills?hillsPlay.targets[shooter]:OFFENSE_ANCHORS[shooters.indexOf(shooter)]):null;
   const clogTargets=clog?clogPositions(passFrom,passTo,defenders):null;
-  const zonePositions=zoneAnchorOverrides(dscheme,defenders);
+  const zonePositions=box?box.positions:zoneAnchorOverrides(dscheme,defenders);
   const inLane=passerId?passingLaneDefenders(passFrom,passTo,defenders,dscheme==='3-2 Zone',fullCourtPress,clogTargets||zonePositions):[];
   let interceptorId=null,interceptionAt=null,passOutcome=null;
   let event='miss',made=false,points=0,assistId=null,reboundId=null,stealId=null,blockId=null,posterDunk=false,ankleBreaker=false;
@@ -333,7 +336,7 @@ function simulatePlay(room){
     twoTwoOne&&twoTwoOneEightSecond(rnd);
   if(eightSecondViolation)seconds=Math.min(g.secondsLeft,8);
   let foul=false,fouler=null,freeThrowsAttempted=0,freeThrowsMade=0,fouledOutPlayer=null,fouledOutSide=null;
-  fatigue(room,seconds);
+  fatigue(room,seconds,box?.chaser);
   // Constant motion and screening cost slightly more energy, especially when teamwork is low.
   if(chaos){for(const id of shooters)ot.energy[id]=clamp(ot.energy[id]-(.20+.30*(1-planDiscipline(id)))*(seconds/17),0,100);}
   if(runGun||oldSchool){for(const id of screeners)ot.energy[id]=clamp(ot.energy[id]-(.09+.22*(1-planDiscipline(id)))*(seconds/17),0,100);}
@@ -399,6 +402,7 @@ function simulatePlay(room){
     if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
     if(clog&&inPaint)defenseBump-=CLOG_PAINT_SHOT_BONUS;
     defenseBump+=zoneShotDefenseAdjustment(dscheme,type);
+    if(box)defenseBump+=boxShotAdjustment(box,shooter,type);
     const rawThree=isThree?rating(shooter,'three'):0;
     const base=isThree?threePointBaseChance(rawThree):inPaint?.61:.43;
     // Preserve fatigue and out-of-position penalties without tier-cliff effects.
@@ -515,7 +519,8 @@ function simulatePlay(room){
     pointPG:point?pointAction.pg:null,pointCenter:point?pointAction.center:null,
     pointCorners:point?pointAction.corners:[],pointWingCut:point?pointAction.wingCut:null,
     pointCutReturned:point?pointAction.cutReturned:false,
-    clogPositions:clogTargets,clog,zoneDefense:fourOne?FOUR_ONE_ZONE:twoTwoOne?TWO_TWO_ONE_ZONE:null,
+    clogPositions:clogTargets,clog,zoneDefense:box?BOX_AND_ONE:fourOne?FOUR_ONE_ZONE:twoTwoOne?TWO_TWO_ONE_ZONE:null,
+    boxTarget:box?.target??null,boxChaser:box?.chaser??null,boxHigh:box?.high??[],boxLow:box?.low??[],
     zonePositions,attackRight:offense===0?g.quarter<=2:g.quarter>2,
     screeners:runGun?shooters.filter(id=>!roles.runShooters.includes(id)):oldSchool?roles.oldCutters:[],
     arcShooter:oldSchool?roles.oldShooter:null,arcShooters:runGun?roles.runShooters:[],

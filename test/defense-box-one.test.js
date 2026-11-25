@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {BOX_AND_ONE,BOX_ANCHORS,BOX_CHASER_FATIGUE,boxAssignments,boxShotDefenders,boxShotAdjustment} from '../defense-box-one.js';
+const attackers=['a','b','c','d','e'], defenders=['f','g','h','i','j'];
+const overall=id=>id==='c'?99:80;
+const rating=(id,key)=>id==='g'&&['perimeterDef','speed','iq'].includes(key)?99: ['i','j'].includes(id)&&['paintDef','block','rebound'].includes(key)?95:70;
+const positions=Object.fromEntries(attackers.map(id=>[id,{x:.7,y:.4}]));
+test('Box-and-One selects a dedicated chaser and four distinct zone defenders',()=>{
+ const box=boxAssignments(attackers,defenders,overall,rating,positions);
+ assert.equal(BOX_AND_ONE,'Box-and-One');
+ assert.equal(box.target,'c');assert.equal(box.chaser,'g');
+ assert.deepEqual(box.high,['f','h']);assert.deepEqual(box.low,['i','j']);
+ assert.equal(Object.keys(box.positions).length,5);
+ assert.deepEqual(box.high.map(id=>box.positions[id]),BOX_ANCHORS.slice(0,2));
+ assert.deepEqual(box.low.map(id=>box.positions[id]),BOX_ANCHORS.slice(2));
+ assert.equal(box.positions.g.y,.4);
+ assert.deepEqual(boxShotDefenders(box,'c',false),['g']);
+ assert.deepEqual(boxShotDefenders(box,'c',true),['g']);
+ assert.deepEqual(boxShotDefenders(box,'a',false),box.high);
+ assert.deepEqual(boxShotDefenders(box,'a',true),box.low);
+ assert.equal(boxShotAdjustment(box,'c','three'),.13);
+ assert.equal(boxShotAdjustment(box,'a','three'),-.055);
+ assert.equal(boxShotAdjustment(box,'a','mid'),-.025);
+ assert.equal(boxShotAdjustment(box,'a','dunk'),.025);
+ assert.equal(BOX_CHASER_FATIGUE,1.25);
+});
+test('assignment updates when either target or chaser is substituted',()=>{
+ const box=boxAssignments(['a','b','x','d','e'],['f','y','h','i','j'],overall,rating,positions);
+ assert.notEqual(box.target,'c');assert.notEqual(box.chaser,'g');
+ assert.equal(new Set([box.chaser,...box.high,...box.low]).size,5);
+});
+test('Box-and-One is available in lineups and timeouts and uses server-driven court positions',()=>{
+ const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(server,/TWO_TWO_ONE_ZONE,BOX_AND_ONE\]/);
+ assert.match(server,/boxShotDefenders\(box,shooter,inPaint\)/);
+ assert.match(server,/boxShotAdjustment\(box,shooter,type\)/);
+ assert.match(server,/fatigue\(room,seconds,box\?\.chaser\)/);
+ assert.match(app,/'Box-and-One'/);assert.match(app,/event\.boxTarget/);
+ assert.match(app,/DEFENSE\.map/);
+});

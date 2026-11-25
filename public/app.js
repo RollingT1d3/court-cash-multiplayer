@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id);
   const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
   const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets','Run For The Hills','Play Through Point'];
-  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press','Clog The Lanes','4-1 Zone','2-2-1 Zone'];
+  const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press','Clog The Lanes','4-1 Zone','2-2-1 Zone','Box-and-One'];
   const OFFENSE_INFO = {
     'Play Through Superstar':'The highest-rated player becomes your primary option. Higher Teamwork means teammates reliably feed the star, space the floor and follow the play call.',
     'Play Through Stars':'Prioritizes your two best players while everyone else supplies complementary touches. Teamwork controls how reliably players stick to their roles.',
@@ -25,7 +25,8 @@
     'Full Court Press':'Pressure the ball all the way up court. Slightly higher on-ball steal chance, more stamina drain on opponents and roughly 10% chance to force an eight-second violation per defensive possession. Pressing defenders become significantly more exhausted.',
     'Clog The Lanes':'Defenders constantly drift beside or behind their matchups and directly into passing lanes, greatly increasing eligible lane-interception chances. This leaves the paint dangerously open for drives, layups and dunks.',
     '4-1 Zone':'Four defenders spread along the three-point arc to contest outside shots and passes, while the Center guards the paint alone. Strong against perimeter shooting; drives, interior scoring and offensive boards become easier because the Center gets little help.',
-    '2-2-1 Zone':'A full-court zone press: two defenders pressure the ball high, two cover the middle passing routes, and one stays back to protect the basket. Can force occasional eight-second violations and extra steals, but uses more stamina and can give up open shots once beaten.'
+    '2-2-1 Zone':'A full-court zone press: two defenders pressure the ball high, two cover the middle passing routes, and one stays back to protect the basket. Can force occasional eight-second violations and extra steals, but uses more stamina and can give up open shots once beaten.',
+    'Box-and-One':'Your best perimeter defender (weighted by perimeter defense, speed and IQ) shadows the opponent’s highest-OVR active player. Two high and two low zone defenders guard the rest. Strong against a single superstar, but other perimeter scorers get more open looks and the chaser tires faster.'
   };
   function strategyInfo(name,kind){return `<div class="strategy-info"><strong>${esc(name)}</strong><p>${esc((kind==='offense'?OFFENSE_INFO:DEFENSE_INFO)[name]||'')}</p></div>`;}
   const CAT = {
@@ -547,6 +548,7 @@
     const isZone=state.teams[1-offense].defense==='3-2 Zone';
     const isFourOne=state.teams[1-offense].defense==='4-1 Zone';
     const isTwoTwoOne=state.teams[1-offense].defense==='2-2-1 Zone';
+    const isBox=state.teams[1-offense].defense==='Box-and-One';
     const eventAge=event?Math.max(0,Date.now()-syncOffset-event.at):Infinity;
     const present=new Set();
     for(let side=0;side<2;side++){
@@ -556,7 +558,7 @@
         const anchor=attacking?anchors:(isTwoTwoOne?twoTwoOneAnchors:isFourOne?fourOneAnchors:
           isPress?pressAnchors:isZone?zoneAnchors:defenseAnchors)[pos];
         let x=anchor.x*W,y=anchor.y*H;
-        if(!attacking&&(isFourOne||isTwoTwoOne)&&event?.zonePositions?.[id]){
+        if(!attacking&&(isFourOne||isTwoTwoOne||isBox)&&event?.zonePositions?.[id]){
           const target=event.zonePositions[id];x=target.x*W;y=target.y*H;
         }
         if(!attacking&&isClog){
@@ -611,7 +613,13 @@
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
           x=Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*.50;
         }
-        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress&&!isClog){x=.85*W;y=H*.53;}
+        if(event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress&&!isClog&&!isBox){x=.85*W;y=H*.53;}
+        // The chaser tracks the target even off the ball; a zone defender closes out on other shooters.
+        if(!attacking&&isBox&&event?.zoneDefense==='Box-and-One'){
+          const follow=id===event.boxChaser?event.boxTarget:event.defender===id?event.shooter:null;
+          const at=follow?canvasPositions.get(follow):null;
+          if(at){x=Math.min(.96*W,(attackRight?at.x:W-at.x)+.045*W);y=at.y;}
+        }
         if(event?.interceptorId===id&&!attacking&&event.interceptionAt){
           x=event.interceptionAt.x*W;y=event.interceptionAt.y*H;
         }
