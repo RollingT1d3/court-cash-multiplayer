@@ -657,14 +657,17 @@
         if(quickBreak){const target=(attacking?fb.targets:fb.recoveryTargets)?.[id];if(target){
           const progress=fb.mode==='outlet'?Math.min(1,Math.max(0,rawAge/(lead+passLead||1))):1;
           const origin=attacking?fb.starts[id]:null;
-          if(origin){x=(origin.x+(target.x-origin.x)*progress)*W;y=(origin.y+(target.y-origin.y)*progress)*H;}else{x=target.x*W;y=target.y*H;}
+          if(origin){x=(origin.x+(target.x-origin.x)*progress)*W;y=(origin.y+(target.y-origin.y)*progress)*H;}
+          else if(!attacking&&fb.passDefense?.[id]&&(transitioning||passFrame&&!passFrame.received)){
+            const at=fb.passDefense[id];x=at.x*W;y=at.y*H;
+          }else{x=target.x*W;y=target.y*H;}
         }}
         // Animate the actual sender and receiver for each pass.
         const activePass=passFrame?.pass||(transitioning?chain?.[0]:null);
         if(attacking&&activePass&&activePass.fromId===id){x=activePass.from.x*W;y=activePass.from.y*H;}
         else if(attacking&&activePass&&activePass.toId===id){
           x=activePass.to.x*W;y=activePass.to.y*H;
-          if(passFrame?.final&&passFrame.received&&activePass.outcome==='complete'&&id===event.shooter&&!event.foul&&!['steal','illegal-screen','eight-second-violation'].includes(event.displayEvent)){
+          if(passFrame?.final&&passFrame.received&&activePass.outcome==='complete'&&id===event.shooter&&(!event.foul||quickBreak)&&(!['steal','illegal-screen','eight-second-violation'].includes(event.displayEvent)||quickBreak)){
             const feet=event.shotDistanceFt??(event.type==='three'?25:12);
             const settle=Math.min(1,Math.max(0,(eventAge-activePass.endMs)/(310+(quickBreak?fb.afterMs:0))));
             const shotX=quickBreak?fb.shotTarget.x*W:Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));

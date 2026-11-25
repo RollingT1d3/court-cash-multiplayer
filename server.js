@@ -336,7 +336,8 @@ function simulatePlay(room){
     (runGun&&roles.screenOnly.includes(id)?2.3:oldSchool&&roles.oldCutters.includes(id)?2.2:1),rnd);
   if(fastBreak?.mode==='reset'&&path[0]!==fastBreak.thief&&seconds>=4){
     // Retain control through a real entry pass when the defense recovers.
-    if(path.length>=6)path.shift();
+    const maxPasses=Math.max(1,Math.min(5,Math.floor((seconds-4)/3)));
+    while(path.length>maxPasses)path.shift();
     if(path[0]!==fastBreak.thief)path.unshift(fastBreak.thief);
     plannedPassCount=path.length-1;
   }
@@ -373,7 +374,7 @@ function simulatePlay(room){
     const resolved=resolvePassChain(path,(fromId,toId)=>{
       const from=passAnchor(fromId),to=passAnchor(toId),passerRating=rating(fromId,'passing');
       const coverage=clog?clogPositions(from,to,defenders):null;
-      const inLane=passingLaneDefenders(from,to,defenders,dscheme==='3-2 Zone',fullCourtPress,coverage||zonePositions);
+      const inLane=passingLaneDefenders(from,to,defenders,dscheme==='3-2 Zone',fullCourtPress,coverage||(quickBreak?fastBreak.passDefense:zonePositions));
       const pass={from,to,durationMs:passFlightMs(passerRating),outcome:'complete',interceptorId:null,interceptionAt:null,clogPositions:coverage};
       if(rnd()<passingOutChance(passerRating))pass.outcome='out-of-bounds';
       else if(passerRating<90){
