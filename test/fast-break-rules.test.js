@@ -27,3 +27,22 @@ test('wide-open specialist can choose a three, outlet and kickout require actual
  if(p.mode!=='solo'){assert.notEqual(p.thief,p.shooter);assert.ok(p.from&&p.to);}
  assert.equal(p.origin.x,1-prev.interceptionAt.x);
 });
+
+test('varied speed, energy, reading and positioning can produce every break branch including drive-and-kick',()=>{
+ let seed=91821;const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+ const seen=new Set();
+ for(let i=0;i<4000;i++){
+  const attributes=['speed','dribbling','iq','teamwork','passing','layup','dunk','mid','three'];
+  const stats=Object.fromEntries([...active,...defenders].map(id=>[id,Object.fromEntries(attributes.map(k=>[k,50+Math.floor(rnd()*51)]))]));
+  const energy=Object.fromEntries([...active,...defenders].map(id=>[id,30+rnd()*70]));
+  const previous={...prev,interceptionAt:{x:.42+rnd()*.49,y:.15+rnd()*.70}};
+  const p=make((id,k)=>stats[id][k],{previous,energy:id=>energy[id],random:rnd});
+  seen.add(p.mode);
+  if(p.mode!=='reset'){
+   assert.ok(p.gap>0&&p.seconds<=8);
+   if(p.mode==='solo')assert.equal(p.shooter,p.thief);
+   else{assert.notEqual(p.shooter,p.thief);assert.equal(Object.keys(p.passDefense).length,5);}
+  }
+ }
+ assert.deepEqual([...seen].sort(),['kickout','outlet','reset','solo']);
+});

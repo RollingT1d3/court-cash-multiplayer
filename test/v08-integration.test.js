@@ -51,6 +51,14 @@ test('v0.8 two players: draft, Point vs Clog, award win, wait for two rematch co
     const x=await state(a),ev=x.game?.event;
     if(ev&&!encountered.has(ev.id)){
       encountered.add(ev.id);
+      if(ev.fastBreak&&ev.fastBreak.mode!=='reset'){
+        assert.equal(ev.zoneDefense,null);
+        assert.equal(ev.firstHandler,ev.fastBreak.thief);
+        assert.equal(ev.shooter,ev.fastBreak.shooter);
+        assert.equal(ev.screen,false);
+        assert.ok(ev.fastBreak.gap>0);
+        assert.equal(ev.passes.length,ev.fastBreak.mode==='solo'?0:1);
+      }else{
       assert.equal(typeof ev.clog, 'boolean');
       assert.equal(ev.clog,true);
       assert.ok(ev.clogPositions);
@@ -59,6 +67,7 @@ test('v0.8 two players: draft, Point vs Clog, award win, wait for two rematch co
       assert.ok(ev.pointPG);
       assert.ok(ev.pointCenter);
       pointActions.add(ev.pointMode);
+      }
       if(ev.passerId&&x.players.find(p=>p.id===ev.passerId)?.stats.passing>=90){
          assert.notEqual(ev.displayEvent,'interception');
       }

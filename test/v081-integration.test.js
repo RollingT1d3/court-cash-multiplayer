@@ -51,6 +51,14 @@ test('v0.8.2 two-player game: each new zone defends live plays, awards and remat
     const x=await state(a),ev=x.game?.event;
     if(ev&&!encountered.has(ev.id)){
       encountered.add(ev.id);
+      if(ev.fastBreak&&ev.fastBreak.mode!=='reset'){
+        assert.equal(ev.zoneDefense,null);
+        assert.equal(ev.firstHandler,ev.fastBreak.thief);
+        assert.equal(ev.shooter,ev.fastBreak.shooter);
+        assert.equal(ev.screen,false);
+        assert.ok(ev.fastBreak.gap>0);
+        assert.equal(ev.passes.length,ev.fastBreak.mode==='solo'?0:1);
+      }else{
       const defense=x.teams[1-ev.offense].defense;
       assert.ok(['4-1 Zone','2-2-1 Zone'].includes(defense));
       assert.equal(ev.zoneDefense,defense);
@@ -62,6 +70,7 @@ test('v0.8.2 two-player game: each new zone defends live plays, awards and remat
       assert.ok(ev.pointPG);
       assert.ok(ev.pointCenter);
       pointActions.add(ev.pointMode);
+      }
       if(ev.passerId&&x.players.find(p=>p.id===ev.passerId)?.stats.passing>=90){
          assert.notEqual(ev.displayEvent,'interception');
       }

@@ -51,6 +51,14 @@ test('Box-and-One is selectable and resolves a full game with a dedicated defend
     const x=await state(a),ev=x.game?.event;
     if(ev&&!encountered.has(ev.id)){
       encountered.add(ev.id);
+      if(ev.fastBreak&&ev.fastBreak.mode!=='reset'){
+        assert.equal(ev.zoneDefense,null);
+        assert.equal(ev.firstHandler,ev.fastBreak.thief);
+        assert.equal(ev.shooter,ev.fastBreak.shooter);
+        assert.equal(ev.screen,false);
+        assert.ok(ev.fastBreak.gap>0);
+        assert.equal(ev.passes.length,ev.fastBreak.mode==='solo'?0:1);
+      }else{
       const defense=x.teams[1-ev.offense].defense;
       assert.ok(['Box-and-One','2-2-1 Zone'].includes(defense));
       assert.equal(ev.zoneDefense,defense);
@@ -69,6 +77,7 @@ test('Box-and-One is selectable and resolves a full game with a dedicated defend
       assert.ok(ev.pointPG);
       assert.ok(ev.pointCenter);
       pointActions.add(ev.pointMode);
+      }
       if(ev.passerId&&x.players.find(p=>p.id===ev.passerId)?.stats.passing>=90){
          assert.notEqual(ev.displayEvent,'interception');
       }

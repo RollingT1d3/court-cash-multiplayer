@@ -67,12 +67,19 @@ test('two real clients draft, run Hills against Full Court Press and observe bot
         if(ev.hillsInbounder && ev.hillsInbounder!==ev.shooter)seen.nonPg=true;
         if(ev.passerId)seen.pass=true;
         if(ev.type==='three'||ev.type==='mid'||ev.type==='dunk'||ev.type==='layup')shots++;
+        if(ev.fastBreak&&ev.fastBreak.mode!=='reset'){
+          assert.equal(ev.firstHandler,ev.fastBreak.thief);
+          assert.equal(ev.shooter,ev.fastBreak.shooter);
+          assert.equal(ev.screen,false);
+          assert.ok(ev.fastBreak.gap>0);
+        }else{
         assert.ok(ev.hillsMode);
         assert.ok(ev.fullCourtPress);
         assert.ok(ev.hillsInbounder);
         assert.notEqual(ev.hillsInbounder,ev.shooter);
         assert.equal(ev.hillsShooters.length,2);
         assert.equal(ev.hillsPaintPlayers.length,2);
+        }
         if(ev.displayEvent==='eight-second-violation')assert.equal(ev.points,0);
       }
       if(x.teams[0].roster.some(id=>x.teams[0].energy[id]<(baseline[0][id]??100)))positiveStaminaDrain=true;
