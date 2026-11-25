@@ -609,6 +609,8 @@
     const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&freeThrowAge>=0&&freeThrowAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
     const shotEffectAge=eventAge-(event?motion.shotEnd(event):0);
     const putbackEffectAge=eventAge-(event?motion.putbackEnd(event):0);
+    const topShotEffectY=54;
+    const topShotEffect=!!event?.made&&(['mid','three','fade'].includes(event.displayEvent)&&shotEffectAge>=0&&shotEffectAge<850||event.deepThree&&shotEffectAge>=0&&shotEffectAge<1250||event.posterDunk&&resultAge>=0&&resultAge<POSTER_REACTIONS_MS);
     const carrier=motion.ballCarrier(event,rawAge,passFrame);
     const present=new Set();
     for(let side=0;side<2;side++){
@@ -846,7 +848,7 @@
       const title=quickBreak?(fb.mode==='outlet'?'FAST BREAK · OUTLET':fb.mode==='kickout'?'FAST BREAK · DRIVE & KICK':'FAST BREAK'):fb?.mode==='reset'?'DEFENSE RECOVERS · SET OFFENSE':tr.kind==='inbound'?(rawAge<650?'INBOUND PASS':'BRINGING THE BALL UP'):tr.kind==='reset'?'RESETTING THE OFFENSE':'TRANSITION';
       ctx.fillText(title,W/2,31);ctx.restore();
     }
-    if(quickBreak&&!transitioning&&state.phase==='sim'&&resultAge<850){
+    if(quickBreak&&!transitioning&&state.phase==='sim'&&resultAge<850&&!topShotEffect){
       ctx.save();ctx.font='900 18px system-ui';ctx.textAlign='center';ctx.fillStyle='#d0ff62';ctx.fillText('⚡ FAST BREAK',W/2,31);ctx.restore();
     }
     if(passFrame&&state.phase==='sim'){
@@ -872,14 +874,14 @@
       const at=canvasPositions.get(event.shooter);
       if(at){ctx.save();ctx.textAlign='center';ctx.font='900 14px system-ui';ctx.fillStyle='#fff';ctx.strokeStyle='#122136';ctx.lineWidth=3;ctx.strokeText('FADEAWAY',at.x,at.y-49);ctx.fillText('FADEAWAY',at.x,at.y-49);ctx.restore();}
     }
-    // Mid-range and three-point baskets use a brief WHITE scoreboard label at
-    // the rim (not on fouls, misses, or made putbacks).
+    // v1.0: basket effects are centered at the top of the court, not at the rim.
+    // Player-local effects (blocks, fatigue, ankle stumbles) stay with players.
     if(event?.made&&['mid','three','fade'].includes(event.displayEvent)&&shotEffectAge>=0&&shotEffectAge<850&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,shotEffectAge/100,(850-shotEffectAge)/160);
       ctx.textAlign='center';ctx.font='1000 34px system-ui';ctx.lineWidth=5;
       ctx.strokeStyle='#111827';ctx.fillStyle='#ffffff';
       const text=event.displayEvent==='three'?'3PTS!':'SWISH!';
-      ctx.strokeText(text,targetGoal,H/2-58);ctx.fillText(text,targetGoal,H/2-58);
+      ctx.strokeText(text,W/2,topShotEffectY);ctx.fillText(text,W/2,topShotEffectY);
       ctx.restore();
     }
     if(!transitioning&&resultAge>=0&&event?.posterDunk&&state.phase==='sim'){
@@ -887,7 +889,7 @@
       if(resultAge>=0&&resultAge<POSTER_REACTIONS_MS){
         ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-resultAge)/260);
         ctx.font='28px system-ui';ctx.textAlign='center';
-        ctx.fillText('💪',targetGoal,H/2-41);ctx.restore();
+        ctx.fillText('💪',W/2,topShotEffectY);ctx.restore();
       }
     }
     const turnoverBanner={
@@ -909,13 +911,13 @@
       ctx.fillStyle='#fff3ab';ctx.font='900 18px system-ui';ctx.textAlign='center';
       ctx.fillText('🏀 INBOUND AFTER TIMEOUT',W/2,H*.78+24);ctx.restore();
     }
-    if(!transitioning&&event?.pointMode&&eventAge<1700&&state.phase==='sim'){
+    if(!transitioning&&event?.pointMode&&eventAge<1700&&state.phase==='sim'&&!topShotEffect){
       ctx.save();ctx.globalAlpha=Math.min(1,(1700-eventAge)/300);
       ctx.textAlign='center';ctx.font='900 19px system-ui';ctx.fillStyle='#ffdf84';
       ctx.fillText(`🎯 POINT + CENTER · ${event.pointMode.replaceAll('-',' ').toUpperCase()}`,W/2,H*.14);
       ctx.restore();
     }
-    if(!transitioning&&event?.hillsMode&&eventAge<1750&&state.phase==='sim'){
+    if(!transitioning&&event?.hillsMode&&eventAge<1750&&state.phase==='sim'&&!topShotEffect){
       ctx.save();ctx.globalAlpha=Math.min(1,(1750-eventAge)/350);
       ctx.fillStyle='#14233fdf';ctx.fillRect(W/2-190,65,380,37);
       ctx.fillStyle='#cbff77';ctx.textAlign='center';ctx.font='900 19px system-ui';
@@ -926,7 +928,7 @@
       ctx.save();ctx.fillStyle='#ffe87f';ctx.textAlign='center';ctx.font='900 20px system-ui';
       ctx.fillText('PUTBACK!',W/2,H*.79);ctx.restore();
     }
-    if(!transitioning&&event?.screen&&!event?.illegalScreen&&eventAge<1500&&state.phase==='sim'){
+    if(!transitioning&&event?.screen&&!event?.illegalScreen&&eventAge<1500&&state.phase==='sim'&&!topShotEffect){
       ctx.save();ctx.globalAlpha=Math.min(1,(1500-eventAge)/350);
       ctx.fillStyle='#112236da';ctx.fillRect(W/2-148,30,296,34);
       ctx.fillStyle='#d0ff62';ctx.font='900 19px system-ui';ctx.textAlign='center';
@@ -935,14 +937,13 @@
       ctx.restore();
     }
     if(event?.deepThree&&shotEffectAge>=0&&shotEffectAge<1250){
-      // Flames over the scoring rim and a short glowing red/orange center-screen banner.
+      // The former rim flame is part of the top-center deep-three banner.
       ctx.save();ctx.globalAlpha=Math.min(1,(1250-shotEffectAge)/320);
-      ctx.font='40px system-ui';ctx.textAlign='center';ctx.fillText('🔥',targetGoal,H/2-40);
       ctx.shadowColor='#ff3b15';ctx.shadowBlur=32;
       ctx.lineWidth=8;ctx.strokeStyle='#7e150e';ctx.fillStyle='#ff8624';
-      ctx.font='900 48px system-ui';ctx.textAlign='center';
-      ctx.strokeText('🔥FROM DEEP!🔥',W/2,H*.43);
-      ctx.fillText('🔥FROM DEEP!🔥',W/2,H*.43);
+      ctx.font='900 32px system-ui';ctx.textAlign='center';
+      ctx.strokeText('🔥FROM DEEP!🔥',W/2,topShotEffectY+38);
+      ctx.fillText('🔥FROM DEEP!🔥',W/2,topShotEffectY+38);
       ctx.restore();
     }
     if(!transitioning&&event?.foul&&freeThrowAge>=0&&freeThrowAge<350){

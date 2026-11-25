@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-rules.js';
 import { fastBreakPlan } from './fast-break-rules.js';
-import { passCount, passPath, resolvePassChain } from './passing-rules.js';
+import { passCount, passPath, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
 import { possessionTransition, possessionWindow } from './transition-rules.js';
 import { createAdminAPI } from './admin-v09.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
@@ -415,7 +415,7 @@ function simulatePlay(room){
       }
     }
   }
-  let fadeSetupMs=0,postFade=false;
+  let fadeSetupMs=0,postFade=false,passShotBoost=0;
   if(!['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event)){
     const fadeRating=rating(shooter,'fades');
     const fadeOdds=fadeChance({type,quickBreak,ankleBreaker,fades:fadeRating,mid:rating(shooter,'mid'),post:rating(shooter,'post'),iq:rating(shooter,'iq'),defense:defensiveSkill(room,def,defender,inPaint?'paintDef':'perimeterDef'),heightGap:getPlayer(defender).heightInches-getPlayer(shooter).heightInches,screen,shotClockRemaining,scheme});
@@ -476,6 +476,10 @@ function simulatePlay(room){
         fouledOutPlayer=defender;fouledOutSide=def;
       }
     } else {
+      // No new shot-selection roll: the completed final pass can enhance
+      // this one actual field-goal attempt, after all existing modifiers/caps.
+      passShotBoost=immediatePassShotBonus({passes,shooter,type,rating,ankleBreaker,postFade,fastBreak});
+      chance=boostedShotChance(chance,passShotBoost);
       g.stats[shooter].fga++;if(isThree)g.stats[shooter].threeA++;
       if(blocked){g.stats[defender].blk++;blockId=defender;event='block';}
       else if(rnd()<chance){
@@ -553,7 +557,7 @@ function simulatePlay(room){
     passerId:illegalScreen||eightSecondViolation?null:passerId,passFrom:illegalScreen||eightSecondViolation?null:passFrom,
     passTo:illegalScreen||eightSecondViolation?null:passTo,passDurationMs:illegalScreen||eightSecondViolation?0:passDurationMs,
     passOutcome: eightSecondViolation?null:passOutcome,interceptorId,interceptionAt,
-    passes,plannedPassCount,firstHandler,
+    passes,plannedPassCount,firstHandler,passShotBoost,
     hillsMode:hills?(hillsPlay.perimeterShot?'kickout':hillsPlay.paintCrash?'paint-crash':'paint-after-kickout'):null,
     hillsRoutes:hills?hillsPlay.targets:null,hillsInbounder:hills?hillsPlay.inbounder:null,
     hillsShooters:hills?hillsPlay.shooters:[],hillsPaintPlayers:hills?hillsPlay.paintPlayers:[],

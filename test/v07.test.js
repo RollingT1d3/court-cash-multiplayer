@@ -83,7 +83,7 @@ test('poster fires are replaced with requested distinct dunker/defender/hoop/cro
   assert.ok(portraitEffects.includes("ctx.fillText('🗣️'"));
   assert.ok(portraitEffects.includes("ctx.fillText('😢'"));
   assert.ok(!portraitEffects.includes("fillText('🔥'"));
-  assert.match(app,/ctx\.fillText\('💪',targetGoal,H\/2-41\)/);
+  assert.match(app,/ctx\.fillText\('💪',W\/2,topShotEffectY\)/);
   assert.match(app,/\['📸😯','📸','🫪'\]/);
   assert.match(app,/\['🫪','😱','😯'\]/);
   assert.match(app,/ctx\.rotate\(\(pos%2\?1:-1\)\*\.32\*spin\)/);

@@ -45,3 +45,30 @@ export function resolvePassChain(path,resolve){
  }
  return {attempts,durationMs:attempts.length?elapsed+180:0};
 }
+
+// v1.0: listed Passing rating grants additive percentage points on the
+// receiver's immediate field-goal attempt, never on selection or pass odds.
+export function passShotBonus(passing){
+ if(!Number.isFinite(passing)||passing<79)return 0;
+ if(passing>=100)return .10;
+ if(passing>=99)return .075;
+ if(passing>=98)return .05;
+ if(passing>=95)return .045;
+ if(passing>=91)return .04;
+ if(passing>=90)return .035;
+ if(passing>=89)return .03;
+ if(passing>=88)return .025;
+ if(passing>=86)return .02;
+ if(passing>=85)return .015;
+ if(passing>=80)return .01;
+ return .005;
+}
+export function immediatePassShotBonus({passes=[],shooter,type,rating,ankleBreaker=false,postFade=false,fastBreak=null}){
+ // The engine's normal final-pass reception goes directly into the shot.
+ // Exclude distinct self-created moves and the outlet receiver's extra run.
+ if(ankleBreaker||postFade||fastBreak?.mode==='outlet'||!['mid','three','fade','layup','dunk'].includes(type))return 0;
+ const last=passes.at(-1);
+ if(!last||last.outcome!=='complete'||last.toId!==shooter||last.fromId===shooter)return 0;
+ return passShotBonus(rating(last.fromId,'passing'));
+}
+export function boostedShotChance(base,bonus){return clamp(base+bonus,0,1);}

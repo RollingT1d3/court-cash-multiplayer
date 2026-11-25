@@ -49,3 +49,27 @@ test('client plays passes in order using rendered sender, receiver and intercept
  const p2=m.passFrame(e,e.passes[1].endMs);assert.equal(p2.pass.fromId,'sg');assert.equal(m.passBall(p2,positions,940,525,1).x,750);
  assert.equal(m.passFrame(e,e.passDurationMs),null);
 });
+
+
+test('v1.0 passing shot boost honors every exact bracket and only the final immediate catch',async()=>{
+ const {passShotBonus,immediatePassShotBonus,boostedShotChance}=await import('../passing-rules.js');
+ const expected=[0,.005,.01,.01,.01,.01,.01,.015,.02,.02,.025,.03,.035,.04,.04,.04,.04,.045,.045,.045,.05,.075,.10];
+ for(let n=78;n<=100;n++)assert.equal(passShotBonus(n),expected[n-78],String(n));
+ assert.equal(passShotBonus(0),0);
+ const passes=[{fromId:'a',toId:'b',outcome:'complete'},{fromId:'b',toId:'c',outcome:'complete'}];
+ const rating=(id,key)=>{assert.equal(key,'passing');return id==='a'?100:91;};
+ const e={passes,shooter:'c',type:'three',rating};
+ for(const type of ['mid','three','fade','layup','dunk'])assert.equal(immediatePassShotBonus({...e,type}),.04);
+ assert.equal(immediatePassShotBonus({...e,passes:[]}),0);
+ assert.equal(immediatePassShotBonus({...e,shooter:'b'}),0);
+ assert.equal(immediatePassShotBonus({...e,ankleBreaker:true}),0);
+ assert.equal(immediatePassShotBonus({...e,type:'fade',postFade:true}),0);
+ assert.equal(immediatePassShotBonus({...e,fastBreak:{mode:'outlet'}}),0);
+ assert.equal(immediatePassShotBonus({...e,fastBreak:{mode:'kickout'}}),.04);
+ assert.equal(immediatePassShotBonus({...e,type:'putback'}),0);
+ for(const outcome of ['intercepted','out-of-bounds'])assert.equal(immediatePassShotBonus({...e,passes:[passes[0],{...passes[1],outcome}]}),0);
+ assert.ok(Math.abs(boostedShotChance(.40,.10)-.50)<1e-10);
+ assert.ok(Math.abs(boostedShotChance(.83,.075)-.905)<1e-10);
+ assert.equal(boostedShotChance(.95,.10),1);
+ assert.equal(boostedShotChance(.4,0),.4);
+});
