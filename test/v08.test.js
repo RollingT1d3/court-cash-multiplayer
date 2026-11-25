@@ -85,7 +85,7 @@ test('team grades are bounded 0–100 even for extreme scores',()=>{
 test('UI and gameplay use exact requested labels, synchronized rematch and award image',()=>{
  const app=read('public/app.js'),server=read('server.js');
  assert.match(app,/SWISH!/);assert.match(app,/3PTS!/);
- assert.match(app,/event\.displayEvent==='mid'/);assert.match(app,/targetGoal,H\/2-58/);
+ assert.match(app,/\['mid','three','fade'\]\.includes\(event\.displayEvent\)/);assert.match(app,/targetGoal,H\/2-58/);
  assert.match(app,/WINNER:/);assert.match(app,/🏆MVP🏆/);assert.match(app,/🔒DPOG🔒/);
  assert.match(app,/REMATCH!/);assert.match(app,/MAIN MENU/);assert.match(app,/returnToMainMenu/);
  assert.match(app,/award-portrait/);assert.match(app,/portrait\(p,'xl'/);

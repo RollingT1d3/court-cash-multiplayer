@@ -31,5 +31,5 @@ test('ball completes a full orbit and releases at the top before following the s
  close(m.fadeBall(p,255,720,-1).x,p.x-37);
  assert.equal(m.shotStart(e),1020);assert.equal(m.shotEnd(e),1490);
  assert.ok(possessionWindow({...e,transition:{durationMs:1850}},3250)>=1850+m.reboundEnd(e)+100);
- assert.ok(possessionWindow({...e,foul:true,freeThrowResults:[true,false]},3250)>=1850+300+720+350+1700);
+ assert.ok(possessionWindow({...e,transition:{durationMs:1850},foul:true,freeThrowResults:[true,false]},3250)>=1850+300+720+350+1700);
 });

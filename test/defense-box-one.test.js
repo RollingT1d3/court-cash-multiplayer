@@ -35,7 +35,7 @@ test('Box-and-One is available in lineups and timeouts and uses server-driven co
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(server,/TWO_TWO_ONE_ZONE,BOX_AND_ONE\]/);
  assert.match(server,/boxShotDefenders\(box,shooter,inPaint\)/);
- assert.match(server,/boxShotAdjustment\(box,shooter,type\)/);
+ assert.match(server,/boxShotAdjustment\(box,shooter,coverageType\)/);
  assert.match(server,/fatigue\(room,seconds,box\?\.chaser\)/);
  assert.match(app,/'Box-and-One'/);assert.match(app,/event\.boxTarget/);
  assert.match(app,/DEFENSE\.map/);

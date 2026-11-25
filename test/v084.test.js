@@ -33,7 +33,7 @@ test('v0.8.4 timeouts grant four energy once, with a cap at 100',()=>{
 test('v0.8.4 server correctly applies each fatigue category and manual substitutions',()=>{
   const server=readFileSync(new URL('../server.js',import.meta.url),'utf8');
   assert.match(server,/function effective\(id,team,skill,category\)/);
-  assert.match(server,/effective\(shooter,ot,value,inPaint\?'finishing':'shooting'\)/);
+  assert.match(server,/effective\(shooter,ot,value,inPaint&&!fading\?'finishing':'shooting'\)/);
   assert.match(server,/function defensiveSkill\(room,side,id,key\)/);
   assert.match(server,/defensiveSkill\(room,def,defender,inPaint\?'paintDef':'perimeterDef'\)/);
   assert.match(server,/defensiveSkill\(room,def,defender,'block'\)/);

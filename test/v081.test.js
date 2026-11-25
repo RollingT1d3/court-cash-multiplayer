@@ -71,7 +71,7 @@ test('two new defenses selectable in menu and timeout; both modify real server o
    assert.ok(server.includes(name==='4-1 Zone'?'FOUR_ONE_ZONE':'TWO_TWO_ONE_ZONE'));
    assert.ok(app.includes(`'${name}'`));
  }
- assert.match(server,/defenseBump\+=zoneShotDefenseAdjustment\(dscheme,type\)/);
+ assert.match(server,/defenseBump\+=zoneShotDefenseAdjustment\(dscheme,coverageType\)/);
  assert.match(server,/zoneDefendersForShot\(dscheme,defenders,inPaint\)/);
  assert.match(server,/zoneLaneInterceptionChance\(baseLaneChance,passerRating,dscheme\)/);
  assert.match(server,/twoTwoOneEightSecond\(rnd\)/);
