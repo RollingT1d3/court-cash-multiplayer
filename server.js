@@ -68,7 +68,7 @@ function create(name,format) {
   let code;
   do {code=randomBytes(4).toString('hex').slice(0,6).toUpperCase();} while(ROOMS.has(code));
   const key=token();
-  const room={code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false]};
+  const room={code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false],departed:[false,false]};
   ROOMS.set(code,room);return {code,token:key,teamIndex:0};
 }
 function join(code,name){
@@ -83,7 +83,7 @@ function join(code,name){
 }
 function publicState(room,i){
   const removeSecret=t=>t?({name:t.name,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
-  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS,wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,serverTime:now()};
+  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS,wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}
 function log(room,msg){room.log.push(msg);if(room.log.length>120)room.log.shift();}
@@ -560,10 +560,28 @@ function completeGame(room){
   else {room.phase='intermission';room.teams.forEach(t=>t.ready=false);}
   broadcast(room);
 }
-function forfeit(room,i){if(room.phase==='finished')return;const winner=other(i);room.result={winner,awards:room.game?gameAwards(room.teams,room.game.stats,winner):null,forfeit:true,reason:`${room.teams[i].name} disconnected for over 30 seconds.`};room.phase='finished';log(room,room.result.reason);broadcast(room);}
+function forfeit(room,i,reason=`${room.teams[i].name} disconnected for over 30 seconds.`){if(room.phase==='finished')return;const winner=other(i);room.result={winner,awards:room.game?gameAwards(room.teams,room.game.stats,winner):null,forfeit:true,reason};room.phase='finished';log(room,room.result.reason);broadcast(room);}
+function leaveRoom(room,i,confirmed){
+  const t=room.teams[i];
+  if(room.teams[other(i)]&&room.phase!=='finished'&&confirmed!==true)throw Error('Confirm forfeiting this match.');
+  // Explicit departure invalidates the old session and prevents rematches.
+  room.departed[i]=true;
+  t.token=token();
+  t.connected=false;t.disconnectedAt=null;
+  room.rematchReady=[false,false];
+  const listeners=[...room.listeners[i]];
+  room.listeners[i].clear();
+  for(const res of listeners)res.end();
+  if(!room.teams[other(i)]||room.departed.every(Boolean)){
+    ROOMS.delete(room.code);return;
+  }
+  if(room.phase!=='finished')forfeit(room,i,`${t.name} left the room and forfeited the match.`);
+  else broadcast(room);
+}
 function action(room,i,data){
   const t=room.teams[i],a=room.auction;
   switch(data.type){
+    case 'leave':{leaveRoom(room,i,data.confirmForfeit);break;}
     case 'bid':{
       if(room.phase!=='auction'||!a||a.mode!=='normal'||a.turn!==i)throw Error('Not your turn to bid.');
       const amount=Number(data.cents);
@@ -621,6 +639,7 @@ function action(room,i,data){
       if(room.teams.every(x=>x.ready))startGame(room);else broadcast(room);break;
     }
     case 'rematch':{
+      if(room.departed.some(Boolean))throw Error('Your opponent has left the room.');
       if(room.phase!=='finished'||!room.game||!room.teams.every(Boolean))throw Error('Rematch is only available after the match is over.');
       room.rematchReady[i]=true;
       if(room.rematchReady.every(Boolean)){

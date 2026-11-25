@@ -378,6 +378,37 @@
       ${t.roster.map(id=>{const p=player(id),s=g.stats[id];return `<tr><td><div class="box-player">${portrait(p,'sm',i?'red':'blue')}<span>${esc(p.name)}${g.fouledOut.includes(id)?'<small class="fouled-out-label">FOULED OUT</small>':''}</span></div></td><td>${s.pts}</td><td>${s.reb}</td><td>${s.ast}</td><td>${s.stl}</td><td>${s.blk}</td><td>${s.pf}</td><td>${s.ftm}/${s.fta}</td><td>${s.tov}</td><td>${s.fgm}/${s.fga}</td><td>${s.threeM}/${s.threeA}</td><td>${Math.round(s.seconds/60)}</td></tr>`;}).join('')}
     </tbody></table></div>`;
   }
+  let leavingRoom=false;
+  async function leaveCurrentRoom(){
+    if(leavingRoom||!identity)return;
+    const who=identity;
+    let confirmed=false;
+    const prompt=()=>window.confirm('Leave this room? Your opponent will win by forfeit.');
+    if(state?.teams?.[1-state.you]&&state.phase!=='finished'){
+      if(!prompt())return;
+      confirmed=true;
+    }
+    leavingRoom=true;
+    $('leave-room').disabled=true;
+    try{
+      try{await api('/api/action',{code:who.code,token:who.token,type:'leave',confirmForfeit:confirmed});}
+      catch(error){
+        // A second player may have joined just as the host pressed Leave.
+        if(error.message==='Confirm forfeiting this match.'&&!confirmed){
+          if(!prompt())return;
+          await api('/api/action',{code:who.code,token:who.token,type:'leave',confirmForfeit:true});
+        }else throw error;
+      }
+      if(identity===who)returnToMainMenu();
+    }catch(error){
+      if(identity===who&&/Room not found|Not authorized for this room/.test(error.message))returnToMainMenu();
+      else toast(error.message);
+    }finally{
+      leavingRoom=false;
+      $('leave-room').disabled=false;
+    }
+  }
+  $('leave-room').addEventListener('click',leaveCurrentRoom);
   function returnToMainMenu(){
     if(stream){stream.close();stream=null;}
     identity=null;state=null;sessionStorage.removeItem('court-cash-identity');
@@ -424,12 +455,12 @@
         <div class="final-teams">${teamBoxSummary(0,awards)}${teamBoxSummary(1,awards)}</div>
       </div>`:'<p class="subtle">Player awards are available after a completed game.</p>'}
       <div class="final-actions">
-        ${over?`<div class="final-rematch-area"><button id="rematch-button" type="button" class="rematch-button" ${state.rematchReady?.[state.you]?'disabled':''}>${state.rematchReady?.[state.you]?'REMATCH REQUESTED ✓':'REMATCH!'}</button><p class="tiny">${state.rematchReady?.[state.you]?'Waiting for your opponent to press REMATCH!':'Both players must agree. Same drafted rosters, fresh game.'}</p></div>`:
+        ${over?(state.departed?.some(Boolean)?'<p class="subtle">Your opponent has left the room. Rematch unavailable.</p>':`<div class="final-rematch-area"><button id="rematch-button" type="button" class="rematch-button" ${state.rematchReady?.[state.you]?'disabled':''}>${state.rematchReady?.[state.you]?'REMATCH REQUESTED ✓':'REMATCH!'}</button><p class="tiny">${state.rematchReady?.[state.you]?'Waiting for your opponent to press REMATCH!':'Both players must agree. Same drafted rosters, fresh game.'}</p></div>`):
           `<button id="next-game-setup" class="primary" type="button">ADJUST STRATEGIES / NEXT GAME →</button>`}
       </div>
       <details class="final-box-details"><summary>FULL PLAYER BOX SCORES</summary>${state.game?boxTable(0)+boxTable(1):''}</details>
     </section>`;
-    $('final-main-menu')?.addEventListener('click',returnToMainMenu);
+    $('final-main-menu')?.addEventListener('click',leaveCurrentRoom);
     $('rematch-button')?.addEventListener('click',()=>act('rematch'));
     $('next-game-setup')?.addEventListener('click',()=>{intermissionPrep=true;render(true);});
   }
@@ -445,7 +476,7 @@
     const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
       appearance:state.teams.flatMap(t=>(t?.roster||[]).map(id=>{const p=player(id);return [id,p?.image,p?.courtPortrait];})),
-      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,intermissionPrep});
+      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,departed:state.departed,intermissionPrep});
     if(!force&&sig===lastRenderKey){updateClocks();return;}
     lastRenderKey=sig;
     for(const id of ['draft-view','setup-view','sim-view','end-view'])$(id).classList.add('hide');
