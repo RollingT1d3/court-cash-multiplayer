@@ -2,7 +2,7 @@ name: Import finalized 200-player roster
 on:
   push:
     branches: [main]
-    paths: ['court-cash-200-player-game-update.zip']
+    paths: ['court-cash-200-player-game-update.zip', '.github/workflows/roster-import.yml']
   workflow_dispatch:
 permissions:
   contents: write

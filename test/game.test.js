@@ -55,7 +55,8 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     assert.deepEqual(s.teams.map(t=>t.roster.length),[8,8]);
     assert.equal(s.teams[initialChooser].budget,0);
     assert.equal(new Set(s.teams.flatMap(t=>t.roster)).size,16);
-    assert.equal(s.remaining.length,16);
+    assert.equal(s.remaining.length,s.players.length-16);
+    assert.deepEqual(new Set(s.remaining),new Set(s.players.map(p=>p.id).filter(id=>!s.teams.some(t=>t.roster.includes(id)))));
     await action(a,'scheme',{offense:'Run & Gun',defense:'Perimeter Secured'});
     await action(b,'scheme',{offense:'Old-School Buckets',defense:'Protect the Paint'});
     await action(a,'ready');await action(b,'ready');
