@@ -149,3 +149,30 @@ test('new picks and already assigned players use a centered custom native drag i
   assert.deepEqual(calls.at(-1),['removed']);
   assert.match(app,/bindDragHeadshot\(slot,p,state.you===0\?'blue':'red'\)/);
 });
+
+
+test('auction and newly sold picks show square original artwork, with initials only as an image fallback',()=>{
+  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+  const source=app.slice(app.indexOf('  function portrait('),app.indexOf('  function rosterHeadshot('));
+  const p={name:'Bobby Buckets',id:'p019',image:'/images/p019.webp'};
+  const scope={state:null,esc:s=>String(s),p};
+  const markup=runInNewContext(source+"\nportrait(p,'xl','blue',true)",scope);
+  assert.match(markup,/auction-artwork/);
+  assert.match(markup,/src="\/images\/p019.webp"/);
+  assert.match(markup,/class="portrait-initials">BB/);
+  const fallback={hidden:false},classes=new Set();
+  const img={nextElementSibling:fallback,classList:{add:s=>classes.add(s),remove:s=>classes.delete(s)}};
+  for(const [event,hidden] of [['load',true],['error',false],['load',true]]){
+    const handler=markup.match(new RegExp('on'+event+'="([^"]+)"'))[1];
+    new Function(handler).call(img);
+    assert.equal(fallback.hidden,hidden);
+    assert.equal(classes.has('loaded'),hidden);
+  }
+  assert.match(app,/portrait\(p,'xl','blue',true\)/);
+  assert.match(app,/portrait\(p,'xl',owner===0\?'blue':'red',true\)/);
+  assert.match(css,/\.portrait\.auction-artwork\.xl\{[^}]*width:192px;height:192px;border-radius:0/);
+  assert.match(css,/\.portrait\.auction-artwork>img\{object-fit:contain\}/);
+  assert.match(css,/\.portrait>\.portrait-initials\[hidden\]\{display:none\}/);
+  assert.doesNotMatch(runInNewContext(source+"\nportrait(p,'med','red')",scope),/auction-artwork/);
+});

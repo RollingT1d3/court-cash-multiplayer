@@ -114,3 +114,13 @@
 .sound-controls input[type=range]{width:86px;padding:0;border:0;accent-color:var(--lime);cursor:pointer}
 .sound-controls output{min-width:30px;text-align:right;font-variant-numeric:tabular-nums}
 @media(max-width:650px){.topbar{height:auto;min-height:78px;flex-wrap:wrap;padding:10px 0}.topbar-tools{gap:8px;justify-content:flex-start}.sound-controls input[type=range]{width:72px}.sound-controls label{display:none}}
+
+/* Auction reveal and sold pick: show the entire original artwork in a square.
+   Only a loaded image covers the fallback initials; missing images retain them.
+   Roster and on-court canvas headshots are independent of this treatment. */
+.portrait>img:not(.loaded){visibility:hidden}
+.portrait>img.loaded{visibility:visible;z-index:2}
+.portrait>.portrait-initials[hidden]{display:none}
+.portrait.auction-artwork.xl{width:192px;height:192px;border-radius:0;background:#0a121d}
+.portrait.auction-artwork>img{object-fit:contain}
+@media(max-width:590px){.portrait.auction-artwork.xl{width:112px;height:112px}}

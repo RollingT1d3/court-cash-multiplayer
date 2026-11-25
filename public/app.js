@@ -128,11 +128,11 @@
     const adj=p.overall-(position?penalty(p,position):0);
     return `<span class="ovr ${tier(adj)}" title="${position?'Position-adjusted ':' '}Overall ${adj}${adj!==p.overall?' (base '+p.overall+')':''}">${adj>=70?esc(adj):'💩'}${adj<70?`<span style="position:absolute;font-size:10px;bottom:-3px;right:-2px;background:#fff;color:#151515;border-radius:5px;padding:0 2px">${adj}</span>`:''}</span>`;
   }
-  function portrait(p,size='sm',side='blue'){
+  function portrait(p,size='sm',side='blue',artwork=false){
     if(!p)return `<span class="portrait ${size} ${side}">?</span>`;
     const initials=p.name.split(/\s+/).map(a=>a[0]).slice(0,2).join('').toUpperCase();
     const out=state?.game?.fouledOut?.includes(p.id);
-    return `<span class="portrait ${size} ${side} ${out?'fouled-out':''}" ${out?'title="FOULED OUT — INELIGIBLE"':''}>${p.image?`<img src="${esc(p.image)}" alt="" onerror="this.style.display='none'">`:''}<span>${esc(initials)}</span></span>`;
+    return `<span class="portrait ${size} ${side} ${artwork?'auction-artwork':''} ${out?'fouled-out':''}" ${out?'title="FOULED OUT — INELIGIBLE"':''}>${p.image?`<img alt="" onload="this.classList.add('loaded');this.nextElementSibling.hidden=true" onerror="this.classList.remove('loaded');this.nextElementSibling.hidden=false" src="${esc(p.image)}">`:''}<span class="portrait-initials">${esc(initials)}</span></span>`;
   }
   // Roster targets reuse the exact same square crop as the court and admin preview.
   function rosterHeadshot(p,side,position){
@@ -254,7 +254,7 @@
     }).join('');
   }
   function playerCard(p){
-    return `<div class="profile"><div style="position:relative;flex:none">${portrait(p,'xl','blue')}${badge(p)}</div>
+    return `<div class="profile"><div style="position:relative;flex:none">${portrait(p,'xl','blue',true)}${badge(p)}</div>
        <div class="profile-details"><h2>${esc(p.name)}</h2><p><strong>POS:</strong> ${esc(p.positions.join('/'))}</p><p>${esc(p.archetype)}</p><p><strong>HEIGHT:</strong> ${formatHeight(p.heightInches)}</p></div></div>
        ${weightedRows(p)}`;
   }
@@ -336,7 +336,7 @@
     if(state.phase==='placement'){
       const p=player(state.pending.playerId);const owner=state.pending.winner;
       center.innerHTML=`<div class="smallcaps">SOLD • SPIN ${state.spinIndex}</div><h2 class="auction-heading">${esc(state.teams[owner].name)} GETS THE PICK!</h2>
-        <button class="pick-player" id="pick-new" type="button" ${isMine(owner)?'':'disabled'} style="background:transparent;padding:0">${portrait(p,'xl',owner===0?'blue':'red')}</button>
+        <button class="pick-player" id="pick-new" type="button" ${isMine(owner)?'':'disabled'} style="background:transparent;padding:0">${portrait(p,'xl',owner===0?'blue':'red',true)}</button>
         <h2 style="margin:10px 0">${esc(p.name)}</h2><p class="auction-sub">${isMine(owner)?'Drag this player into a position circle, or click the portrait and then the circle. Occupied spots send the replaced player to an empty bench spot first. Drag existing headshots to swap.':'Waiting for the drafting team to place their player.'}</p>
         ${isMine(owner)?'<button id="next-spin" class="primary">NEXT SPIN →</button>':''}`;
       const newPick=$('pick-new');
