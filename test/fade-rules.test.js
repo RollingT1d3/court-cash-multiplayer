@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fadeChance,fadeValue,fadeContestRelief,FADE_SETUP_MS} from '../fade-rules.js';
+import {possessionWindow} from '../transition-rules.js';
+import {shootingFoulChance} from '../foul-rules.js';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8);
+test('fadeaway selection rewards high Fades and difficult contests, not wide-open fast breaks',()=>{
+ const p={type:'mid',mid:80,post:80,iq:85,defense:90,heightGap:5};
+ assert.ok(fadeChance({...p,fades:99})>fadeChance({...p,fades:60})+.10);
+ assert.ok(fadeChance({...p,fades:99})>fadeChance({...p,fades:99,defense:50,heightGap:0}));
+ assert.ok(fadeChance({...p,fades:99,screen:true})<fadeChance({...p,fades:99}));
+ assert.ok(fadeChance({...p,type:'layup',fades:99})>0);
+ for(const type of ['dunk','three'])assert.equal(fadeChance({...p,type,fades:99}),0);
+ assert.equal(fadeChance({...p,fades:99,quickBreak:true}),0);
+ assert.equal(fadeChance({...p,fades:99,ankleBreaker:true}),0);
+ assert.ok(fadeValue(99,80)>fadeValue(60,80));
+ assert.ok(fadeContestRelief(99)>fadeContestRelief(60));
+ close(shootingFoulChance('fade',90),.05);
+});
+test('ball completes a full orbit and releases at the top before following the shot/rebound timeline',()=>{
+ const browser={};runInNewContext(readFileSync(new URL('../public/court-motion.js',import.meta.url),'utf8'),{window:browser});
+ const m=browser.CourtMotion,p={x:500,y:250},g={x:880,y:262};
+ const e={type:'fade',displayEvent:'miss',fadeSetupMs:FADE_SETUP_MS,passDurationMs:300,reboundId:'r',rimBounces:3};
+ const at=age=>m.normalBall(e,300+age,p,{x:820,y:270},g,1);
+ const top=at(100),right=at(255),bottom=at(410),left=at(565),release=at(720);
+ close(top.x,p.x);close(top.y,p.y-37);
+ close(right.x,p.x+37);close(bottom.y,p.y+37);close(left.x,p.x-37);
+ close(release.x,p.x);close(release.y,p.y-37);
+ close(m.fadeBall(p,255,720,-1).x,p.x-37);
+ assert.equal(m.shotStart(e),1020);assert.equal(m.shotEnd(e),1490);
+ assert.ok(possessionWindow({...e,transition:{durationMs:1850}},3250)>=1850+m.reboundEnd(e)+100);
+ assert.ok(possessionWindow({...e,foul:true,freeThrowResults:[true,false]},3250)>=1850+300+720+350+1700);
+});

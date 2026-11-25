@@ -12,7 +12,7 @@ test('shooting foul probabilities follow every requested FT bracket exactly',()=
   ];
   for(const [ft,bonus] of cases){
     assert.equal(foulBonus(ft),bonus);
-    for(const shot of ['three','mid'])assert.ok(Math.abs(shootingFoulChance(shot,ft)-(.02+bonus))<1e-12);
+    for(const shot of ['three','mid','fade'])assert.ok(Math.abs(shootingFoulChance(shot,ft)-(.02+bonus))<1e-12);
     for(const shot of ['layup','dunk'])assert.ok(Math.abs(shootingFoulChance(shot,ft)-(.05+bonus))<1e-12);
   }
   assert.throws(()=>shootingFoulChance('hook',80),/shot type/);

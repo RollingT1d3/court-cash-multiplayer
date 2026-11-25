@@ -5,7 +5,18 @@
  const lerp=(a,b,t)=>a+(b-a)*t;
  const between=(a,b,t,lift=0)=>({x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t)-lift*4*t*(1-t)});
  const SHOT_MS=470,BOUNCE_MS=180,REBOUND_MS=260,PUTBACK_MS=300,NET_MS=170,FT_START=350,FT_STEP=850,TIP_MS=1800;
- function shotEnd(e){return (Number(e.passDurationMs)||0)+SHOT_MS;}
+ function shotStart(e){return (Number(e.passDurationMs)||0)+(Number(e.fadeSetupMs)||0);}
+ function shotEnd(e){return shotStart(e)+SHOT_MS;}
+ // The ball travels to twelve o'clock, makes one complete revolution around
+ // the portrait, then releases from twelve o'clock. The circle follows the
+ // moving player and reverses direction when attacking the other basket.
+ function fadeBall(shooter,age,duration,direction){
+   const r=37,approach=Math.min(100,duration*.20);
+   const top={x:shooter.x,y:shooter.y-r};
+   if(age<approach)return between(shooter,top,clamp(age/Math.max(1,approach),0,1));
+   const angle=-Math.PI/2+direction*Math.PI*2*clamp((age-approach)/Math.max(1,duration-approach),0,1);
+   return {x:shooter.x+r*Math.cos(angle),y:shooter.y+r*Math.sin(angle)};
+ }
  function bounces(e){return clamp(Number(e.rimBounces)||1,1,3);}
  function reboundEnd(e){return shotEnd(e)+(e.displayEvent==='block'?0:bounces(e)*BOUNCE_MS)+REBOUND_MS;}
  function putbackEnd(e){return reboundEnd(e)+PUTBACK_MS;}
@@ -15,17 +26,20 @@
    return {x:goal.x+direction*(index%2?1:-1)*(15+index*4)*Math.sin(Math.PI*t),y:goal.y-(22-index*4)*Math.sin(Math.PI*t)};
  }
  function normalBall(e,age,shooter,rebounder,goal,direction){
-   const start=Number(e.passDurationMs)||0,end=shotEnd(e);
-   if(age<start)return shooter;
+   const passEnd=Number(e.passDurationMs)||0,start=shotStart(e),end=shotEnd(e);
+   const setup=Number(e.fadeSetupMs)||0;
+   if(age<passEnd)return shooter;
+   if(setup&&age<start)return fadeBall(shooter,age-passEnd,setup,direction);
+   const release=setup?fadeBall(shooter,setup,setup,direction):shooter;
    if(age<end){
-     const target=e.displayEvent==='block'?between(shooter,goal,.42):goal;
-     return between(shooter,target,clamp((age-start)/SHOT_MS,0,1),e.displayEvent==='block'?24:65);
+     const target=e.displayEvent==='block'?between(release,goal,.42):goal;
+     return between(release,target,clamp((age-start)/SHOT_MS,0,1),e.displayEvent==='block'?24:65);
    }
    if(e.reboundId&&rebounder){
      const count=e.displayEvent==='block'?0:bounces(e);
      const bounceEnd=end+count*BOUNCE_MS;
      if(age<bounceEnd)return rimBounce(goal,age-end,count,direction);
-     const origin=e.displayEvent==='block'?between(shooter,goal,.42):goal;
+     const origin=e.displayEvent==='block'?between(release,goal,.42):goal;
      if(age<reboundEnd(e))return between(origin,rebounder,clamp((age-bounceEnd)/REBOUND_MS,0,1),12);
      if(e.putbackAttempt){
        if(age<putbackEnd(e))return between(rebounder,goal,clamp((age-reboundEnd(e))/PUTBACK_MS,0,1),35);
@@ -90,7 +104,9 @@
    }
    if(e.displayEvent==='steal')return e.stealId;
    if(e.passOutcome==='intercepted')return e.interceptorId;
-   if(e.passOutcome==='out-of-bounds'||e.foul)return null;
+   if(e.passOutcome==='out-of-bounds')return null;
+   if(e.fadeSetupMs&&age>= (e.passDurationMs||0)&&age<shotStart(e))return e.shooter;
+   if(e.foul)return null;
    if(e.reboundId&&!e.putbackAttempt&&age>=reboundEnd(e))return e.reboundId;
    return age<(e.passDurationMs||0)?e.shooter:null;
  }
@@ -135,5 +151,5 @@
    if(frame.flying)return between(from,target,frame.progress,8);
    return target;
  }
- root.CourtMotion=Object.freeze({movementFactor,movePlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ root.CourtMotion=Object.freeze({fadeBall,shotStart,movementFactor,movePlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);

@@ -8,8 +8,8 @@ export function foulBonus(ft) {
   return 0;
 }
 export function shootingFoulChance(shotType, freeThrowRating) {
-  if (!['three','mid','layup','dunk'].includes(shotType)) throw Error('Unrecognized shot type.');
-  return (['three','mid'].includes(shotType) ? 0.02 : 0.05) + foulBonus(freeThrowRating);
+  if (!['three','mid','fade','layup','dunk'].includes(shotType)) throw Error('Unrecognized shot type.');
+  return (['three','mid','fade'].includes(shotType) ? 0.02 : 0.05) + foulBonus(freeThrowRating);
 }
 export function shootFreeThrows(freeThrowRating, attempts, random = Math.random, outcomes = null) {
   const probability = Math.max(0,Math.min(1,Number(freeThrowRating)/100));

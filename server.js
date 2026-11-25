@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-rules.js';
 import { fastBreakPlan } from './fast-break-rules.js';
 import { passCount, passPath, resolvePassChain } from './passing-rules.js';
 import { possessionTransition, possessionWindow } from './transition-rules.js';
@@ -306,8 +307,8 @@ function simulatePlay(room){
   const inPaint=quickBreak?['layup','dunk'].includes(fastBreak.type):point?pointAction.range==='paint':hills?!hillsPlay.perimeterShot:!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.07,.94);
   const dunkSkill=rating(shooter,'dunk');
   const dunkChance=clamp(.2+(dunkSkill-75)*.008,.02,.62);
-  const type=quickBreak?fastBreak.type:isThree?'three':inPaint?(rnd()<dunkChance?'dunk':'layup'):'mid';
-  const shotDistanceFt=quickBreak?fastBreak.feet:type==='three'?threeDistanceFeet(rating(shooter,'three'),shotClockRemaining,rnd):
+  let type=quickBreak?fastBreak.type:isThree?'three':inPaint?(rnd()<dunkChance?'dunk':'layup'):'mid';
+  let shotDistanceFt=quickBreak?fastBreak.feet:type==='three'?threeDistanceFeet(rating(shooter,'three'),shotClockRemaining,rnd):
     type==='mid'?12+Math.floor(rnd()*11):3+Math.floor(rnd()*7);
   // A zone keeps three defenders up top and two close to the rim. Pure Chaos deliberately
   // searches across defenders for favorable size/scoring mismatches using off-ball screens.
@@ -414,12 +415,17 @@ function simulatePlay(room){
       }
     }
   }
+  let fadeSetupMs=0,postFade=false;
   if(!['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event)){
-    let value=isThree?effectiveOnCourt(room,offense,shooter,'three'):
+    const fadeRating=rating(shooter,'fades');
+    const fadeOdds=fadeChance({type,quickBreak,ankleBreaker,fades:fadeRating,mid:rating(shooter,'mid'),post:rating(shooter,'post'),iq:rating(shooter,'iq'),defense:defensiveSkill(room,def,defender,inPaint?'paintDef':'perimeterDef'),heightGap:getPlayer(defender).heightInches-getPlayer(shooter).heightInches,screen,shotClockRemaining,scheme});
+    if(fadeOdds>0&&rnd()<fadeOdds){postFade=inPaint;type='fade';fadeSetupMs=FADE_SETUP_MS;if(postFade)shotDistanceFt=9+Math.floor(rnd()*4);}
+    const fading=type==='fade';
+    let value=fading?fadeValue(effectiveOnCourt(room,offense,shooter,'fades'),effectiveOnCourt(room,offense,shooter,postFade?'post':'mid')):isThree?effectiveOnCourt(room,offense,shooter,'three'):
       quickBreak&&inPaint?effectiveOnCourt(room,offense,shooter,type):
       inPaint?(.44*effectiveOnCourt(room,offense,shooter,'layup')+.46*effectiveOnCourt(room,offense,shooter,'dunk')+.1*effectiveOnCourt(room,offense,shooter,'post')):
       effectiveOnCourt(room,offense,shooter,'mid');
-    value=effective(shooter,ot,value,inPaint?'finishing':'shooting');
+    value=effective(shooter,ot,value,inPaint&&!fading?'finishing':'shooting');
     const defensiveRating=defensiveSkill(room,def,defender,inPaint?'paintDef':'perimeterDef');
     let defenseBump=(defensiveRating-75)*.0018;
     if(dscheme===DEFENSE[2]&&inPaint)defenseBump+=.11;
@@ -427,15 +433,18 @@ function simulatePlay(room){
     if(dscheme===DEFENSE[1]&&shooter===high[0])defenseBump+=.11;
     if(dscheme==='3-2 Zone')defenseBump+=isThree?.08:inPaint?-.055:.015;
     if(clog&&inPaint)defenseBump-=CLOG_PAINT_SHOT_BONUS;
-    defenseBump+=zoneShotDefenseAdjustment(dscheme,type);
-    if(box)defenseBump+=boxShotAdjustment(box,shooter,type);
+    const coverageType=fading?(postFade?'layup':'mid'):type;
+    defenseBump+=zoneShotDefenseAdjustment(dscheme,coverageType);
+    if(box)defenseBump+=boxShotAdjustment(box,shooter,coverageType);
+    if(fading&&defenseBump>0)defenseBump*=1-fadeContestRelief(fadeRating);
     const rawThree=isThree?rating(shooter,'three'):0;
-    const base=isThree?threePointBaseChance(rawThree):inPaint?.61:.43;
+    const base=fading?(postFade?.43:.38):isThree?threePointBaseChance(rawThree):inPaint?.61:.43;
     // Preserve fatigue and out-of-position penalties without tier-cliff effects.
     const skillAdjustment=(value-(isThree?rawThree:80))*.0075;
     const screensBonus=screen?.018*adherence+screenBonus*adherence+(screen&&(runGun||oldSchool)?clamp((screenQuality-65)*.0009,0,.035):0):0;
     const mismatchQuality=huntMismatch?mismatchBonus:0;
-    const heightContest=heightContestAdjustment(getPlayer(shooter).heightInches,getPlayer(defender).heightInches,type);
+    let heightContest=heightContestAdjustment(getPlayer(shooter).heightInches,getPlayer(defender).heightInches,type);
+    if(fading&&heightContest<0)heightContest*=1-fadeContestRelief(fadeRating);
     let chance=clamp(base+skillAdjustment+heightContest-defenseBump+screensBonus+mismatchQuality-
       (isThree?longThreePenalty(shotDistanceFt,rawThree):0)+(oldSchool&&kickout&&shooter===roles.oldShooter?.055*adherence:0)+
       (hills&&inPaint?(HILLS_SPEED_MULTIPLIER-1)*.20:0)+
@@ -444,7 +453,7 @@ function simulatePlay(room){
     const heightBlock=inPaint?heightBlockAdjustment(getPlayer(shooter).heightInches,getPlayer(defender).heightInches):0;
     const blocked=!ankleBreaker&&inPaint&&rnd()<
       clamp(.028+(defensiveSkill(room,def,defender,'block')-75)*.0018+
-        (dscheme===DEFENSE[2]?.025:0)+heightBlock,.006,.14)*(clog?CLOG_BLOCK_FACTOR:1)*(quickBreak?.35:1);
+        (dscheme===DEFENSE[2]?.025:0)+heightBlock,.006,.14)*(clog?CLOG_BLOCK_FACTOR:1)*(quickBreak?.35:1)*(fading?.45:1);
     // Defended shooting attempts: jumper 2%, layup/dunk 5%, plus the shooter's FT-rating bonus.
     // A shooting foul cancels the field-goal attempt and awards 2 or 3 free throws.
     // This prototype does not generate and-one shots or technical/non-shooting fouls.
@@ -532,11 +541,12 @@ function simulatePlay(room){
   else if(event==='block')log(room,`${getPlayer(defender).name} blocks ${shooterName}!`);
   else if(posterDunk)log(room,`💪 POSTER DUNK! ${shooterName} dunks on ${getPlayer(defender).name}!`);
   else if(deepThree)log(room,`🔥 FROM DEEP! 🔥 ${shooterName} drains a ${shotDistanceFt}-foot three-pointer!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
+  else if(type==='fade')log(room,`${actionPrefix}${shooterName} ${made?'scores on':'misses'} a ${postFade?'post ':''}fadeaway!${made&&assistId?' Assisted by '+getPlayer(assistId).name+'.':''}${!made&&reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
   else if(made)log(room,`${actionPrefix}${shooterName} scores ${points} ${points===3?'from deep':'points'}!${assistId?' Assisted by '+getPlayer(assistId).name+'.':''}`);
   else log(room,`${actionPrefix}${shooterName} misses${isThree?' a three':''}.${reboundId?' '+getPlayer(reboundId).name+' grabs the rebound.':''}`);
   const transition=possessionTransition(g.event,offense,g.quarter,shooters,inboundAfterTimeout,firstHandler,hills?hillsPlay.inbounder:null);
   if(quickBreak){transition.durationMs=fastBreak.leadMs;transition.handlerId=fastBreak.thief;}
-  g.event={id:g.possessions,quarter:g.quarter,transition,fastBreak,breakTargets:quickBreak?fastBreak.targets:null,breakDefense:quickBreak?fastBreak.recoveryTargets:null,stealAt:event==='steal'?(quickBreak?fastBreak.shotTarget:{x:clamp(.926-shotDistanceFt/94,.14,.92),y:.5}):null,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,ankleBreaker,ankleBreakerHandler:ankleBreaker?shooter:null,ankleBreakerDefender:ankleBreaker?defender:null,deepThree,shotDistanceFt,shotClockRemaining,inboundAfterTimeout,
+  g.event={id:g.possessions,quarter:g.quarter,transition,fadeSetupMs,postFade,fastBreak,breakTargets:quickBreak?fastBreak.targets:null,breakDefense:quickBreak?fastBreak.recoveryTargets:null,stealAt:event==='steal'?(quickBreak?fastBreak.shotTarget:{x:clamp(.926-shotDistanceFt/94,.14,.92),y:.5}):null,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,ankleBreaker,ankleBreakerHandler:ankleBreaker?shooter:null,ankleBreakerDefender:ankleBreaker?defender:null,deepThree,shotDistanceFt,shotClockRemaining,inboundAfterTimeout,
     screen,screenSetterId,screenBonus,illegalScreen,mismatch:huntMismatch&&!illegalScreen,kickout,
     passerId:illegalScreen||eightSecondViolation?null:passerId,passFrom:illegalScreen||eightSecondViolation?null:passFrom,
     passTo:illegalScreen||eightSecondViolation?null:passTo,passDurationMs:illegalScreen||eightSecondViolation?0:passDurationMs,

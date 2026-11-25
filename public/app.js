@@ -602,7 +602,9 @@
     const chain=event?.passes,passFrame=event&&!transitioning?motion.passFrame(event,eventAge):null;
     const passLead=Array.isArray(chain)?event.passDurationMs||0:0;
     const resultAge=eventAge-passLead;
-    const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&resultAge>=0&&resultAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
+    const fadeSetup=event?.fadeSetupMs||0,fadeAnimating=!!fadeSetup&&!transitioning&&resultAge>=0&&resultAge<fadeSetup;
+    const freeThrowAge=resultAge-fadeSetup;
+    const freeThrow=!transitioning&&event?.foul&&event.freeThrowResults?.length&&freeThrowAge>=0&&freeThrowAge<motion.FT_START+event.freeThrowResults.length*motion.FT_STEP;
     const shotEffectAge=eventAge-(event?motion.shotEnd(event):0);
     const putbackEffectAge=eventAge-(event?motion.putbackEnd(event):0);
     const carrier=motion.ballCarrier(event,rawAge,passFrame);
@@ -807,9 +809,10 @@
       const d=canvasPositions.get(event.shooter),t=eventAge;
       const turnover=['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event.displayEvent);
       if(passFrame){ball=motion.passBall(passFrame,canvasPositions,W,H,direction);}
+      else if(fadeAnimating){ball=motion.fadeBall(d,resultAge,fadeSetup,direction);}
       else if(event.foul&&event.freeThrowResults?.length){
         const line={x:targetGoal-direction*14*(W/94),y:H/2};
-        ftFrame=motion.freeThrowFrame(event.freeThrowResults,resultAge,line,goal,direction);ball=ftFrame?.ball;
+        ftFrame=motion.freeThrowFrame(event.freeThrowResults,freeThrowAge,line,goal,direction);ball=ftFrame?.ball;
       } else if(!Array.isArray(chain)&&event.passerId&&event.passFrom&&event.passTo&&t<event.passDurationMs&&!event.illegalScreen&&!event.eightSecondViolation){
         const from=event.passFrom,to=event.passOutcome==='intercepted'&&event.interceptionAt?event.interceptionAt:event.passTo;
         const progress=Math.min(1,t/Math.max(1,event.passDurationMs));
@@ -863,13 +866,17 @@
     if(!transitioning&&resultAge>=0&&event?.ankleBreaker&&state.phase==='sim'){
       courtReactionBurst(ctx,W,H,['🫪','😱','😯'],resultAge,ANKLE_REACTIONS_MS);
     }
+    if(fadeAnimating&&state.phase==='sim'){
+      const at=canvasPositions.get(event.shooter);
+      if(at){ctx.save();ctx.textAlign='center';ctx.font='900 14px system-ui';ctx.fillStyle='#fff';ctx.strokeStyle='#122136';ctx.lineWidth=3;ctx.strokeText('FADEAWAY',at.x,at.y-49);ctx.fillText('FADEAWAY',at.x,at.y-49);ctx.restore();}
+    }
     // Mid-range and three-point baskets use a brief WHITE scoreboard label at
     // the rim (not on fouls, misses, or made putbacks).
-    if(event?.made&&['mid','three'].includes(event.displayEvent)&&shotEffectAge>=0&&shotEffectAge<850&&state.phase==='sim'){
+    if(event?.made&&['mid','three','fade'].includes(event.displayEvent)&&shotEffectAge>=0&&shotEffectAge<850&&state.phase==='sim'){
       ctx.save();ctx.globalAlpha=Math.min(1,shotEffectAge/100,(850-shotEffectAge)/160);
       ctx.textAlign='center';ctx.font='1000 34px system-ui';ctx.lineWidth=5;
       ctx.strokeStyle='#111827';ctx.fillStyle='#ffffff';
-      const text=event.displayEvent==='mid'?'SWISH!':'3PTS!';
+      const text=event.displayEvent==='three'?'3PTS!':'SWISH!';
       ctx.strokeText(text,targetGoal,H/2-58);ctx.fillText(text,targetGoal,H/2-58);
       ctx.restore();
     }
@@ -936,14 +943,14 @@
       ctx.fillText('🔥FROM DEEP!🔥',W/2,H*.43);
       ctx.restore();
     }
-    if(!transitioning&&event?.foul&&resultAge>=0&&resultAge<350){
-      ctx.save();ctx.globalAlpha=Math.min(1,(2250-resultAge)/450);
+    if(!transitioning&&event?.foul&&freeThrowAge>=0&&freeThrowAge<350){
+      ctx.save();ctx.globalAlpha=Math.min(1,(2250-freeThrowAge)/450);
       ctx.fillStyle='#0c1726e0';ctx.fillRect(W/2-190,16,380,42);
       ctx.fillStyle='#ffcc58';ctx.font='900 21px system-ui';ctx.textAlign='center';
       ctx.fillText(`📣 SHOOTING FOUL • ${event.freeThrowsAttempted} FT`,W/2,45);
       ctx.restore();
     }
-    if(freeThrow&&ftFrame&&resultAge>=motion.FT_START){
+    if(freeThrow&&ftFrame&&freeThrowAge>=motion.FT_START){
       ctx.save();ctx.fillStyle='#0c1726e8';ctx.fillRect(W/2-145,16,290,65);
       ctx.textAlign='center';ctx.font='900 19px system-ui';ctx.fillStyle='#fff';ctx.fillText('FREE THROW '+(ftFrame.index+1)+' / '+event.freeThrowResults.length,W/2,40);
       ctx.fillStyle=ftFrame.revealed?(ftFrame.made?'#d0ff62':'#ff8999'):'#b7c7da';ctx.fillText(ftFrame.revealed?(ftFrame.made?'MADE!':'MISS!'):'AT THE LINE',W/2,66);ctx.restore();
