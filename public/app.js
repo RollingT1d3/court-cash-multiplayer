@@ -494,13 +494,14 @@
   function timeoutPanel(){
     const panel=$('timeout-panel');if(state.phase!=='timeout'){panel.classList.add('hide');return;}
     const caller=state.timeout.caller;
+    const ready=state.timeout.ready??[false,false],readyCount=ready.filter(Boolean).length;
     panel.classList.remove('hide');
     panel.innerHTML=`<div class="timeout-card"><div class="timeout-info">⏸ ${esc(state.teams[caller].name)} CALLS TIMEOUT • <span data-timeout-count>${Math.max(0,Math.ceil((state.timeout.until-(Date.now()-syncOffset))/1000))}</span>s REMAINING</div>
-    <p class="subtle">Both teams can change offensive and defensive schemes. Only the caller can manually substitute players.</p>
+    <p class="subtle">Both teams can change offensive and defensive schemes. Only the caller can manually substitute players. Both players must be ready to resume early.</p>
     <div class="flex-row" style="justify-content:flex-start;align-items:end;gap:16px">
       <label>OFFENSE <select id="timeout-offense">${OFFENSE.map(x=>`<option ${my().offense===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
       <label>DEFENSE <select id="timeout-defense">${DEFENSE.map(x=>`<option ${my().defense===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
-      ${caller===state.you?'<button id="resume-game" class="primary">RESUME GAME →</button>':''}
+      <button id="resume-game" class="primary" type="button" ${ready[state.you]?'disabled':''}>RESUME GAME (${readyCount}/2)</button>
     </div>
     <div class="timeout-strategies" aria-live="polite"><div><span class="smallcaps">OFFENSE</span><div id="timeout-offense-description">${strategyInfo(my().offense,'offense')}</div></div>
     <div><span class="smallcaps">DEFENSE</span><div id="timeout-defense-description">${strategyInfo(my().defense,'defense')}</div></div></div>
@@ -508,7 +509,7 @@
     </div>`;
     $('timeout-offense')?.addEventListener('change',e=>{$('timeout-offense-description').innerHTML=strategyInfo(e.target.value,'offense');act('scheme',{offense:e.target.value});});
     $('timeout-defense')?.addEventListener('change',e=>{$('timeout-defense-description').innerHTML=strategyInfo(e.target.value,'defense');act('scheme',{defense:e.target.value});});
-    $('resume-game')?.addEventListener('click',()=>act('resume'));
+    $('resume-game')?.addEventListener('click',()=>act('resume',{timeoutUntil:state.timeout.until}));
     if(caller===state.you){$('timeout-team').innerHTML=teamPanel(state.you);bindRoster($('timeout-team'));}
   }
   function fouloutPanel(){
@@ -636,7 +637,7 @@
     const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.color,t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
       appearance:state.teams.flatMap(t=>(t?.roster||[]).map(id=>{const p=player(id);return [id,p?.image,p?.courtPortrait];})),
-      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,active:state.game?.active,bench:state.game?.bench,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,departed:state.departed,intermissionPrep});
+      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,active:state.game?.active,bench:state.game?.bench,time:state.timeout?.until,timeoutReady:state.timeout?.ready,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,departed:state.departed,intermissionPrep});
     if(!force&&sig===lastRenderKey){updateClocks();return;}
     lastRenderKey=sig;
     for(const id of ['draft-view','setup-view','sim-view','end-view'])$(id).classList.add('hide');

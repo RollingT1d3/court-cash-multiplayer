@@ -104,6 +104,12 @@ test('two clients can join, coin-flip, draft, set schemes, time out and finish o
     s=await state(a);assert.equal(s.game.active[callerIdx][0],bench);
     const frozenPossessions=s.game.possessions;
     await action(caller,'resume');
+    s=await state(a);assert.equal(s.phase,'timeout');
+    assert.equal(s.timeout.ready[callerIdx],true);assert.equal(s.timeout.ready[1-callerIdx],false);
+    await action(caller,'resume');
+    s=await state(a);assert.equal(s.phase,'timeout');assert.equal(s.timeout.ready.filter(Boolean).length,1);
+    assert.equal(s.game.possessions,frozenPossessions);
+    await action(opponent,'resume');
     s=await state(a);
     assert.equal(s.game.offense,callerIdx);
     assert.equal(s.game.timeoutInboundSide,callerIdx);

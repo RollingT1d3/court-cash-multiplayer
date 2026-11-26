@@ -751,7 +751,7 @@ function action(room,i,data){
             team.energy[id]=timeoutRecovery(team.energy[id]??100);
           }
         }
-        t.timeouts--;room.phase='timeout';room.timeout={caller:i,possession:i,until:now()+TIMEOUT_MS};
+        t.timeouts--;room.phase='timeout';room.timeout={caller:i,possession:i,until:now()+TIMEOUT_MS,ready:[false,false]};
       room.game.timeoutInboundSide=i;
       log(room,`${t.name} calls timeout. Both teams may adjust schemes; only ${t.name} may substitute.`);broadcast(room);break;
     }
@@ -771,7 +771,11 @@ function action(room,i,data){
       room.phase='sim';room.play={at:now(),readyForPossession:true};broadcast(room);break;
     }
     case 'resume':{
-      if(room.phase!=='timeout'||room.timeout.caller!==i)throw Error('Only the caller can resume early.');
+      if(room.phase!=='timeout'||!room.timeout)throw Error('No timeout is in progress.');
+      // A vote belongs to this specific timeout; repeated votes cannot count twice.
+      if(data.timeoutUntil!==undefined&&data.timeoutUntil!==room.timeout.until)throw Error('This timeout has already ended.');
+      room.timeout.ready[i]=true;
+      if(!room.timeout.ready.every(Boolean)){broadcast(room);break;}
       // Do not advance or switch possession during the timeout.
       room.game.offense=room.timeout.possession;
       room.game.timeoutInboundSide=room.timeout.possession;

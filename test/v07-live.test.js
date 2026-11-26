@@ -65,6 +65,9 @@ test('real two-client game: defending timeout rejected, offense inbounds after p
       await sleep(190);
       s=await state(a);
       assert.equal(s.game.possessions,oldPossessions,'clock and possessions should freeze during timeout');
+      await act(defending,'resume');
+      s=await state(a);assert.equal(s.phase,'timeout');assert.equal(s.timeout.ready[1-owner],true);
+      assert.equal(s.timeout.ready[owner],false);
       await act(caller,'resume');
       s=await state(a);
       assert.equal(s.game.offense,owner);
