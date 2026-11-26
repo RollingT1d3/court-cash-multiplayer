@@ -7,6 +7,7 @@ import { advancePeriod, REGULATION_QUARTER_SECONDS } from './period-rules.js';
 import './public/team-colors.js';
 const teamColors=globalThis.CourtTeamColors;
 import { createAdminAPI } from './admin-v09.js';
+import { assistAwardChance } from './assist-rules.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
 import { BOX_AND_ONE, BOX_CHASER_FATIGUE, boxAssignments, boxShotDefenders, boxShotAdjustment } from './defense-box-one.js';
 import { readFileSync, createReadStream, statSync } from 'node:fs';
@@ -495,8 +496,7 @@ function simulatePlay(room){
       // Assists belong to the real successful passer, not a fabricated
       // after-the-fact teammate. Solo scoring plays earn no assist.
       const passerCompliance=shooters.reduce((v,id)=>v+planDiscipline(id),0)/shooters.length;
-      const assistChance=clamp(.40+.25*passerCompliance+(scheme===OFFENSE[2]?.12:0)+(chaos&&screen?.10:0)+
-        (runGun&&screen?.16:0)+(oldSchool?.18:0),.35,.94);
+      const assistChance=assistAwardChance(passerCompliance,{teamBall:scheme===OFFENSE[2],chaos,runGun,oldSchool,screen});
       if(passerId && passOutcome==='complete' && rnd()<assistChance){
         assistId=passerId;g.stats[assistId].ast++;
       }
