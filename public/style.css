@@ -147,3 +147,14 @@
 #gameview .score-side:first-child .score-team,#gameview .room-versus>span:first-child{border-left:5px solid var(--team-blue);padding-left:8px}
 #gameview .score-side.end .score-team,#gameview .room-versus>span:last-child{border-right:5px solid var(--team-red);padding-right:8px}
 @media(max-width:750px){.welcome .team-color-entry{top:78px;left:14px}.team-color-picker{top:120px;left:14px;width:min(320px,calc(100vw - 28px));max-height:calc(100dvh - 134px)}}
+
+/* Bench inspection is a separate button, never nested in a drag/placement target. */
+.bench-roster-row{display:grid;grid-template-columns:minmax(0,1fr) 30px;gap:3px;align-items:center;min-width:0}
+.bench-details-button{padding:3px 0;background:#223148;color:#eaf1ff;font-size:24px;line-height:1;min-height:34px;border-radius:8px}
+#bench-details-dialog{color:var(--txt);background:#101a28;border:1px solid #455974;border-radius:16px;width:min(440px,calc(100vw - 24px));max-height:85dvh;overflow:auto;padding:18px;box-shadow:0 20px 80px #0009}
+#bench-details-dialog::backdrop{background:#060b13bc}
+.bench-details-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.bench-details-header h2{margin:0;font-size:20px;overflow-wrap:anywhere}
+#bench-details-close{padding:8px 12px;flex:none}
+#bench-details-dialog .profile{margin-bottom:10px}
+#bench-details-dialog .profile .portrait{width:72px;height:72px}

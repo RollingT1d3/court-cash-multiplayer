@@ -71,20 +71,21 @@ test('timeouts require server-side possession and preserve the ball on both resu
   assert.match(server,/possessionTransition\(g\.event,offense,g\.quarter,shooters,inboundAfterTimeout,firstHandler/);
   const transition=read('transition-rules.js');
   assert.match(transition,/if\(timeout\)\{kind='inbound';reason='timeout';\}/);
-  assert.match(app,/state\.game\.offense!==state\.you/);
+  assert.match(app,/c\.side!==state\.you/);
+  assert.match(server,/now\(\)<control\.opensAt/);
   assert.match(app,/INBOUND AFTER TIMEOUT/);
 });
 
 test('poster fires are replaced with requested distinct dunker/defender/hoop/crowd emoji effects',()=>{
   const app=read('public/app.js');
-  const start=app.indexOf("if(!transitioning&&event?.posterDunk&&resultAge>=0&&resultAge<POSTER_REACTIONS_MS){");
+  const start=app.indexOf("if(!transitioning&&posterBanner){");
   const end=app.indexOf("if(!transitioning&&resultAge>=0&&event?.ankleBreaker&&state.phase",start);
   assert.ok(start>=0&&end>start);
   const portraitEffects=app.slice(start,end);
   assert.ok(portraitEffects.includes("ctx.fillText('🗣️'"));
   assert.ok(portraitEffects.includes("ctx.fillText('😢'"));
   assert.ok(!portraitEffects.includes("fillText('🔥'"));
-  assert.match(app,/ctx\.fillText\('💪',W\/2,topShotEffectY\)/);
+  assert.match(app,/ctx\.fillText\('💪POSTER!💪',W\/2,y\)/);
   assert.match(app,/\['📸😯','📸','🫪'\]/);
   assert.match(app,/\['🫪','😱','😯'\]/);
   assert.match(app,/ctx\.rotate\(\(pos%2\?1:-1\)\*\.32\*spin\)/);

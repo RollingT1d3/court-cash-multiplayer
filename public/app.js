@@ -90,7 +90,7 @@
     document.addEventListener('pointerdown',()=>audio.unlock(),{passive:true});
     document.addEventListener('keydown',()=>audio.unlock());
   }
-  const ANKLE_STUMBLE_MS=1050, ANKLE_REACTIONS_MS=1150, POSTER_REACTIONS_MS=1250;
+  const ANKLE_STUMBLE_MS=1050, ANKLE_REACTIONS_MS=1150, ANKLE_BANNER_MS=1900, POSTER_REACTIONS_MS=1900;
   // Fixed normalized positions for short comic reactions along the sidelines;
   // no random redraw flicker and never obscure the player names or main action.
   const COURT_REACTION_POSITIONS=[
@@ -100,7 +100,7 @@
   function courtReactionBurst(ctx,W,H,emojis,eventAge,duration){
     if(!(eventAge>=0&&eventAge<duration))return;
     ctx.save();
-    const strength=Math.min(1,eventAge/110,(duration-eventAge)/260);
+    const strength=duration===POSTER_REACTIONS_MS?1-eventAge/duration:Math.min(1,eventAge/110,(duration-eventAge)/260);
     ctx.globalAlpha=Math.max(0,strength);
     ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='25px system-ui';
     for(let i=0;i<COURT_REACTION_POSITIONS.length;i++){
@@ -249,9 +249,10 @@
     const rows=SLOTS.map(s=>{
       const id=roster[s],p=player(id);
       const selected=id&&currentPicked===id&&change?'selected-slot':'';
-      return `<button class="slot ${side} ${id?'owned':''} ${selected}" type="button" data-slot="${esc(s)}" data-team="${i}" ${change?'':'disabled'} aria-label="${esc(s)}: ${p?esc(p.name):'Empty'}">
+      const row=`<button class="slot ${side} ${id?'owned':''} ${selected}" type="button" data-slot="${esc(s)}" data-team="${i}" ${change?'':'disabled'} aria-label="${esc(s)}: ${p?esc(p.name):'Empty'}">
         <span class="slot-label">${esc(s)}</span><span class="slot-circle">${rosterHeadshot(p,i?'red':'blue',s)}${p?badge(p,s):''}</span>${p?`<span class="slot-center"><b title="${esc(p.name)}">${esc(p.name)}</b><small>${esc(p.positions.join('/'))}${state?.game?.fouledOut?.includes(id)?' • FOULED OUT':''}</small></span>`:'<span class="slot-center"><small>DROP HERE</small></span>'}
       </button>`;
+      return p&&SLOTS.indexOf(s)>=5?`<div class="bench-roster-row">${row}${benchDetailsButton(p)}</div>`:row;
     }).join('');
     return `<div class="team-title"><strong>${esc(t.name)}</strong><span class="team-money">${money(t.budget)}</span></div>
       <div class="smallcaps">${t.roster.length}/8 DRAFTED ${isMine(i)?' • YOUR TEAM':''}</div>
@@ -261,6 +262,7 @@
   function bindRoster(container){
     if(!container)return;
     paintRosterHeadshots(container);
+    bindBenchDetails(container);
     for(const slot of container.querySelectorAll('[data-slot]')){
       if(slot.disabled)continue;
       slot.addEventListener('click',()=>{
@@ -287,6 +289,24 @@
         ${attrs.map(([title,key])=>`<div class="stat-row"><span>${title}</span><strong>${p.stats[key]}</strong></div>`).join('')}</details>`;
     }).join('');
   }
+  function benchDetailsButton(p){
+    return `<button type="button" class="bench-details-button" draggable="false" data-bench-details="${esc(p.id)}" aria-label="View ${esc(p.name)}'s player details" title="Player details">⋯</button>`;
+  }
+  function showBenchDetails(id){
+    const p=player(id);if(!p)return;
+    const dialog=$('bench-details-dialog');
+    $('bench-details-title').textContent=p.name;
+    $('bench-details-content').innerHTML=`<div class="profile"><div style="position:relative;flex:none">${portrait(p,'med','blue',true)}${badge(p)}</div><div class="profile-details"><p><strong>OVR:</strong> ${p.overall} • <strong>POS:</strong> ${esc(p.positions.join('/'))}</p><p><strong>HEIGHT:</strong> ${formatHeight(p.heightInches)}</p><p>${esc(p.archetype)}</p></div></div>${weightedRows(p,true)}`;
+    if(!dialog.open)dialog.showModal();
+  }
+  function bindBenchDetails(container){
+    for(const btn of container.querySelectorAll('[data-bench-details]')){
+      btn.addEventListener('click',e=>{e.stopPropagation();showBenchDetails(btn.dataset.benchDetails);});
+      btn.addEventListener('dragstart',e=>e.preventDefault());
+    }
+  }
+  $('bench-details-close').addEventListener('click',()=>$('bench-details-dialog').close());
+  $('bench-details-dialog').addEventListener('click',e=>{if(e.target===$('bench-details-dialog'))$('bench-details-dialog').close();});
   function playerCard(p){
     return `<div class="profile"><div style="position:relative;flex:none">${portrait(p,'xl','blue',true)}${badge(p)}</div>
        <div class="profile-details"><h2>${esc(p.name)}</h2><p><strong>POS:</strong> ${esc(p.positions.join('/'))}</p><p>${esc(p.archetype)}</p><p><strong>HEIGHT:</strong> ${formatHeight(p.heightInches)}</p></div></div>
@@ -404,15 +424,29 @@
     $('ready-btn')?.addEventListener('click',()=>act('ready'));
     if(!canChange) $('ready-btn').disabled=true;
   }
+  function updateTimeoutButton(){
+    const btn=$('call-timeout'),label=$('possession-label');
+    if(!btn||!label||state?.phase!=='sim')return;
+    const c=state.timeoutControl,settled=!!c&&Date.now()-syncOffset>=c.opensAt;
+    const side=settled?c.side:state.game?.event?.offense??state.game?.offense;
+    btn.disabled=!settled||c.side!==state.you||!my()?.timeouts;
+    btn.title=!settled?'Wait for the current play to finish':c.side!==state.you?'Only the team with possession may call timeout':!my()?.timeouts?'No timeouts remaining':'Call timeout';
+    label.textContent=settled?(side===state.you?'🏀 YOUR POSSESSION':'🏀 OPPONENT POSSESSION'):(side===state.you?'🏀 YOUR PLAY IN PROGRESS':'🏀 OPPONENT PLAY IN PROGRESS');
+  }
   function showScore(){
     const g=state.game;if(!g)return;
     $('scoreboard').innerHTML=`<div class="score-side"><span class="score-team">${esc(state.teams[0].name)}</span><span class="score-number">${g.score[0]}</span><span class="tiny">${state.teams[0].wins} SERIES WINS • ${state.teams[0].timeouts} TIMEOUTS</span></div>
       <div class="score-meta"><span>GAME ${state.gameNumber}${state.format===7?' • BEST OF 7':''}</span><strong>${esc(g.period)} ${secs(g.secondsLeft)}</strong>
       ${g.tipoff&&Date.now()-syncOffset-g.tipoff.at<8500 ? `<div class="tipoff-notice">🏀 TIP-OFF WON: ${esc(state.teams[g.tipoff.winningTeam].name)} · ${Math.round(g.tipoff.probabilities[g.tipoff.winningTeam]*100)}% chance</div>` : ''}
-      ${state.phase==='sim'?`<button id="call-timeout" class="primary" ${state.game.offense!==state.you||!my().timeouts?'disabled title="Only the team with possession may call timeout"':''}>⏸ CALL TIMEOUT</button><div class="tiny">${state.game.offense===state.you?'🏀 YOUR POSSESSION':'🏀 OPPONENT POSSESSION'}</div>`:state.phase==='foulout'?'<span class="smallcaps" style="color:var(--red)">🚫 FOUL-OUT • SUB REQUIRED</span>':'<span class="smallcaps">⏸ TIMEOUT IN PROGRESS</span>'}</div>
+      ${state.phase==='sim'?`<button id="call-timeout" class="primary" disabled>⏸ CALL TIMEOUT</button><div id="possession-label" class="tiny"></div>`:state.phase==='foulout'?'<span class="smallcaps" style="color:var(--red)">🚫 FOUL-OUT • SUB REQUIRED</span>':'<span class="smallcaps">⏸ TIMEOUT IN PROGRESS</span>'}</div>
       <div class="score-side end"><span class="score-team">${esc(state.teams[1].name)}</span><span class="score-number">${g.score[1]}</span><span class="tiny">${state.teams[1].timeouts} TIMEOUTS • ${state.teams[1].wins} SERIES WINS</span></div>`;
-    $('call-timeout')?.addEventListener('click',()=>act('timeout'));
-    if($('call-timeout')&&(!my().timeouts||state.game.offense!==state.you))$('call-timeout').disabled=true;
+    $('call-timeout')?.addEventListener('click',()=>{
+      updateTimeoutButton();
+      if($('call-timeout').disabled)return;
+      const c=state.timeoutControl;
+      act('timeout',{playAt:c.playAt,gameEventId:c.gameEventId,gameNumber:state.gameNumber});
+    });
+    updateTimeoutButton();
   }
   function focusPanel(){
     const g=state.game;const id=selectedFocus&&g.stats[selectedFocus]?selectedFocus:g.active[state.you][0];
@@ -579,6 +613,7 @@
   }
   function updateClocks(){
     const corrected=Date.now()-syncOffset;
+    updateTimeoutButton();
     if(state?.phase==='auction'&&state.auction?.deadline){
       const x=Math.max(0,Math.ceil((state.auction.deadline-corrected)/1000));
       for(const label of document.querySelectorAll('[data-countdown]')){label.textContent=x+'s';label.classList.toggle('urgent',x<=10);}
@@ -602,7 +637,7 @@
     // Server picks one of four equally likely courts when each game starts.
     // The geometry includes fully connected NBA-style three-point arcs and corners.
     window.CourtDesigns.drawCourt(ctx,state.game.courtStyle,W,H);
-    const game=state.game,rawEvent=game.event;
+    const game=state.game,rawEvent=state.timeoutControl?.waitingForPlay?null:game.event;
     // The server's pass geometry remains authoritative for gameplay. For the
     // presentation, backcourt inbound anchors become frontcourt pass anchors
     // after the separate visible inbound/advance stage.
@@ -650,7 +685,9 @@
     const shotEffectAge=eventAge-(event?motion.shotEnd(event):0);
     const putbackEffectAge=eventAge-(event?motion.putbackEnd(event):0);
     const topShotEffectY=54;
-    const topShotEffect=!!event?.made&&(['mid','three','fade'].includes(event.displayEvent)&&shotEffectAge>=0&&shotEffectAge<850||event.deepThree&&shotEffectAge>=0&&shotEffectAge<1250||event.posterDunk&&resultAge>=0&&resultAge<POSTER_REACTIONS_MS);
+    const ankleBanner=!!event?.ankleBreaker&&resultAge>=0&&resultAge<ANKLE_BANNER_MS;
+    const posterBanner=!!event?.posterDunk&&shotEffectAge>=0&&shotEffectAge<POSTER_REACTIONS_MS;
+    const topShotEffect=ankleBanner||posterBanner||!!event?.made&&(['mid','three','fade'].includes(event.displayEvent)&&shotEffectAge>=0&&shotEffectAge<850||event.deepThree&&shotEffectAge>=0&&shotEffectAge<1250);
     const carrier=motion.ballCarrier(event,rawAge,passFrame);
     const present=new Set();
     for(let side=0;side<2;side++){
@@ -851,8 +888,8 @@
           ctx.font='29px system-ui';ctx.textAlign='center';
           ctx.fillText('😵‍💫',prev.x,prev.y-44);ctx.restore();
         }
-        if(!transitioning&&event?.posterDunk&&resultAge>=0&&resultAge<POSTER_REACTIONS_MS){
-          ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-resultAge)/290);
+        if(!transitioning&&posterBanner){
+          ctx.save();ctx.globalAlpha=1-shotEffectAge/POSTER_REACTIONS_MS;
           ctx.font='27px system-ui';ctx.textAlign='center';
           if(id===event.shooter)ctx.fillText('🗣️',prev.x,prev.y-44);
           if(id===event.defender)ctx.fillText('😢',prev.x+31,prev.y+3);
@@ -928,6 +965,10 @@
     }
     if(!transitioning&&resultAge>=0&&event?.ankleBreaker&&state.phase==='sim'){
       courtReactionBurst(ctx,W,H,['🫪','😱','😯'],resultAge,ANKLE_REACTIONS_MS);
+      if(ankleBanner){
+        ctx.save();ctx.globalAlpha=1-resultAge/ANKLE_BANNER_MS;ctx.textAlign='center';ctx.font='900 32px system-ui';ctx.lineWidth=5;ctx.strokeStyle='#111827';ctx.fillStyle='#ffffff';
+        ctx.strokeText('ANKLE BREAKER!',W/2,topShotEffectY);ctx.fillText('ANKLE BREAKER!',W/2,topShotEffectY);ctx.restore();
+      }
     }
     if(fadeAnimating&&state.phase==='sim'){
       const at=canvasPositions.get(event.shooter);
@@ -940,16 +981,16 @@
       ctx.textAlign='center';ctx.font='1000 34px system-ui';ctx.lineWidth=5;
       ctx.strokeStyle='#111827';ctx.fillStyle='#ffffff';
       const text=event.displayEvent==='three'?'3PTS!':'SWISH!';
-      ctx.strokeText(text,W/2,topShotEffectY);ctx.fillText(text,W/2,topShotEffectY);
+      const y=topShotEffectY+(ankleBanner?38:0);
+      ctx.strokeText(text,W/2,y);ctx.fillText(text,W/2,y);
       ctx.restore();
     }
-    if(!transitioning&&resultAge>=0&&event?.posterDunk&&state.phase==='sim'){
-      courtReactionBurst(ctx,W,H,['📸😯','📸','🫪'],resultAge,POSTER_REACTIONS_MS);
-      if(resultAge>=0&&resultAge<POSTER_REACTIONS_MS){
-        ctx.save();ctx.globalAlpha=Math.min(1,(POSTER_REACTIONS_MS-resultAge)/260);
-        ctx.font='28px system-ui';ctx.textAlign='center';
-        ctx.fillText('💪',W/2,topShotEffectY);ctx.restore();
-      }
+    if(!transitioning&&posterBanner&&state.phase==='sim'){
+      courtReactionBurst(ctx,W,H,['📸😯','📸','🫪'],shotEffectAge,POSTER_REACTIONS_MS);
+      ctx.save();ctx.globalAlpha=1-shotEffectAge/POSTER_REACTIONS_MS;
+      ctx.font='900 34px system-ui';ctx.textAlign='center';ctx.lineWidth=5;ctx.strokeStyle='#111827';ctx.fillStyle='#ffffff';
+      const y=topShotEffectY+(ankleBanner?38:0);
+      ctx.strokeText('💪POSTER!💪',W/2,y);ctx.fillText('💪POSTER!💪',W/2,y);ctx.restore();
     }
     const turnoverBanner={
       'illegal-screen':'🚫 ILLEGAL SCREEN • OFFENSIVE FOUL',
@@ -1001,8 +1042,8 @@
       ctx.shadowColor='#ff3b15';ctx.shadowBlur=32;
       ctx.lineWidth=8;ctx.strokeStyle='#7e150e';ctx.fillStyle='#ff8624';
       ctx.font='900 32px system-ui';ctx.textAlign='center';
-      ctx.strokeText('🔥FROM DEEP!🔥',W/2,topShotEffectY+38);
-      ctx.fillText('🔥FROM DEEP!🔥',W/2,topShotEffectY+38);
+      ctx.strokeText('🔥FROM DEEP!🔥',W/2,topShotEffectY+38+(ankleBanner?38:0));
+      ctx.fillText('🔥FROM DEEP!🔥',W/2,topShotEffectY+38+(ankleBanner?38:0));
       ctx.restore();
     }
     if(!transitioning&&event?.foul&&freeThrowAge>=0&&freeThrowAge<350){

@@ -2,7 +2,7 @@ import http from 'node:http';
 import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-rules.js';
 import { fastBreakPlan } from './fast-break-rules.js';
 import { passCount, passPath, touchPriority, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
-import { possessionTransition, possessionWindow } from './transition-rules.js';
+import { possessionTransition, possessionWindow, timeoutControl } from './transition-rules.js';
 import { advancePeriod, REGULATION_QUARTER_SECONDS } from './period-rules.js';
 import './public/team-colors.js';
 const teamColors=globalThis.CourtTeamColors;
@@ -97,7 +97,7 @@ function join(code,name,color){
 }
 function publicState(room,i){
   const removeSecret=t=>t?({name:t.name,color:t.color,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
-  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS.map(p=>({...p,weight:room.weights[p.id]})),wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
+  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS.map(p=>({...p,weight:room.weights[p.id]})),wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,timeoutControl:room.phase==='sim'?timeoutControl(room.game,room.play,SIM_MS,!!room.finishAnimation):null,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}
 function log(room,msg){room.log.push(msg);if(room.log.length>120)room.log.shift();}
@@ -740,6 +740,9 @@ function action(room,i,data){
       // Possession is server-authoritative; a defending team cannot steal a
       // pause by pressing the API directly, even if its browser is stale.
       if(room.game?.offense!==i)throw Error('Your team must have the ball to call timeout.');
+      const control=timeoutControl(room.game,room.play,SIM_MS,!!room.finishAnimation);
+      if(!control||now()<control.opensAt)throw Error('Wait for the current play to finish before calling timeout.');
+      if(data.playAt!==undefined&&(data.playAt!==control.playAt||data.gameEventId!==control.gameEventId||data.gameNumber!==room.gameNumber))throw Error('Possession changed. Try again when your team has the ball.');
       // Rest all ten on-court players exactly once, when the timeout starts.
         for(let side=0;side<2;side++){
           const team=room.teams[side];
@@ -761,14 +764,14 @@ function action(room,i,data){
       g.active[i][required.slot]=id;
       log(room,`${getPlayer(id).name} replaces fouled-out ${getPlayer(required.playerId).name}. Play resumes.`);
       room.foulout=null;
-      room.phase='sim';room.play={at:now()};broadcast(room);break;
+      room.phase='sim';room.play={at:now(),readyForPossession:true};broadcast(room);break;
     }
     case 'resume':{
       if(room.phase!=='timeout'||room.timeout.caller!==i)throw Error('Only the caller can resume early.');
       // Do not advance or switch possession during the timeout.
       room.game.offense=room.timeout.possession;
       room.game.timeoutInboundSide=room.timeout.possession;
-      room.phase='sim';room.play={at:now()};room.timeout=null;broadcast(room);break;
+      room.phase='sim';room.play={at:now(),readyForPossession:true};room.timeout=null;broadcast(room);break;
     }
     default:throw Error('Unknown action.');
   }
@@ -792,7 +795,7 @@ setInterval(()=>{
     if(room.phase==='timeout'&&ms>=room.timeout.until){
       room.game.offense=room.timeout.possession;
       room.game.timeoutInboundSide=room.timeout.possession;
-      room.phase='sim';room.play={at:ms};room.timeout=null;broadcast(room);
+      room.phase='sim';room.play={at:ms,readyForPossession:true};room.timeout=null;broadcast(room);
     }
     if(room.phase==='sim'&&ms-(room.play?.at||0)>=(room.play?.delay||SIM_MS)){
       room.play={at:ms};
