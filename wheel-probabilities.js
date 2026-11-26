@@ -17,18 +17,28 @@ export function validateWeights(weights,players){
   if(positive<16)throw Error('At least 16 players must have a positive probability.');
   return next;
 }
+// A complete pre-expansion 200-player backup remains usable. New IDs are
+// explicitly initialized to zero; all other incomplete backups remain invalid.
+export function expandLegacyWeights(weights,players){
+  if(!weights||typeof weights!=='object'||Array.isArray(weights)||players.length<=200)return weights;
+  const legacy=Array.from({length:200},(_,i)=>'p'+String(i+1).padStart(3,'0'));
+  if(Object.keys(weights).length!==legacy.length||legacy.some(id=>!Object.hasOwn(weights,id)))return weights;
+  const ids=new Set(players.map(p=>p.id));
+  if(legacy.some(id=>!ids.has(id)))return weights;
+  return Object.fromEntries(players.map(p=>[p.id,Object.hasOwn(weights,p.id)?weights[p.id]:0]));
+}
 export function createWheelStore({root,players,file=process.env.COURT_CASH_WEIGHTS_FILE||path.join(root,'data','wheel-probabilities.json')}){
   const original=validateWeights(Object.fromEntries(players.map(p=>[p.id,p.weight])),players);
   let current={...original};
   try{
     const saved=JSON.parse(readFileSync(file,'utf8'));
     if(saved.version!==1||saved.kind!=='court-cash-wheel-probabilities')throw Error('Unsupported probability backup.');
-    current=validateWeights(saved.weights,players);
+    current=validateWeights(expandLegacyWeights(saved.weights,players),players);
   }catch(error){if(error.code!=='ENOENT')console.error('Wheel probabilities not loaded:',error.message);}
   const backup=()=>({version:1,kind:'court-cash-wheel-probabilities',weights:{...current}});
   function save(data){
     if(data?.version!==1||data.kind!=='court-cash-wheel-probabilities')throw Error('Unsupported probability backup.');
-    const next=validateWeights(data.weights,players);
+    const next=validateWeights(expandLegacyWeights(data.weights,players),players);
     mkdirSync(path.dirname(file),{recursive:true});
     writeFileSync(file+'.tmp',JSON.stringify({version:1,kind:'court-cash-wheel-probabilities',weights:next},null,2)+'\n',{mode:0o600});
     renameSync(file+'.tmp',file);current=next;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {Readable} from 'node:stream';
@@ -69,4 +69,27 @@ test('server and wheel display both use room-specific weights rather than mutabl
   assert.match(server,/selectWeighted\(room\.remaining,room\.weights,rnd\)/);
   assert.match(app,/filter\(p=>p&&p\.weight>0\)/);
   assert.match(html,/id="admin-tab-wheel"/);
+});
+
+test('legacy 200-player backups preserve all original probabilities and add expansion players at zero',()=>{
+ const root=mkdtempSync(path.join(os.tmpdir(),'cc-wheel-expansion-'));
+ try{
+  const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
+  const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+  const combined=[...original,...expansion];
+  const old=Object.fromEntries(original.map(p=>[p.id,p.weight]));
+  const positive=original.filter(p=>p.weight>=.01);
+  old[positive[0].id]=Math.round((old[positive[0].id]-.01)*100)/100;
+  old[positive[1].id]=Math.round((old[positive[1].id]+.01)*100)/100;
+  mkdirSync(path.join(root,'data'));
+  writeFileSync(path.join(root,'data','wheel-probabilities.json'),JSON.stringify(data(old)));
+  const store=createWheelStore({root,players:combined});
+  const expected={...old,...Object.fromEntries(expansion.map(p=>[p.id,0]))};
+  assert.deepEqual(store.snapshot(),expected);
+  assert.deepEqual(store.save(data(old)).weights,expected);
+  const bad={...old};delete bad.p001;bad.unknown=0;
+  assert.throws(()=>store.save(data(bad)),/player IDs/);
+  const changed={...expected,p201:.01};changed[positive[1].id]=Math.round((changed[positive[1].id]-.01)*100)/100;
+  assert.equal(store.save(data(changed)).weights.p201,.01);
+ }finally{rmSync(root,{recursive:true,force:true});}
 });

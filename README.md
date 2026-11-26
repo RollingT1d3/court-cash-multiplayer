@@ -37,7 +37,7 @@ For a friend on another computer on the **same home network**, they can open `ht
 
 ## Adding custom players and pictures
 
-Edit `data/players.json`. Each player object has:
+Edit `data/players.json` (original 200) or `data/players-3.json` (expansion players). The server loads both into a single roster. Each player object has:
 
 ```json
 {
@@ -85,7 +85,7 @@ Run `npm test`. Automated integration tests exercise a real two-player game serv
 - `public/index.html`: user interface.
 - `public/style.css`: desktop-first visual styling.
 - `public/app.js`: synchronized client rendering, player stats, wheel, roster drag/click interactions, and animated full-court canvas.
-- `data/players.json`: temporary player roster, attributes, weights and image references.
+- `data/players.json` and `data/players-3.json`: original and expansion roster, attributes, weights and image references. The 17 expansion players begin with zero wheel probability; assign positive odds in the admin editor and keep the total at 100%. Complete 200-player probability backups automatically add new IDs at zero.
 - `test/game.test.js`: full-match integration test.
 
 ## November 2026 gameplay update (v0.2)
