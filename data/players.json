@@ -794,7 +794,7 @@
     "heightInches": 84,
     "archetype": "Paint Beast",
     "overall": 80,
-    "weight": 2,
+    "weight": 0.2,
     "image": "/images/p021.webp",
     "stats": {
       "layup": 80,
@@ -1436,7 +1436,7 @@
     "heightInches": 74,
     "archetype": "Mid-Range Master",
     "overall": 80,
-    "weight": 1.5,
+    "weight": 0.3,
     "image": "/images/p038.webp",
     "stats": {
       "layup": 70,
@@ -2532,7 +2532,7 @@
     "heightInches": 78,
     "archetype": "Lockdown Slasher",
     "overall": 85,
-    "weight": 0.5,
+    "weight": 0.2,
     "image": "/images/p067.webp",
     "stats": {
       "layup": 85,
@@ -5032,7 +5032,7 @@
     "heightInches": 84,
     "archetype": "Paint Beast",
     "overall": 84,
-    "weight": 0.9,
+    "weight": 0.4,
     "image": "/images/p134.webp",
     "stats": {
       "layup": 72,
@@ -5487,7 +5487,7 @@
     "heightInches": 82,
     "archetype": "2-Way Slasher",
     "overall": 80,
-    "weight": 0.8,
+    "weight": 0.3,
     "image": "/images/p146.webp",
     "stats": {
       "layup": 80,
@@ -5635,7 +5635,7 @@
     "heightInches": 77,
     "archetype": "Playmaker",
     "overall": 85,
-    "weight": 0.5,
+    "weight": 0.3,
     "image": "/images/p150.webp",
     "stats": {
       "layup": 70,
@@ -6344,7 +6344,7 @@
     "heightInches": 84,
     "archetype": "Stretch Big",
     "overall": 87,
-    "weight": 0.5,
+    "weight": 0.35,
     "image": "/images/p169.webp",
     "stats": {
       "layup": 90,
@@ -7147,7 +7147,7 @@
     "heightInches": 80,
     "archetype": "Paint Beast",
     "overall": 78,
-    "weight": 0.9,
+    "weight": 0.3,
     "image": "/images/p191.webp",
     "stats": {
       "layup": 80,
@@ -7181,7 +7181,7 @@
     "heightInches": 72,
     "archetype": "Playmaker",
     "overall": 77,
-    "weight": 0.7,
+    "weight": 0.4,
     "image": "/images/p192.webp",
     "stats": {
       "layup": 70,
@@ -7215,7 +7215,7 @@
     "heightInches": 81,
     "archetype": "Paint Beast",
     "overall": 81,
-    "weight": 1,
+    "weight": 0.4,
     "image": "/images/p193.webp",
     "stats": {
       "layup": 75,

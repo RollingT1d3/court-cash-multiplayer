@@ -12,7 +12,7 @@ test('all 50 approved expansion players have game-ready art and valid stats; com
  const all=[...original,...expansion];
  assert.equal(new Set(all.map(p=>p.id)).size,250);
  for(const p of expansion){
-   assert.ok(p.weight>=0);
+   assert.ok(p.weight>0);
    assert.deepEqual(Object.keys(p.stats).sort(),Object.keys(original[0].stats).sort());
    assert.ok(Object.values(p.stats).every(n=>Number.isInteger(n)&&n>=0&&n<=100));
    assert.equal(p.image,'/images/'+p.id+'.webp');
@@ -23,9 +23,9 @@ test('all 50 approved expansion players have game-ready art and valid stats; com
  }
  const weights=validateWeights(Object.fromEntries(all.map(p=>[p.id,p.weight])),all);
  assert.deepEqual(expansion.slice(0,17).map(p=>p.weight),[.2,.3,.2,.2,.2,.15,.15,.2,.2,.1,.2,.2,.15,.15,.15,.1,.05]);
- assert.ok(expansion.slice(17).every(p=>p.weight===0));
- assert.equal(all.filter(p=>p.weight>0).length,217);
- assert.equal(expansion.reduce((n,p)=>n+Math.round(p.weight*100),0),290);
- assert.equal(selectWeighted(all.map(p=>p.id),weights,()=>.999999),'p217');
+ assert.deepEqual(expansion.slice(17).map(p=>p.weight),[0.15,0.3,0.25,0.45,0.1,0.2,0.2,0.25,0.15,0.2,0.2,0.1,0.2,0.45,0.25,0.3,0.15,0.25,0.15,0.25,0.05,0.2,0.1,0.1,0.1,0.2,0.05,0.15,0.25,0.1,0.1,0.1,0.1]);
+ assert.equal(all.filter(p=>p.weight>0).length,250);
+ assert.equal(expansion.reduce((n,p)=>n+Math.round(p.weight*100),0),905);
+ assert.equal(selectWeighted(all.map(p=>p.id),weights,()=>.999999),'p250');
  assert.match(read('server.js').toString(),/data\/players-3\.json/);
 });

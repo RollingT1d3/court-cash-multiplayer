@@ -119,8 +119,11 @@ test('217-player admin backups survive a zero-weight roster expansion without ch
  try{
   const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
   const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
-  const oldPlayers=[...original,...expansion.slice(0,17)];
-  const combined=[...original,...expansion];
+  // Reconstruct a valid zero-weight expansion fixture independently of published odds.
+  const oldPlayers=[...original,...expansion.slice(0,17)].map(p=>({...p}));
+  const missing=10000-oldPlayers.reduce((n,p)=>n+Math.round(p.weight*100),0);
+  oldPlayers[0].weight=(Math.round(oldPlayers[0].weight*100)+missing)/100;
+  const combined=[...oldPlayers,...expansion.slice(17).map(p=>({...p,weight:0}))];
   const store=createWheelStore({root,players:oldPlayers,preferPublishedDefaults:true});
   const old=store.snapshot();old.p201=.19;old.p202=.31;store.save(data(old));
   const next=createWheelStore({root,players:combined,preferPublishedDefaults:true});
@@ -128,5 +131,9 @@ test('217-player admin backups survive a zero-weight roster expansion without ch
   assert.deepEqual(next.snapshot(),expected);
   assert.deepEqual(next.save(data(old)).weights,expected);
   assert.equal(selectWeighted(combined.map(p=>p.id),next.snapshot(),()=>.999999),'p217');
+  const published=[...original,...expansion];
+  const rebalanced=createWheelStore({root,players:published,preferPublishedDefaults:true});
+  assert.deepEqual(rebalanced.snapshot(),Object.fromEntries(published.map(p=>[p.id,p.weight])));
+  assert.equal(selectWeighted(published.map(p=>p.id),rebalanced.snapshot(),()=>.999999),'p250');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
