@@ -135,7 +135,7 @@ test('new picks and already assigned players use a centered custom native drag i
   const element={querySelectorAll:()=>[nested],querySelector:()=>null,addEventListener:(name,fn)=>handlers[name]=fn};
   const win={innerWidth:900,innerHeight:700,matchMedia:()=>({matches:false}),CourtHeadshots:{imageSource:()=>p.image,drawDragPreview:(...a)=>calls.push(['draw',...a])}};
   const document={createElement:()=>canvas,body:{appendChild:c=>calls.push(['append',c])}};
-  const scope={window:win,document,rosterImage:()=>Promise.resolve(img),currentPicked:null,element,p,setTimeout:fn=>fn()};
+  const scope={window:win,document,rosterImage:()=>Promise.resolve(img),currentPicked:null,element,p,colors:{hex:id=>id==='red'?'#ff859e':'#7cb7ff'},colorFor:side=>side===1?'red':'blue',setTimeout:fn=>fn()};
   runInNewContext(source+"\nbindDragHeadshot(element,p,'red');",scope);
   await Promise.resolve();
   const transfer={setData:(...a)=>calls.push(['data',...a]),setDragImage:(...a)=>calls.push(['drag',...a])};
@@ -143,7 +143,7 @@ test('new picks and already assigned players use a centered custom native drag i
   assert.equal(nested.draggable,false);assert.equal(element.draggable,true);
   assert.equal(scope.currentPicked,p.id);assert.equal(transfer.effectAllowed,'move');
   assert.deepEqual(calls.find(x=>x[0]==='data'),['data','text/plain',p.id]);
-  assert.deepEqual(calls.find(x=>x[0]==='draw').slice(2),[img,p,58,'red']);
+  assert.deepEqual(calls.find(x=>x[0]==='draw').slice(2),[img,p,58,'red','#ff859e']);
   assert.deepEqual(calls.find(x=>x[0]==='drag'),['drag',canvas,29,29]);
   assert.equal(canvas.width,58);assert.equal(canvas.height,58);
   assert.deepEqual(calls.at(-1),['removed']);
