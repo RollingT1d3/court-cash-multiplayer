@@ -18,11 +18,13 @@ export function validateWeights(weights,players){
   if(positive<16)throw Error('At least 16 players must have a positive probability.');
   return next;
 }
-// A complete pre-expansion 200-player backup remains usable. New IDs are
-// explicitly initialized to zero; all other incomplete backups remain invalid.
+// Complete historical 200- and 217-player backups remain usable. New IDs
+// are initialized to zero; all other incomplete backups remain invalid.
 export function expandLegacyWeights(weights,players){
   if(!weights||typeof weights!=='object'||Array.isArray(weights)||players.length<=200)return weights;
-  const legacy=Array.from({length:200},(_,i)=>'p'+String(i+1).padStart(3,'0'));
+  const count=Object.keys(weights).length;
+  if(![200,217].includes(count)||count>=players.length)return weights;
+  const legacy=Array.from({length:count},(_,i)=>'p'+String(i+1).padStart(3,'0'));
   if(Object.keys(weights).length!==legacy.length||legacy.some(id=>!Object.hasOwn(weights,id)))return weights;
   const ids=new Set(players.map(p=>p.id));
   if(legacy.some(id=>!ids.has(id)))return weights;
@@ -32,12 +34,17 @@ export function createWheelStore({root,players,file=process.env.COURT_CASH_WEIGH
   const original=validateWeights(Object.fromEntries(players.map(p=>[p.id,p.weight])),players);
   // A newly published set of default odds supersedes earlier admin saves.
   // Saves made against this same published baseline survive restarts.
-  const baseline=preferPublishedDefaults?createHash('sha256').update(JSON.stringify(Object.entries(original).sort(([a],[b])=>a.localeCompare(b)))).digest('hex'):null;
+  const hashDefaults=weights=>createHash('sha256').update(JSON.stringify(Object.entries(weights).sort(([a],[b])=>a.localeCompare(b)))).digest('hex');
+  const baseline=preferPublishedDefaults?hashDefaults(original):null;
   let current={...original};
   try{
     const saved=JSON.parse(readFileSync(file,'utf8'));
     if(saved.version!==1||saved.kind!=='court-cash-wheel-probabilities')throw Error('Unsupported probability backup.');
-    if(!baseline||saved.baseline===baseline)current=validateWeights(expandLegacyWeights(saved.weights,players),players);
+    const expanded=expandLegacyWeights(saved.weights,players);
+    // Appending zero-weight players alone must not discard existing admin odds.
+    const priorBaseline=expanded!==saved.weights&&players.every(p=>Object.hasOwn(saved.weights,p.id)||original[p.id]===0)
+      ?hashDefaults(Object.fromEntries(Object.entries(original).filter(([id])=>Object.hasOwn(saved.weights,id)))):null;
+    if(!baseline||saved.baseline===baseline||(priorBaseline&&saved.baseline===priorBaseline))current=validateWeights(expanded,players);
   }catch(error){if(error.code!=='ENOENT')console.error('Wheel probabilities not loaded:',error.message);}
   const backup=()=>({version:1,kind:'court-cash-wheel-probabilities',weights:{...current}});
   function save(data){

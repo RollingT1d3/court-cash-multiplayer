@@ -85,7 +85,7 @@ Run `npm test`. Automated integration tests exercise a real two-player game serv
 - `public/index.html`: user interface.
 - `public/style.css`: desktop-first visual styling.
 - `public/app.js`: synchronized client rendering, player stats, wheel, roster drag/click interactions, and animated full-court canvas.
-- `data/players.json` and `data/players-3.json`: original and expansion roster, attributes, weights and image references. All 217 players have positive published wheel odds totaling 100%. Complete 200-player probability backups remain importable and add new IDs at zero. A new published default probability set supersedes older saved admin settings; subsequent admin edits persist across restarts on the same published baseline.
+- `data/players.json` and `data/players-3.json`: original and expansion roster, attributes, weights and image references. The roster contains 250 players: 217 with positive published odds totaling 100%, plus 33 new players (#218–250) initialized at zero until rebalanced. Complete 200- and 217-player probability backups remain importable and add new IDs at zero. Zero-weight roster additions preserve matching previously saved admin odds. A new published default probability set supersedes older saved admin settings; subsequent admin edits persist across restarts on the same published baseline.
 - `test/game.test.js`: full-match integration test.
 
 ## November 2026 gameplay update (v0.2)

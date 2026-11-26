@@ -113,3 +113,20 @@ test('published probability updates supersede stale saved settings but preserve 
   assert.deepEqual(createWheelStore({root,players:changed,preferPublishedDefaults:true}).snapshot(),Object.fromEntries(changed.map(p=>[p.id,p.weight])));
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test('217-player admin backups survive a zero-weight roster expansion without changing odds',()=>{
+ const root=mkdtempSync(path.join(os.tmpdir(),'cc-wheel-batch2-'));
+ try{
+  const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
+  const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+  const oldPlayers=[...original,...expansion.slice(0,17)];
+  const combined=[...original,...expansion];
+  const store=createWheelStore({root,players:oldPlayers,preferPublishedDefaults:true});
+  const old=store.snapshot();old.p201=.19;old.p202=.31;store.save(data(old));
+  const next=createWheelStore({root,players:combined,preferPublishedDefaults:true});
+  const expected={...old,...Object.fromEntries(expansion.slice(17).map(p=>[p.id,0]))};
+  assert.deepEqual(next.snapshot(),expected);
+  assert.deepEqual(next.save(data(old)).weights,expected);
+  assert.equal(selectWeighted(combined.map(p=>p.id),next.snapshot(),()=>.999999),'p217');
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
