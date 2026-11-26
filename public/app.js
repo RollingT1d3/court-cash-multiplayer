@@ -281,23 +281,48 @@
     $(where+'-left').innerHTML=teamPanel(0);$(where+'-right').innerHTML=teamPanel(1);
     bindRoster($(where+'-left'));bindRoster($(where+'-right'));
   }
-  function weightedRows(p,openAll=false){
+  function fatigueRatingMarkup(base,effective,energy){
+    if(!Number.isFinite(effective)||effective>=base)return `<strong>${esc(base)}</strong>`;
+    // Retain fractional reductions even when rounding would hide a small loss.
+    const rounded=Math.round(effective*10)/10;
+    const shown=rounded>=base?effective.toFixed(2):String(rounded);
+    const severe=energy<30;
+    return `<strong class="fatigue-rating ${severe?'fatigue-critical':'fatigue-reduced'}" title="Base: ${esc(base)} • Fatigue-adjusted: ${esc(effective.toFixed(3))}" aria-label="${esc(shown)}, reduced by fatigue from ${esc(base)}">${esc(shown)} <span aria-hidden="true">⌄</span></strong>`;
+  }
+  function weightedRows(p,openAll=false,fatigue=null){
     const parts=Object.entries(CAT);
     return parts.map(([name,attrs])=>{
       const rating=Math.round(attrs.reduce((n,[,key,w])=>n+p.stats[key]*w,0)/attrs.reduce((n,[,,w])=>n+w,0));
-      return `<details class="stat-category" data-cat="${name}" ${openAll||expanded.has(name)?'open':''}><summary>${name}<span style="margin-left:auto;color:var(--lime)">${rating}</span></summary>
-        ${attrs.map(([title,key])=>`<div class="stat-row"><span>${title}</span><strong>${p.stats[key]}</strong></div>`).join('')}</details>`;
+      return `<details class="stat-category" data-cat="${name}" ${openAll||expanded.has(name)?'open':''}><summary>${name}<span style="margin-left:auto;color:var(--lime)">${rating}${fatigue?' <small class="base-category-label">BASE</small>':''}</span></summary>
+        ${attrs.map(([title,key])=>`<div class="stat-row"><span>${title}</span>${fatigue?fatigueRatingMarkup(p.stats[key],fatigue.values[key],fatigue.energy):`<strong>${p.stats[key]}</strong>`}</div>`).join('')}</details>`;
     }).join('');
   }
   function benchDetailsButton(p){
     return `<button type="button" class="bench-details-button" draggable="false" data-bench-details="${esc(p.id)}" aria-label="View ${esc(p.name)}'s player details" title="Player details">⋯</button>`;
   }
+  let benchDetailsId=null,benchDetailsKey='';
   function showBenchDetails(id){
     const p=player(id);if(!p)return;
     const dialog=$('bench-details-dialog');
-    $('bench-details-title').textContent=p.name;
-    $('bench-details-content').innerHTML=`<div class="profile"><div style="position:relative;flex:none">${portrait(p,'med','blue',true)}${badge(p)}</div><div class="profile-details"><p><strong>OVR:</strong> ${p.overall} • <strong>POS:</strong> ${esc(p.positions.join('/'))}</p><p><strong>HEIGHT:</strong> ${formatHeight(p.heightInches)}</p><p>${esc(p.archetype)}</p></div></div>${weightedRows(p,true)}`;
+    benchDetailsId=id;
+    refreshBenchDetails();
     if(!dialog.open)dialog.showModal();
+  }
+  function refreshBenchDetails(){
+    const id=benchDetailsId,p=player(id);if(!p)return;
+    const owner=state?.teams?.find(t=>t?.roster?.includes(id));
+    const energy=owner?.energy?.[id]??100;
+    const values=owner?.fatigueRatings?.[id]??{};
+    const key=JSON.stringify([state?.code,state?.gameNumber,id,energy,values]);
+    if(benchDetailsKey===key)return;
+    benchDetailsKey=key;
+    const content=$('bench-details-content'),dialog=$('bench-details-dialog');
+    const scroll=dialog.scrollTop;
+    const collapsed=new Set([...content.querySelectorAll('details:not([open])')].map(d=>d.dataset.cat));
+    $('bench-details-title').textContent=p.name;
+    content.innerHTML=`<div class="profile"><div style="position:relative;flex:none">${portrait(p,'med','blue',true)}${badge(p)}</div><div class="profile-details"><p><strong>OVR:</strong> ${p.overall} • <strong>POS:</strong> ${esc(p.positions.join('/'))}</p><p><strong>HEIGHT:</strong> ${formatHeight(p.heightInches)}</p><p>${esc(p.archetype)}</p><p class="bench-energy ${energy<30?'fatigue-critical':energy<100?'fatigue-reduced':''}"><strong>⚡ Energy: ${energy<30&&Math.round(energy)===30?energy.toFixed(1):Math.round(energy)}%</strong></p></div></div><p class="tiny fatigue-legend">⌄ = reduced by fatigue. Yellow at 30%+ energy, red below 30%. OVR and category summaries show base ratings.</p>${weightedRows(p,true,{values,energy})}`;
+    for(const d of content.querySelectorAll('details'))if(collapsed.has(d.dataset.cat))d.open=false;
+    dialog.scrollTop=scroll;
   }
   function bindBenchDetails(container){
     for(const btn of container.querySelectorAll('[data-bench-details]')){
@@ -306,6 +331,7 @@
     }
   }
   $('bench-details-close').addEventListener('click',()=>$('bench-details-dialog').close());
+  $('bench-details-dialog').addEventListener('close',()=>{benchDetailsId=null;benchDetailsKey='';});
   $('bench-details-dialog').addEventListener('click',e=>{if(e.target===$('bench-details-dialog'))$('bench-details-dialog').close();});
   function playerCard(p){
     return `<div class="profile"><div style="position:relative;flex:none">${portrait(p,'xl','blue',true)}${badge(p)}</div>
@@ -588,6 +614,7 @@
   }
   function render(force=false){
     if(!state)return;
+    if($('bench-details-dialog').open)refreshBenchDetails();
     if(state.phase==='intermission'&&lastRoomPhase!=='intermission')intermissionPrep=false;
     $('welcome').classList.add('hide');$('gameview').classList.remove('hide');
     for(const [i,side] of [[0,'blue'],[1,'red']]){

@@ -21,3 +21,23 @@ export function fatiguedSkill(skill,energy,category){
 export function timeoutRecovery(energy){
   return clamp((Number(energy) || 0)+4,0,100);
 }
+
+// Bench inspection: project the listed attributes through the same fatigue
+// multipliers used by scoring and defense, without a position penalty.
+// Post Moves is shown in its ordinary interior-finishing context; a post fade
+// uses the existing shooting multiplier on its combined shot value instead.
+// Free throws use listed FT directly; movement stamina is not a Speed rating change.
+const DISPLAY_FATIGUE_CATEGORIES=Object.freeze({
+  layup:'finishing',dunk:'finishing',post:'finishing',
+  mid:'shooting',three:'shooting',fades:'shooting',
+  paintDef:'defense',perimeterDef:'defense',block:'defense',steal:'defense'
+});
+export function fatigueAttributePreview(stats,energy=100){
+  const values={};
+  for(const [key,category] of Object.entries(DISPLAY_FATIGUE_CATEGORIES)){
+    if(!Number.isFinite(stats?.[key]))continue;
+    const base=stats[key],effective=fatiguedSkill(base,energy,category);
+    if(effective<base)values[key]=effective;
+  }
+  return values;
+}

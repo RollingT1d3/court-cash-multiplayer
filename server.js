@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
 import { heightContestAdjustment, heightBlockAdjustment } from './height-rules-v083.js';
-import { fatiguedSkill, timeoutRecovery } from './fatigue-v084.js';
+import { fatiguedSkill, timeoutRecovery, fatigueAttributePreview } from './fatigue-v084.js';
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, threePointBaseChance, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
@@ -96,7 +96,7 @@ function join(code,name,color){
   return {code:room.code,token:key,teamIndex:1};
 }
 function publicState(room,i){
-  const removeSecret=t=>t?({name:t.name,color:t.color,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy}):null;
+  const removeSecret=t=>t?({name:t.name,color:t.color,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy,fatigueRatings:Object.fromEntries(t.roster.map(id=>[id,fatigueAttributePreview(getPlayer(id).stats,t.energy[id]??100)]))}):null;
   return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS.map(p=>({...p,weight:room.weights[p.id]})),wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,timeoutControl:room.phase==='sim'?timeoutControl(room.game,room.play,SIM_MS,!!room.finishAnimation):null,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}

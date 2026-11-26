@@ -30,7 +30,7 @@ test('bench detail controls are separate from placement buttons and show all sta
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.ok(app.includes('p&&SLOTS.indexOf(s)>=5'));
  assert.ok(app.includes('bindBenchDetails(container)'));
- assert.ok(app.includes('weightedRows(p,true)'));
+ assert.ok(app.includes('weightedRows(p,true,{values,energy})'));
  assert.ok(app.includes('e.stopPropagation();showBenchDetails'));
  assert.ok(html.includes('<dialog id="bench-details-dialog"'));
 });

@@ -158,3 +158,11 @@
 #bench-details-close{padding:8px 12px;flex:none}
 #bench-details-dialog .profile{margin-bottom:10px}
 #bench-details-dialog .profile .portrait{width:72px;height:72px}
+
+/* Fatigue-only projections in bench player details. */
+#bench-details-dialog .fatigue-rating.fatigue-reduced,#bench-details-dialog .bench-energy.fatigue-reduced{color:#ffda68}
+#bench-details-dialog .fatigue-rating.fatigue-critical,#bench-details-dialog .bench-energy.fatigue-critical{color:#ff727d}
+#bench-details-dialog .fatigue-rating span{font-size:16px;line-height:1;font-weight:950;vertical-align:baseline}
+#bench-details-dialog .fatigue-rating{font-variant-numeric:tabular-nums}
+#bench-details-dialog .base-category-label{font-size:8px;color:var(--muted);font-weight:700}
+#bench-details-dialog .fatigue-legend{margin:0 0 12px;line-height:1.5}
