@@ -8,6 +8,7 @@ import './public/team-colors.js';
 const teamColors=globalThis.CourtTeamColors;
 import { createAdminAPI } from './admin-v09.js';
 import { assistAwardChance } from './assist-rules.js';
+import { chooseShotRange, dunkAttemptChance, restrictThreeDistance, desperationThreeAllowed } from './shot-tendencies-v11.js';
 import { createWheelStore, selectWeighted } from './wheel-probabilities.js';
 import { BOX_AND_ONE, BOX_CHASER_FATIGUE, boxAssignments, boxShotDefenders, boxShotAdjustment } from './defense-box-one.js';
 import { readFileSync, createReadStream, statSync } from 'node:fs';
@@ -305,15 +306,21 @@ function simulatePlay(room){
   const threeTarget=runGun?(roles.runShooters.includes(shooter)?.81:.10):
     oldSchool?(shooter===roles.oldShooter?.98:.08):
     scheme===OFFENSE[3]?.68:scheme===OFFENSE[4]?.11:chaos?.36:scheme===OFFENSE[2]?.29:.32;
-  const isThree=quickBreak?fastBreak.type==='three':point?pointAction.range==='three':hills?(hillsPlay.perimeterShot&&rating(shooter,'three')>=rating(shooter,'mid')):
-    rnd()<clamp(.32+adherence*(threeTarget-.32),.05,.98);
   const paintTarget=oldSchool?(shooter===roles.oldRebounder?.90:.58):
     runGun?.13:scheme===OFFENSE[4]?.82:chaos?.60:scheme===OFFENSE[3]?.38:.56;
-  const inPaint=quickBreak?['layup','dunk'].includes(fastBreak.type):point?pointAction.range==='paint':hills?!hillsPlay.perimeterShot:!isThree&&rnd()<clamp(.56+adherence*(paintTarget-.56),.07,.94);
-  const dunkSkill=rating(shooter,'dunk');
-  const dunkChance=clamp(.2+(dunkSkill-75)*.008,.02,.62);
+  const protectedRange=scheme===OFFENSE[3]?'three':scheme===OFFENSE[4]?'paint':
+    runGun?(roles.runShooters.includes(shooter)?'three':'mid'):
+    oldSchool?(shooter===roles.oldShooter?'three':'paint'):null;
+  const shotRange=quickBreak?(fastBreak.type==='three'?'three':fastBreak.type==='mid'?'mid':'paint'):
+    point?pointAction.range:hills?(hillsPlay.perimeterShot?(rating(shooter,'three')>=rating(shooter,'mid')?'three':'mid'):'paint'):
+    chooseShotRange({threeTarget,paintTarget,adherence,protectedRange,stats:{
+      three:rating(shooter,'three'),mid:rating(shooter,'mid'),layup:rating(shooter,'layup'),dunk:rating(shooter,'dunk')
+    }},rnd);
+  const isThree=shotRange==='three',inPaint=shotRange==='paint';
+  const dunkChance=dunkAttemptChance(rating(shooter,'dunk'),rating(shooter,'layup'));
   let type=quickBreak?fastBreak.type:isThree?'three':inPaint?(rnd()<dunkChance?'dunk':'layup'):'mid';
-  let shotDistanceFt=quickBreak?fastBreak.feet:type==='three'?threeDistanceFeet(rating(shooter,'three'),shotClockRemaining,rnd):
+  const desperation=desperationThreeAllowed({seconds:g.secondsLeft,previous:g.event,offense,quarter:g.quarter,timeout:inboundAfterTimeout});
+  let shotDistanceFt=quickBreak?fastBreak.feet:type==='three'?restrictThreeDistance(threeDistanceFeet(rating(shooter,'three'),shotClockRemaining,rnd),rating(shooter,'three'),{desperation,random:rnd}):
     type==='mid'?12+Math.floor(rnd()*11):3+Math.floor(rnd()*7);
   // A zone keeps three defenders up top and two close to the rim. Pure Chaos deliberately
   // searches across defenders for favorable size/scoring mismatches using off-ball screens.

@@ -30,7 +30,7 @@ export function fastBreakPlan({previous,offense,quarter,seconds,active,defenders
      const expected=type==='three'?3*clamp(.15+(skill-50)*.006,.08,.52):type==='mid'?2*clamp(.29+(skill-50)*.007,.10,.70):2*clamp(.40+(skill-50)*.008,.15,.88);
      // Favor the player's best genuine open shot, not automatically a dunk.
      const quality=expected+clamp(gap,-1,1)*.17+(stat(id,'iq')-75)*.001;
-     return {id,type,target,arrival,gap,quality,defender:recovery.id,feet:feet[type],open:gap>.18&&arrival+.35<=available&&skill>=45};
+     return {id,type,target,arrival,gap,quality,defender:recovery.id,feet:feet[type],open:gap>.18&&arrival+.35<=available&&skill>=50};
    }).filter(o=>o.open).sort((a,b)=>b.quality-a.quality);
  };
  const available=Math.min(seconds,8);

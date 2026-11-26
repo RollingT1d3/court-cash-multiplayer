@@ -40,6 +40,6 @@ test('v0.8.3: engine uses one height contest, no stacked Pure Chaos size bonus, 
   assert.match(server,/heightBlockAdjustment\(getPlayer\(shooter\)\.heightInches,getPlayer\(defender\)\.heightInches\)/);
   assert.match(server,/blocked=!ankleBreaker&&inPaint&&rnd\(\)</);
   assert.doesNotMatch(server,/const sizeEdge=isInterior/);
-  assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version,'1.0.0');
-  assert.match(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'),/ALPHA v1\.0/);
+  assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version,'1.1.0');
+  assert.match(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'),/ALPHA v1\.1/);
 });

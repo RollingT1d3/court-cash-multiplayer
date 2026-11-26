@@ -53,8 +53,8 @@ test('v0.8.4 fatigue emoji thresholds, small portrait overlay and exact-energy d
   assert.match(app,/ctx\.font='12px system-ui'/);
   assert.match(app,/⚡ Energy:/);
   assert.doesNotMatch(app,/if\(e<80\)/);
-  assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version,'1.0.0');
-  assert.match(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'),/ALPHA v1\.0/);
+  assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version,'1.1.0');
+  assert.match(readFileSync(new URL('../public/index.html',import.meta.url),'utf8'),/ALPHA v1\.1/);
 });
 
 test('bench recovery is 1.5 energy per 15 in-game seconds, capped at 100; active drain is unchanged',()=>{
