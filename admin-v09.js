@@ -4,11 +4,13 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 
 // V0.9: server-authoritative admin access and per-player on-court portrait settings.
 // Authenticated appearance and wheel probability editors; player attributes remain unchanged.
-export function createAdminAPI({ root, players, wheelStore = null, onUpdate = () => {} }) {
+export function createAdminAPI({ root, players, wheelStore = null, onUpdate = () => {}, publishedCropIds = [] }) {
   const settingsFile = process.env.COURT_CASH_PORTRAITS_FILE ||
     path.join(root, 'data', 'court-portrait-overrides.json');
   const defaults = new Map(players.map(p => [p.id, p.courtPortrait ? structuredClone(p.courtPortrait) : null]));
   const byId = new Map(players.map(p => [p.id, p]));
+  // Only explicitly published crop updates supersede older saves for those IDs.
+  const cropBaselines = Object.fromEntries(publishedCropIds.filter(id => defaults.has(id)).map(id => [id, JSON.stringify(defaults.get(id)?.crop || null)]));
   const sessions = new Map();
   const attempts = new Map();
   let overrides = {};
@@ -44,6 +46,9 @@ export function createAdminAPI({ root, players, wheelStore = null, onUpdate = ()
   try {
     const stored = JSON.parse(readFileSync(settingsFile, 'utf8'));
     overrides = validateOverrides(stored.overrides || stored);
+    for (const [id, baseline] of Object.entries(cropBaselines)) {
+      if (stored.cropBaselines?.[id] !== baseline) delete overrides[id];
+    }
   } catch (error) {
     if (error.code !== 'ENOENT') console.error('Admin portrait settings not loaded:', error.message);
   }
@@ -53,7 +58,7 @@ export function createAdminAPI({ root, players, wheelStore = null, onUpdate = ()
     const validated = validateOverrides(next);
     mkdirSync(path.dirname(settingsFile), { recursive: true });
     const tmp = settingsFile + '.tmp';
-    writeFileSync(tmp, JSON.stringify({ version: 1, overrides: validated }, null, 2) + '\n', { mode: 0o600 });
+    writeFileSync(tmp, JSON.stringify({ version: 1, overrides: validated, ...(Object.keys(cropBaselines).length ? { cropBaselines } : {}) }, null, 2) + '\n', { mode: 0o600 });
     renameSync(tmp, settingsFile);
     overrides = validated;
     apply();

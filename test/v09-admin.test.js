@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createAdminAPI } from '../admin-v09.js';
@@ -101,4 +101,31 @@ test('baked-in headshot defaults remain after admin reset, without altering play
     assert.deepEqual(p.courtPortrait,base);
     assert.equal(p.image,art);assert.equal(p.weight,weight);
   } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('published portrait crops replace stale saves only for updated players and preserve later admin edits', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'cc-published-crops-'));
+  try {
+    const stale = {centerX:.4,top:.1,width:.4};
+    const current = {centerX:.5,top:0,width:.4587};
+    const next = {centerX:.6,top:.02,width:.3};
+    const makePlayers = () => [{id:'p201',courtPortrait:{crop:current}},{id:'p202',courtPortrait:{crop:current}}];
+    mkdirSync(path.join(dir,'data'));
+    writeFileSync(path.join(dir,'data','court-portrait-overrides.json'),JSON.stringify({version:1,overrides:{p201:stale,p202:stale}}));
+    const players=makePlayers();
+    const api=createAdminAPI({root:dir,players,publishedCropIds:['p201']});
+    assert.deepEqual(players[0].courtPortrait.crop,current);
+    assert.deepEqual(players[1].courtPortrait.crop,stale);
+    const token=(await call(api,'/api/admin/login','POST',{pin:'8371'})).body.token;
+    assert.equal((await call(api,'/api/admin/portrait','POST',{id:'p201',crop:next},token)).status,200);
+    const restarted=makePlayers();
+    createAdminAPI({root:dir,players:restarted,publishedCropIds:['p201']});
+    assert.deepEqual(restarted[0].courtPortrait.crop,next);
+    assert.deepEqual(restarted[1].courtPortrait.crop,stale);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+test('eight approved portrait defaults match the published backup exactly',()=>{
+  const players=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+  const expected={"p201":{"centerX":0.5,"top":0,"width":0.4587},"p204":{"centerX":0.45,"top":0.11,"width":0.289},"p208":{"centerX":0.45,"top":0.22,"width":0.277},"p209":{"centerX":0.48,"top":0.2,"width":0.3215},"p211":{"centerX":0.53,"top":0,"width":0.3788},"p212":{"centerX":0.39,"top":0,"width":0.4878},"p215":{"centerX":0.5,"top":0.06,"width":0.2597},"p216":{"centerX":0.55,"top":0,"width":0.3584}};
+  for(const [id,crop] of Object.entries(expected))assert.deepEqual(players.find(p=>p.id===id).courtPortrait.crop,crop);
 });

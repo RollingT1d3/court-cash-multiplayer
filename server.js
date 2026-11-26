@@ -802,7 +802,7 @@ setInterval(()=>{
   if(ms-lastBroadcastAt>=1000)lastBroadcastAt=ms;
 },TICK_MS);
 
-const adminAPI = createAdminAPI({ root: ROOT, players: PLAYERS, wheelStore, onUpdate: () => {
+const adminAPI = createAdminAPI({ root: ROOT, players: PLAYERS, wheelStore, publishedCropIds: ["p201","p204","p208","p209","p211","p212","p215","p216"], onUpdate: () => {
   for (const room of ROOMS.values()) broadcast(room);
 } });
 
