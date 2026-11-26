@@ -129,3 +129,9 @@ test('eight approved portrait defaults match the published backup exactly',()=>{
   const expected={"p201":{"centerX":0.5,"top":0,"width":0.4587},"p204":{"centerX":0.45,"top":0.11,"width":0.289},"p208":{"centerX":0.45,"top":0.22,"width":0.277},"p209":{"centerX":0.48,"top":0.2,"width":0.3215},"p211":{"centerX":0.53,"top":0,"width":0.3788},"p212":{"centerX":0.39,"top":0,"width":0.4878},"p215":{"centerX":0.5,"top":0.06,"width":0.2597},"p216":{"centerX":0.55,"top":0,"width":0.3584}};
   for(const [id,crop] of Object.entries(expected))assert.deepEqual(players.find(p=>p.id===id).courtPortrait.crop,crop);
 });
+
+test('eleven batch 2 portrait defaults match the approved backup exactly',()=>{
+ const players=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+ const expected={"p234":{"centerX":0.45,"top":0,"width":0.3745},"p221":{"centerX":0.51,"top":0.04,"width":0.2336},"p227":{"centerX":0.6,"top":0,"width":0.3436},"p232":{"centerX":0.82,"top":0.04,"width":0.365},"p235":{"centerX":0.56,"top":0,"width":0.46},"p236":{"centerX":0.46,"top":0,"width":0.5814},"p237":{"centerX":0.55,"top":0,"width":0.5525},"p241":{"centerX":0.61,"top":0.22,"width":0.2532},"p242":{"centerX":0.55,"top":0.36,"width":0.2778},"p244":{"centerX":0.52,"top":0.04,"width":0.3195},"p245":{"centerX":0.26,"top":0.21,"width":0.495}};
+ for(const [id,crop] of Object.entries(expected))assert.deepEqual(players.find(p=>p.id===id).courtPortrait.crop,crop);
+});
