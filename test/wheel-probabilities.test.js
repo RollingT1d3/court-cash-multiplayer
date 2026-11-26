@@ -79,6 +79,9 @@ test('legacy 200-player backups preserve all original probabilities and add expa
   const combined=[...original,...expansion];
   const old=Object.fromEntries(original.map(p=>[p.id,p.weight]));
   const positive=original.filter(p=>p.weight>=.01);
+  // Build a valid pre-expansion backup independent of current published odds.
+  const missing=10000-Object.values(old).reduce((n,v)=>n+Math.round(v*100),0);
+  old[positive[0].id]=Math.round(old[positive[0].id]*100+missing)/100;
   old[positive[0].id]=Math.round((old[positive[0].id]-.01)*100)/100;
   old[positive[1].id]=Math.round((old[positive[1].id]+.01)*100)/100;
   mkdirSync(path.join(root,'data'));
@@ -91,5 +94,22 @@ test('legacy 200-player backups preserve all original probabilities and add expa
   assert.throws(()=>store.save(data(bad)),/player IDs/);
   const changed={...expected,p201:.01};changed[positive[1].id]=Math.round((changed[positive[1].id]-.01)*100)/100;
   assert.equal(store.save(data(changed)).weights.p201,.01);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test('published probability updates supersede stale saved settings but preserve subsequent admin edits',()=>{
+ const root=mkdtempSync(path.join(os.tmpdir(),'cc-wheel-baseline-'));
+ try{
+  const first=createWheelStore({root,players});
+  const stale={...defaults,p0:4,p1:6};
+  first.save(data(stale));
+  const published=createWheelStore({root,players,preferPublishedDefaults:true});
+  assert.deepEqual(published.snapshot(),defaults);
+  const edited={...defaults,p0:3,p1:7};
+  published.save(data(edited));
+  assert.deepEqual(createWheelStore({root,players,preferPublishedDefaults:true}).snapshot(),edited);
+  assert.deepEqual(published.backup(),data(edited));
+  const changed=players.map(p=>({...p,weight:p.id==='p0'?2:p.id==='p1'?8:p.weight}));
+  assert.deepEqual(createWheelStore({root,players:changed,preferPublishedDefaults:true}).snapshot(),Object.fromEntries(changed.map(p=>[p.id,p.weight])));
  }finally{rmSync(root,{recursive:true,force:true});}
 });

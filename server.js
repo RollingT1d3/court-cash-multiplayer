@@ -39,7 +39,7 @@ const PLAYERS = ['data/players.json','data/players-3.json'].flatMap(file=>JSON.p
 const BUILD_VERSION = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const BY_ID = new Map(PLAYERS.map(p => [p.id, p]));
 if (new Set(PLAYERS.map(p => p.id)).size !== PLAYERS.length || PLAYERS.length < 16) throw Error('Players need unique IDs; at least 16 required.');
-const wheelStore = createWheelStore({root:ROOT,players:PLAYERS});
+const wheelStore = createWheelStore({root:ROOT,players:PLAYERS,preferPublishedDefaults:true});
 const ROOMS = new Map();
 const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
 const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos',RUN_AND_GUN,OLD_SCHOOL_BUCKETS,RUN_FOR_THE_HILLS,PLAY_THROUGH_POINT];

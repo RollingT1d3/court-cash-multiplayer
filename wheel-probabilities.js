@@ -1,5 +1,6 @@
 import {readFileSync,mkdirSync,writeFileSync,renameSync} from 'node:fs';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
 
 // Integer hundredths of one percent avoid floating-point total drift.
 export function validateWeights(weights,players){
@@ -27,20 +28,23 @@ export function expandLegacyWeights(weights,players){
   if(legacy.some(id=>!ids.has(id)))return weights;
   return Object.fromEntries(players.map(p=>[p.id,Object.hasOwn(weights,p.id)?weights[p.id]:0]));
 }
-export function createWheelStore({root,players,file=process.env.COURT_CASH_WEIGHTS_FILE||path.join(root,'data','wheel-probabilities.json')}){
+export function createWheelStore({root,players,file=process.env.COURT_CASH_WEIGHTS_FILE||path.join(root,'data','wheel-probabilities.json'),preferPublishedDefaults=false}){
   const original=validateWeights(Object.fromEntries(players.map(p=>[p.id,p.weight])),players);
+  // A newly published set of default odds supersedes earlier admin saves.
+  // Saves made against this same published baseline survive restarts.
+  const baseline=preferPublishedDefaults?createHash('sha256').update(JSON.stringify(Object.entries(original).sort(([a],[b])=>a.localeCompare(b)))).digest('hex'):null;
   let current={...original};
   try{
     const saved=JSON.parse(readFileSync(file,'utf8'));
     if(saved.version!==1||saved.kind!=='court-cash-wheel-probabilities')throw Error('Unsupported probability backup.');
-    current=validateWeights(expandLegacyWeights(saved.weights,players),players);
+    if(!baseline||saved.baseline===baseline)current=validateWeights(expandLegacyWeights(saved.weights,players),players);
   }catch(error){if(error.code!=='ENOENT')console.error('Wheel probabilities not loaded:',error.message);}
   const backup=()=>({version:1,kind:'court-cash-wheel-probabilities',weights:{...current}});
   function save(data){
     if(data?.version!==1||data.kind!=='court-cash-wheel-probabilities')throw Error('Unsupported probability backup.');
     const next=validateWeights(expandLegacyWeights(data.weights,players),players);
     mkdirSync(path.dirname(file),{recursive:true});
-    writeFileSync(file+'.tmp',JSON.stringify({version:1,kind:'court-cash-wheel-probabilities',weights:next},null,2)+'\n',{mode:0o600});
+    writeFileSync(file+'.tmp',JSON.stringify({version:1,kind:'court-cash-wheel-probabilities',weights:next,...(baseline?{baseline}:{})},null,2)+'\n',{mode:0o600});
     renameSync(file+'.tmp',file);current=next;
     return backup();
   }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {validateWeights,selectWeighted} from '../wheel-probabilities.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url));
-test('all 17 approved expansion players have game-ready art and valid stats; original odds remain at 100%',()=>{
+test('all 17 approved expansion players have game-ready art and valid stats; combined odds remain at 100%',()=>{
  const original=JSON.parse(read('data/players.json'));
  const expansion=JSON.parse(read('data/players-3.json'));
  assert.equal(original.length,200);assert.equal(expansion.length,17);
@@ -12,7 +12,7 @@ test('all 17 approved expansion players have game-ready art and valid stats; ori
  const all=[...original,...expansion];
  assert.equal(new Set(all.map(p=>p.id)).size,217);
  for(const p of expansion){
-   assert.equal(p.weight,0);
+   assert.ok(p.weight>0);
    assert.deepEqual(Object.keys(p.stats).sort(),Object.keys(original[0].stats).sort());
    assert.ok(Object.values(p.stats).every(n=>Number.isInteger(n)&&n>=0&&n<=100));
    assert.equal(p.image,'/images/'+p.id+'.webp');
@@ -22,6 +22,8 @@ test('all 17 approved expansion players have game-ready art and valid stats; ori
    assert.ok(p.courtPortrait.crop.width>0);
  }
  const weights=validateWeights(Object.fromEntries(all.map(p=>[p.id,p.weight])),all);
- for(const roll of [0,.1,.5,.999999])assert.ok(original.some(p=>p.id===selectWeighted(all.map(p=>p.id),weights,()=>roll)));
+ assert.deepEqual(expansion.map(p=>p.weight),[.2,.3,.2,.2,.2,.15,.15,.2,.2,.1,.2,.2,.15,.15,.15,.1,.05]);
+ assert.equal(expansion.reduce((n,p)=>n+Math.round(p.weight*100),0),290);
+ assert.equal(selectWeighted(all.map(p=>p.id),weights,()=>.999999),'p217');
  assert.match(read('server.js').toString(),/data\/players-3\.json/);
 });
