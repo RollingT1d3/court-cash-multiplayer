@@ -68,7 +68,8 @@ test('timeouts require server-side possession and preserve the ball on both resu
   assert.match(server,/room\.timeout=\{caller:i,possession:i,until:now\(\)\+TIMEOUT_MS,ready:\[false,false\]\}/);
   assert.match(server,/room\.timeout\.ready\[i\]=true/);
   assert.match(server,/if\(!room\.timeout\.ready\.every\(Boolean\)\)\{broadcast\(room\);break;\}/);
-  assert.ok(app.includes('RESUME GAME (\${readyCount}/2)'.replace('\\
+  assert.ok(app.includes('RESUME GAME (${readyCount}/2)'));
+  assert.ok(app.includes('timeoutReady:state.timeout?.ready'));
   assert.equal((server.match(/room\.game\.offense=room\.timeout\.possession/g)||[]).length,2);
   assert.equal((server.match(/room\.game\.timeoutInboundSide=room\.timeout\.possession/g)||[]).length,2);
   assert.match(server,/possessionTransition\(g\.event,offense,g\.quarter,shooters,inboundAfterTimeout,firstHandler/);
