@@ -168,6 +168,7 @@ function startGame(room){
   for(const t of room.teams){t.timeouts=TIMEOUTS_PER_GAME;t.ready=false;t.energy=Object.fromEntries(t.roster.map(id=>[id,100]));}
   const stats=Object.fromEntries(room.teams.flatMap(t=>t.roster.map(id=>[id,freshStats()])));
   const active=room.teams.map(t=>SLOTS.slice(0,5).map(s=>t.slots[s]));
+  const bench=room.teams.map(t=>SLOTS.slice(5).map(s=>t.slots[s]));
   // Both starting C-slot players contest the opening tip. Other stats have no effect.
   const centerIds=active.map(five=>five[4]);
   const centerHeights=centerIds.map(id=>getPlayer(id)?.heightInches);
@@ -175,7 +176,7 @@ function startGame(room){
   const tipoff={...result,centerIds,centerHeights,at:now()};
   // Exactly one uniform 25%-each court selection per game, shared by both browsers.
   const courtStyle=chooseCourtStyle(rnd);
-  room.game={score:[0,0],secondsLeft:REGULATION_QUARTER_SECONDS,quarter:1,periodLength:REGULATION_QUARTER_SECONDS,offense:result.winningTeam,active,stats,touchDrought:{},possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
+  room.game={score:[0,0],secondsLeft:REGULATION_QUARTER_SECONDS,quarter:1,periodLength:REGULATION_QUARTER_SECONDS,offense:result.winningTeam,active,bench,stats,touchDrought:{},possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
   room.phase='sim';room.play={at:now()};room.finishAnimation=null;room.log=[];room.timeout=null;room.foulout=null;room.rematchReady=[false,false];room.result=null;
   const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
   const favored=result.probabilities.map(p=>Math.round(p*100));
@@ -689,16 +690,16 @@ function action(room,i,data){
       if(room.phase==='timeout'){
         const g=room.game;
         if(!t.roster.includes(id) || !SLOTS.includes(slot))throw Error('Invalid lineup change.');
-        if(g.fouledOut.includes(id))throw Error('That player has fouled out and cannot return.');
         const slotIdx=SLOTS.indexOf(slot);
-        // In timeout, slots PG–C represent active floor positions, bench slots represent inactive players.
-        const onCourt=[...g.active[i]];
-        const bench=t.roster.filter(pid=>!onCourt.includes(pid));
-        const slotPlayers=onCourt.concat(bench);
+        // Keep the exact bench order, including swaps between two reserves.
+        const slotPlayers=g.active[i].concat(g.bench[i]);
         const previousIdx=slotPlayers.indexOf(id);
         if(previousIdx<0)throw Error('Player unavailable.');
-        const old=slotPlayers[slotIdx];slotPlayers[slotIdx]=id;slotPlayers[previousIdx]=old;
+        const old=slotPlayers[slotIdx];
+        if(slotIdx<5&&g.fouledOut.includes(id)||previousIdx<5&&g.fouledOut.includes(old))throw Error('That player has fouled out and cannot return.');
+        slotPlayers[slotIdx]=id;slotPlayers[previousIdx]=old;
         g.active[i]=slotPlayers.slice(0,5);
+        g.bench[i]=slotPlayers.slice(5);
         broadcast(room);break;
       }
       assignSlot(t,id,slot,room.phase==='placement');broadcast(room);break;
@@ -761,6 +762,9 @@ function action(room,i,data){
       const id=t.roster.find(pid=>String(pid)===String(data.playerId));
       if(!eligibleBench(t.roster,g.active[i],g.fouledOut).includes(id))throw Error('Choose an eligible player from your bench.');
       if(g.active[i][required.slot]!==required.playerId)throw Error('The required substitution slot changed unexpectedly.');
+      const benchIndex=g.bench[i].indexOf(id);
+      if(benchIndex<0)throw Error('Player unavailable on bench.');
+      g.bench[i][benchIndex]=required.playerId;
       g.active[i][required.slot]=id;
       log(room,`${getPlayer(id).name} replaces fouled-out ${getPlayer(required.playerId).name}. Play resumes.`);
       room.foulout=null;

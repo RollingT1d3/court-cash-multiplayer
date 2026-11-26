@@ -205,7 +205,7 @@
   function rosterDisplaySlots(i){
     const t=state.teams[i];if(!t)return {};
     if(state.phase==='timeout'&&state.game){
-      const floor=state.game.active[i];const bench=t.roster.filter(id=>!floor.includes(id));
+      const floor=state.game.active[i];const bench=state.game.bench?.[i]??t.roster.filter(id=>!floor.includes(id));
       return Object.fromEntries(SLOTS.map((s,j)=>[s,[...floor,...bench][j]||null]));
     }
     return t.slots;
@@ -259,6 +259,11 @@
       <div class="roster-list">${rows}</div>
       ${t.ready?'<p class="ready-state">✓ READY</p>':''}`;
   }
+  function rosterClickSelection(selected,id){
+    if(selected&&selected===id)return {next:null,swap:null};
+    if(selected)return {next:null,swap:selected};
+    return {next:id||null,swap:null};
+  }
   function bindRoster(container){
     if(!container)return;
     paintRosterHeadshots(container);
@@ -267,14 +272,16 @@
       if(slot.disabled)continue;
       slot.addEventListener('click',()=>{
         const id=rosterDisplaySlots(state.you)[slot.dataset.slot];
-        if(currentPicked && currentPicked!==id){act('place',{playerId:currentPicked,slot:slot.dataset.slot});currentPicked=null;}
-        else if(id){currentPicked=id;render(true);}
+        const choice=rosterClickSelection(currentPicked,id);
+        currentPicked=choice.next;
+        if(choice.swap)act('place',{playerId:choice.swap,slot:slot.dataset.slot});
+        render(true);
       });
       const id=rosterDisplaySlots(state.you)[slot.dataset.slot];
       if(id){const p=player(id);if(p)bindDragHeadshot(slot,p,state.you===0?'blue':'red');}
       slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drop-target');});
       slot.addEventListener('dragleave',()=>slot.classList.remove('drop-target'));
-      slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drop-target');const dragging=e.dataTransfer.getData('text/plain')||currentPicked;if(dragging){act('place',{playerId:dragging,slot:slot.dataset.slot});currentPicked=null;}});
+      slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drop-target');const dragging=e.dataTransfer.getData('text/plain')||currentPicked;if(dragging){currentPicked=null;act('place',{playerId:dragging,slot:slot.dataset.slot});render(true);}});
     }
   }
   function allTeamPanels(where){
@@ -497,7 +504,7 @@
     </div>
     <div class="timeout-strategies" aria-live="polite"><div><span class="smallcaps">OFFENSE</span><div id="timeout-offense-description">${strategyInfo(my().offense,'offense')}</div></div>
     <div><span class="smallcaps">DEFENSE</span><div id="timeout-defense-description">${strategyInfo(my().defense,'defense')}</div></div></div>
-    ${caller===state.you?`<p class="subtle" style="margin-top:15px">Your active five and three bench players are below. Click a player and then the destination slot to substitute or change position.</p><div id="timeout-team" class="team-panel ${state.you===0?'left':'right'}"></div>`:''}
+    ${caller===state.you?`<p class="subtle" style="margin-top:15px">Your active five and three bench players are below. Click a player, then another player to swap them. Click the selected player again to deselect. You can also drag and drop.</p><div id="timeout-team" class="team-panel ${state.you===0?'left':'right'}"></div>`:''}
     </div>`;
     $('timeout-offense')?.addEventListener('change',e=>{$('timeout-offense-description').innerHTML=strategyInfo(e.target.value,'offense');act('scheme',{offense:e.target.value});});
     $('timeout-defense')?.addEventListener('change',e=>{$('timeout-defense-description').innerHTML=strategyInfo(e.target.value,'defense');act('scheme',{defense:e.target.value});});
@@ -614,6 +621,7 @@
   }
   function render(force=false){
     if(!state)return;
+    if(lastRoomPhase!==state.phase)currentPicked=null;
     if($('bench-details-dialog').open)refreshBenchDetails();
     if(state.phase==='intermission'&&lastRoomPhase!=='intermission')intermissionPrep=false;
     $('welcome').classList.add('hide');$('gameview').classList.remove('hide');
@@ -628,7 +636,7 @@
     const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.color,t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
       appearance:state.teams.flatMap(t=>(t?.roster||[]).map(id=>{const p=player(id);return [id,p?.image,p?.courtPortrait];})),
-      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,departed:state.departed,intermissionPrep});
+      pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,active:state.game?.active,bench:state.game?.bench,time:state.timeout?.until,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,departed:state.departed,intermissionPrep});
     if(!force&&sig===lastRenderKey){updateClocks();return;}
     lastRenderKey=sig;
     for(const id of ['draft-view','setup-view','sim-view','end-view'])$(id).classList.add('hide');
