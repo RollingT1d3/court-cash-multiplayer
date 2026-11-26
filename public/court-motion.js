@@ -105,6 +105,20 @@
    const behind=direction===1?start.x<W/2:start.x>W/2;
    return movePlayer(start,target,elapsed,factor,behind);
  }
+ // A possession can end before a slow player's eased animation catches up.
+ // Guarantee the frontcourt crossing by a presentation deadline, while still
+ // allowing individual movement factors to advance faster than this minimum.
+ // Work in canonical attacking coordinates so the rule mirrors at halftime.
+ function advanceOffensiveMarker(previous,next,age,deadline,elapsed,W,direction){
+   const dt=Math.max(0,Number(elapsed)||0);
+   const toAttack=x=>direction===1?x:W-x;
+   const from=toAttack(previous.x),desired=toAttack(next.x),line=.54*W;
+   if(from>=line)return {...next,x:toAttack(Math.max(line,desired))};
+   const remaining=Math.max(dt,deadline-age+dt);
+   const fraction=age>=deadline?1:remaining>0?clamp(dt/remaining,0,1):0;
+   const minimum=from+(line-from)*fraction;
+   return {...next,x:toAttack(Math.max(desired,minimum))};
+ }
  // Only the actual current ball carrier receives the dribbling modifier.
  function ballCarrier(e,rawAge,passFrame){
    if(!e)return null;
@@ -172,5 +186,5 @@
    if(frame.flying)return between(from,target,frame.progress,8);
    return target;
  }
- root.CourtMotion=Object.freeze({fadeBall,jumperBall,shotSetup,setupBall,shotStart,movementFactor,movePlayer,frontcourtSupportTarget,moveSupportPlayer,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ root.CourtMotion=Object.freeze({fadeBall,jumperBall,shotSetup,setupBall,shotStart,movementFactor,movePlayer,frontcourtSupportTarget,moveSupportPlayer,advanceOffensiveMarker,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);

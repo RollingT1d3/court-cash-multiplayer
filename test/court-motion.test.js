@@ -141,3 +141,58 @@ test('off-ball attackers advance into the frontcourt in both directions without 
  assert.match(app,/motion\.frontcourtSupportTarget/);
  assert.match(app,/motion\.moveSupportPlayer/);
 });
+
+
+test('offensive markers reach the attacking half by the animation deadline at different frame rates',()=>{
+ const W=940;
+ for(const direction of [1,-1])for(const fps of [30,60,120]){
+  const dt=1000/fps,toScreen=x=>direction===1?x:W-x;
+  let p={x:toScreen(20),y:250};
+  for(let age=dt;age<1200;age+=dt){
+   const next=m.movePlayer(p,{x:toScreen(730),y:250},dt,.35);
+   const advanced=m.advanceOffensiveMarker(p,next,age,1200,dt,W,direction);
+   assert.ok(toScreen(advanced.x)>=toScreen(p.x)-1e-8);
+   p=advanced;
+  }
+  p=m.advanceOffensiveMarker(p,p,1200,1200,dt,W,direction);
+  assert.ok(toScreen(p.x)>=.54*W-1e-8);
+  const next=m.advanceOffensiveMarker(p,{x:toScreen(100),y:250},1250,1200,dt,W,direction);
+  assert.ok(toScreen(next.x)>=.54*W-1e-8);
+ }
+});
+
+test('actual drawCourt advances all five offensive markers during possession changes, including slow non-receivers',()=>{
+ const app=read('public/app.js');
+ const drawSource=app.slice(app.indexOf('  function drawCourt(ms){'),app.indexOf('  function drawInitials('));
+ const W=940,H=525,active=[['a','b','c','d','e'],['f','g','h','i','j']];
+ const stats={speed:35,dribbling:35};
+ const ctx=new Proxy({}, {get:(target,key)=>target[key]??(()=>{}),set:(target,key,value)=>(target[key]=value,true)});
+ for(const offense of [0,1])for(const attackRight of [true,false])for(const mode of ['inbound','advance','outlet','hills']){
+  let clock=0;
+  const ids=active[offense],other=active[1-offense],toScreen=x=>attackRight?x:W-x;
+  const shooter=ids[0],thief=ids[4],lead=mode==='outlet'?360:mode==='advance'?1450:1850;
+  const ev={id:1,at:0,offense,attackRight,shooter,defender:other[0],type:'layup',displayEvent:'layup',made:true,points:2,
+    shotDistanceFt:5,passes:[],passDurationMs:0,transition:{kind:mode==='outlet'||mode==='advance'?'advance':'inbound',reason:'basket',sourceId:thief,handlerId:shooter,inbounderId:thief,receiverId:shooter,durationMs:lead}};
+  if(mode==='outlet'){
+   const from={x:.15,y:.5},to={x:.40,y:.2};
+   ev.passes=[{fromId:thief,toId:shooter,from,to,outcome:'complete',startMs:100,endMs:400,durationMs:300}];ev.passDurationMs=1200;
+   ev.fastBreak={mode:'outlet',thief,afterMs:700,shotTarget:{x:.88,y:.5},
+    starts:Object.fromEntries(ids.map(id=>[id,{x:.12,y:.5}])),
+    targets:Object.fromEntries(ids.map((id,i)=>[id,{x:id===thief?.15:.75,y:.18+i*.16}])),recoveryTargets:{}};
+  }
+  if(mode==='hills'){ev.hillsInbounder=thief;ev.hillsRoutes=Object.fromEntries(ids.filter(id=>id!==thief).map((id,i)=>[id,{x:.85,y:.2+i*.18}]));}
+  const state={code:'TEST',gameNumber:1,phase:'sim',game:{active,offense,quarter:1,event:ev},teams:active.map((five,i)=>({offense:mode==='hills'&&i===offense?'Run For The Hills':'Team Ball',defense:'Man-to-Man',energy:Object.fromEntries(five.map(id=>[id,0]))}))};
+  const positions=new Map(active.flatMap((five,side)=>five.map((id,i)=>[id,{x:toScreen(side===offense?20:100),y:80+i*80}])));
+  const env={state,canvasPositions:positions,courtImages:new Map(),frameRunning:true,transitionKey:'',transitionStarts:new Map(),previousBall:null,transitionBallStart:null,lastMotionFrame:null,syncOffset:0,
+   Date:{now:()=>clock},performance:{now:()=>clock},$ :()=>({getContext:()=>ctx}),requestAnimationFrame:()=>{},
+   window:{CourtMotion:m,CourtDesigns:{drawCourt:()=>{}},CourtHeadshots:{imageSource:()=>null}},
+   colors:{hex:()=> '#555',ink:()=> '#fff'},colorFor:()=> 'blue',player:id=>({name:id,stats}),drawInitials:()=>{},courtReactionBurst:()=>{},
+   ANKLE_STUMBLE_MS:1050,ANKLE_REACTIONS_MS:1150,POSTER_REACTIONS_MS:1250};
+  runInNewContext(drawSource,env);
+  const deadline=mode==='outlet'?lead+1200:lead+250;
+  for(clock=0;clock<=deadline+20;clock+=10)env.drawCourt(clock);
+  for(const id of ids){
+   assert.ok((attackRight?positions.get(id).x:W-positions.get(id).x)>=.54*W-1e-7,mode+' '+id+' '+JSON.stringify(positions.get(id)));
+  }
+ }
+});

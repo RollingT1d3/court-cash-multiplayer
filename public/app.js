@@ -759,27 +759,40 @@
         }
         // A passer who has released an outlet/kickout joins the other runners.
         if(quickBreak&&attacking&&id===fb.thief&&id!==event.shooter&&!transitioning&&(!passFrame||passFrame.received)){x=anchor.x*W;y=anchor.y*H;}
-        // Off-ball attackers must advance even when not selected for a pass.
-        // Preserve real inbound, pass, shot (including deep threes) and free-throw positions.
-        const support=!!event&&attacking&&!transitioning&&!freeThrow&&id!==event.shooter&&carrier!==id&&!(activePass&&!passFrame?.received&&(activePass.fromId===id||activePass.toId===id));
-        if(support){const target=motion.frontcourtSupportTarget({x,y},anchor,W);x=target.x;y=target.y;}
+        // Every offensive player advances on the possession timeline, not on
+        // whether they are selected to receive a pass. Genuine backcourt
+        // inbound/outlet actions and rare deep shots retain their locations.
+        const inboundStaging=transitioning&&tr.kind==='inbound'&&rawAge<650&&(id===tr.inbounderId||id===tr.receiverId);
+        const backcourtPass=activePass&&!passFrame?.received&&
+          (activePass.fromId===id&&activePass.from.x<.54||activePass.toId===id&&activePass.to.x<.54);
+        const deepAttempt=event?.shooter===id&&event.type==='three'&&event.shotDistanceFt>=36&&x<.54*W&&eventAge<motion.shotEnd(event);
+        const advance=!!event&&attacking&&!freeThrow&&!inboundStaging&&!backcourtPass&&!deepAttempt;
+        const support=advance&&carrier!==id;
+        if(advance){const target=motion.frontcourtSupportTarget({x,y},anchor,W);x=target.x;y=target.y;}
+        // Fast outlets can release before all five players have reached midcourt.
+        // The passer gets a brief catch-up window after the actual release/catch.
+        const backcourtRelease=quickBreak?(chain||[]).filter(p=>(p.fromId===id&&p.from.x<.54)||(p.toId===id&&p.to.x<.54)).reduce((end,p)=>Math.max(end,p.endMs||0),0):0;
+        const advanceDeadline=quickBreak?Math.max(1000,lead+passLead,backcourtRelease?lead+backcourtRelease+650:0):lead+250;
         if(!attackRight)x=W-x;
         if(tipping){
           const sign=side===0?-1:1;
           if(id===game.tipoff.centerIds[side]){x=W/2+sign*31;y=H/2-tip.jump;}
           else {x=W/2+sign*(105+pos%2*50);y=H*(pos<2?.25:.75);}
         }
-        let prev=canvasPositions.get(id)||{x,y};
+        const start=transitionStarts.get(id)||{x:direction===1?W*.24:W*.76,y:H*(.18+pos*.16)};
+        const previous=canvasPositions.get(id)||(transitioning?start:{x,y});
+        let prev=previous;
         if(transitioning){
-          const start=transitionStarts.get(id)||{x:direction===1?W*.24:W*.76,y:H*(.18+pos*.16)};
           // Inbound staging is synchronized to the pass release/catch. After
           // the catch every runner advances at their own movement factor.
           const target=motion.transitionPosition(tr,rawAge,start,{x,y},side,offense,pos,id,W,H,direction,moveFactor);
-          const inboundStaging=tr.kind==='inbound'&&rawAge<650&&(id===tr.inbounderId||id===tr.receiverId);
-          prev=inboundStaging?target:motion.movePlayer(canvasPositions.get(id)||start,target,frameDelta,moveFactor,true);
+          prev=inboundStaging?target:motion.movePlayer(previous,target,frameDelta,moveFactor,true);
         }else{
           prev=support?motion.moveSupportPlayer(prev,{x,y},frameDelta,moveFactor,W,direction):motion.movePlayer(prev,{x,y},frameDelta,tipping?moveFactor*2.5:moveFactor);
         }
+        // A final position-level safeguard runs during AND after transitions,
+        // including the inbounder, the intended shooter and non-participants.
+        if(advance)prev=motion.advanceOffensiveMarker(previous,prev,rawAge,advanceDeadline,frameDelta,W,direction);
         canvasPositions.set(id,prev);
         ctx.save();
         if(ankleStumble){
