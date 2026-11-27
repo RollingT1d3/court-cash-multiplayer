@@ -133,7 +133,9 @@
   }
   function saveIdentity(v){toggleColorPicker(false);identity=v;sessionStorage.setItem('court-cash-identity',JSON.stringify(v));connect();}
   function connect(){
+    audio?.setMenuMusic(false);
     audio?.reset();
+    audio?.setMenuMusic(false);
     if(stream)stream.close();
     $('status-label').textContent='Connecting…';
     stream=new EventSource(`/events?code=${encodeURIComponent(identity.code)}&token=${encodeURIComponent(identity.token)}`);
@@ -150,6 +152,7 @@
     e.preventDefault();try{const result=await api('/api/join',{name:$('join-name').value,code:$('join-code').value.toUpperCase(),color:preferredColor});saveIdentity(result);}catch(err){toast(err.message);}
   });
   try {const old=JSON.parse(sessionStorage.getItem('court-cash-identity')||'null');if(old?.code&&old?.token)saveIdentity(old);}catch{}
+  if(!identity){audio?.setMenuMusic(true);audio?.unlock();}
   function tier(ovr){return ovr>=95?'star':ovr>=90?'gold':ovr>=85?'green':ovr>=80?'blue':ovr>=70?'silver':'poop';}
   function penalty(p,pos){
     if(!p||p.positions.includes(pos)||!['PG','SG','SF','PF','C'].includes(pos))return 0;
@@ -568,6 +571,7 @@
     audio?.reset();
     if(stream){stream.close();stream=null;}
     identity=null;state=null;sessionStorage.removeItem('court-cash-identity');
+    audio?.setMenuMusic(true);
     lastRenderKey='';lastRoomPhase=null;selectedFocus=null;currentPicked=null;
     canvasPositions.clear();courtImages.clear();rosterImages.clear();intermissionPrep=false;
     $('status-label').textContent='Not in a room';$('status-dot').classList.remove('on');

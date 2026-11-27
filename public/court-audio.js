@@ -59,12 +59,75 @@
     }
     return out;
   }
+  // Original 16-bar lounge/bossa instrumental: soft electric piano, warm bass,
+  // a mellow mallet melody and brushed percussion. No sampled music or downloads.
+  function menuLoop(ctx){
+    const sr=22050,beat=60/96,bars=16,length=Math.round(bars*4*beat*sr);
+    const buffer=ctx.createBuffer(1,length,sr),out=buffer.getChannelData(0),tau=Math.PI*2;
+    const chords=[
+      [48,[55,59,62,64,69]],[45,[55,59,60,64]],[50,[53,57,60,64]],[43,[53,57,59,64]],
+      [48,[55,59,62,64,69]],[41,[53,57,60,64]],[47,[57,62,65,69]],[40,[56,59,62,65]],
+      [45,[55,59,60,64]],[38,[53,57,60,64]],[43,[53,57,59,64]],[48,[55,59,62,64]],
+      [41,[53,57,60,64]],[46,[56,60,63,67]],[50,[53,57,60,64]],[43,[53,57,59,64]]
+    ];
+    const melodies=[
+      [[.5,76,.75],[1.5,74,.4],[2,72,1.3]],[[.5,71,.6],[1.5,69,.5],[2.5,72,.7]],
+      [[0,74,.65],[1.5,76,.5],[2.5,77,.9]],[[.5,76,.6],[1.5,74,.5],[2.5,71,1]],
+      [[0,72,.8],[1.5,76,.5],[2.5,79,.75]],[[.5,81,.6],[1.5,79,.5],[2.5,76,.9]],
+      [[0,77,.6],[1.5,74,.6],[2.5,71,.7]],[[.5,71,.5],[1.5,68,.6],[2.5,76,1]],
+      [[0,76,.65],[1,72,.6],[2.5,69,1]],[[.5,72,.6],[1.5,74,.5],[2.5,77,.9]],
+      [[0,76,.65],[1.5,74,.6],[2.5,71,.7]],[[.5,72,1.2],[2.5,79,.75]],
+      [[0,81,.6],[1,79,.5],[2,76,.9]],[[.5,75,.65],[1.5,72,.5],[2.5,70,.8]],
+      [[0,74,.8],[1.5,77,.5],[2.5,76,.7]],[[.5,74,.65],[1.5,71,.5],[2.5,74,.75]]
+    ];
+    let seed=0x42cafe;
+    const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296*2-1;};
+    function note(start,midi,duration,amp,kind){
+      const f=440*Math.pow(2,(midi-69)/12),first=Math.round(start*sr),n=Math.round(duration*sr);
+      for(let i=0;i<n;i++){
+        const t=i/sr,p=tau*f*t,env=Math.min(1,t/(kind==='bass'?.012:.018))*Math.min(1,(duration-t)/.10)*Math.exp(-t*(kind==='lead'?2.3:kind==='bass'?2:1.2));
+        const wave=kind==='bass'?.85*Math.sin(p)+.15*Math.sin(2*p):kind==='lead'?.8*Math.sin(p)+.16*Math.sin(2*p)+.04*Math.sin(3*p):.72*Math.sin(p+.15*Math.sin(2*p)*Math.exp(-t*4))+.19*Math.sin(2*p)+.09*Math.sin(3*p);
+        out[(first+i)%length]+=amp*env*wave;
+      }
+    }
+    function brush(start,duration,amp,kind){
+      const first=Math.round(start*sr),n=Math.round(duration*sr);let prev=0;
+      for(let i=0;i<n;i++){
+        const t=i/sr,r=rand(),high=r-prev;prev=r;
+        const wave=kind==='kick'?Math.sin(tau*(68*t-95*t*t))*.8+r*.08:high*.5;
+        out[(first+i)%length]+=amp*wave*Math.min(1,t/.006)*Math.exp(-t/(kind==='kick'?.045:.025))*Math.min(1,(duration-t)/.018);
+      }
+    }
+    for(let b=0;b<bars;b++){
+      const [root,voicing]=chords[b],start=b*4*beat;
+      for(const [at,dur] of [[0,.82],[1.5,.62],[2.5,.55],[3.5,.38]])for(const [j,n] of voicing.entries())note(start+at*beat+j*.006,n,dur*beat,.045,'keys');
+      for(const [at,n] of [[0,root-12],[1.5,root-5],[2.5,root-12],[3.5,chords[(b+1)%bars][0]-13]])note(start+at*beat,n,.68*beat,.145,'bass');
+      for(const [at,n,dur] of melodies[b])note(start+at*beat,n,dur*beat,.13,'lead');
+      for(let k=0;k<8;k++)brush(start+k*.5*beat,.09,k%2?.018:.013,'brush');
+      for(const k of [0,2])brush(start+k*beat,.14,.055,'kick');
+      for(const k of [1,3])brush(start+k*beat,.12,.028,'brush');
+    }
+    // Short edge taper prevents a click at the seamless loop boundary.
+    const edge=Math.round(.012*sr);
+    for(let i=0;i<edge;i++){out[i]*=i/edge;out[length-1-i]*=i/edge;}
+    return buffer;
+  }
   function createEngine(win){
     let prefs;try{prefs=settings(win.localStorage);}catch{prefs={volume:.45,muted:false};}
     let ctx=null,master=null,previous=null,noiseBuffer=null;
+    let menuEnabled=false,musicSource=null,musicGain=null;
     const sources=new Set(),timers=new Set();
     function updateGain(){if(master&&ctx)master.gain.setTargetAtTime(prefs.muted?0:prefs.volume*.65,ctx.currentTime,.012);}
     function persist(){try{win.localStorage.setItem(KEY,JSON.stringify(prefs));}catch{}updateGain();}
+    function syncMusic(){
+      if(!ctx||!master)return;
+      if(menuEnabled&&!musicSource){
+        musicGain=ctx.createGain();musicGain.gain.value=0;musicGain.connect(master);
+        musicSource=ctx.createBufferSource();musicSource.buffer=menuLoop(ctx);musicSource.loop=true;musicSource.connect(musicGain);musicSource.start();
+      }
+      if(musicGain)musicGain.gain.setTargetAtTime(menuEnabled?.38:0,ctx.currentTime,.16);
+    }
+    function setMenuMusic(enabled){menuEnabled=!!enabled;try{syncMusic();}catch{}}
     function unlock(){
       try{
         if(!ctx){
@@ -77,6 +140,7 @@
           updateGain();
         }
         if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+        syncMusic();
       }catch{}
     }
     function attach(source,chain,start,stop){
@@ -140,7 +204,7 @@
     function setVolume(v){prefs.volume=clamp(Number(v)||0,0,1);if(!prefs.volume)cancel();persist();return {...prefs};}
     function setMuted(v){prefs.muted=!!v;if(prefs.muted)cancel();persist();return {...prefs};}
     function reset(){cancel();previous=null;}
-    return Object.freeze({unlock,observe,reset,play,setVolume,setMuted,getSettings:()=>({...prefs})});
+    return Object.freeze({unlock,observe,reset,play,setVolume,setMuted,setMenuMusic,getSettings:()=>({...prefs})});
   }
-  root.CourtCashAudio=Object.freeze({plan,settings,createEngine,names:Object.freeze(names)});
+  root.CourtCashAudio=Object.freeze({plan,settings,createEngine,menuLoop,names:Object.freeze(names)});
 })(typeof window==='undefined'?globalThis:window);
