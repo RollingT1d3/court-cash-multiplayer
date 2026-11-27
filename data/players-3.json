@@ -2045,5 +2045,741 @@
         "width": 0.43
       }
     }
+  },
+  {
+    "id": "p251",
+    "name": "Payton Plane",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 76,
+    "archetype": "2-Way Three Level Scorer",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p251.webp",
+    "stats": {
+      "layup": 80,
+      "dunk": 0,
+      "post": 50,
+      "ft": 81,
+      "mid": 85,
+      "three": 90,
+      "fades": 80,
+      "passing": 76,
+      "dribbling": 70,
+      "paintDef": 78,
+      "perimeterDef": 89,
+      "block": 80,
+      "steal": 80,
+      "rebound": 60,
+      "strength": 70,
+      "speed": 75,
+      "iq": 85,
+      "teamwork": 85,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.46,
+        "top": 0,
+        "width": 0.46
+      }
+    }
+  },
+  {
+    "id": "p252",
+    "name": "Cash Carmallow",
+    "positions": [
+      "PF",
+      "SF",
+      "SG"
+    ],
+    "heightInches": 80,
+    "archetype": "Walking Bucket",
+    "overall": 82,
+    "weight": 0,
+    "image": "/images/p252.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 80,
+      "post": 80,
+      "ft": 85,
+      "mid": 89,
+      "three": 75,
+      "fades": 80,
+      "passing": 65,
+      "dribbling": 81,
+      "paintDef": 68,
+      "perimeterDef": 68,
+      "block": 58,
+      "steal": 58,
+      "rebound": 85,
+      "strength": 70,
+      "speed": 75,
+      "iq": 88,
+      "teamwork": 78,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.55,
+        "top": 0.37,
+        "width": 0.48
+      }
+    }
+  },
+  {
+    "id": "p253",
+    "name": "Maxxie Skies",
+    "positions": [
+      "SF",
+      "SG"
+    ],
+    "heightInches": 77,
+    "archetype": "Three Level Scorer",
+    "overall": 78,
+    "weight": 0,
+    "image": "/images/p253.webp",
+    "stats": {
+      "layup": 78,
+      "dunk": 98,
+      "post": 48,
+      "ft": 65,
+      "mid": 81,
+      "three": 81,
+      "fades": 80,
+      "passing": 74,
+      "dribbling": 64,
+      "paintDef": 59,
+      "perimeterDef": 70,
+      "block": 40,
+      "steal": 70,
+      "rebound": 30,
+      "strength": 40,
+      "speed": 79,
+      "iq": 85,
+      "teamwork": 85,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.65,
+        "top": 0.12,
+        "width": 0.37
+      }
+    }
+  },
+  {
+    "id": "p254",
+    "name": "Nicky Moon",
+    "positions": [
+      "PF",
+      "C"
+    ],
+    "heightInches": 83,
+    "archetype": "2-Way Stretch Big",
+    "overall": 84,
+    "weight": 0,
+    "image": "/images/p254.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 75,
+      "post": 45,
+      "ft": 88,
+      "mid": 78,
+      "three": 88,
+      "fades": 78,
+      "passing": 74,
+      "dribbling": 44,
+      "paintDef": 89,
+      "perimeterDef": 81,
+      "block": 81,
+      "steal": 81,
+      "rebound": 79,
+      "strength": 85,
+      "speed": 75,
+      "iq": 81,
+      "teamwork": 80,
+      "stamina": 79
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.48,
+        "top": 0,
+        "width": 0.45
+      }
+    }
+  },
+  {
+    "id": "p255",
+    "name": "Craig The Croc",
+    "positions": [
+      "C"
+    ],
+    "heightInches": 84,
+    "archetype": "Paint Beast",
+    "overall": 85,
+    "weight": 0,
+    "image": "/images/p255.webp",
+    "stats": {
+      "layup": 80,
+      "dunk": 89,
+      "post": 88,
+      "ft": 90,
+      "mid": 60,
+      "three": 40,
+      "fades": 25,
+      "passing": 77,
+      "dribbling": 57,
+      "paintDef": 88,
+      "perimeterDef": 70,
+      "block": 88,
+      "steal": 78,
+      "rebound": 89,
+      "strength": 93,
+      "speed": 70,
+      "iq": 85,
+      "teamwork": 90,
+      "stamina": 75
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.49,
+        "top": 0,
+        "width": 0.7
+      }
+    }
+  },
+  {
+    "id": "p256",
+    "name": "Ace Ayton",
+    "positions": [
+      "PF",
+      "C"
+    ],
+    "heightInches": 81,
+    "archetype": "Offensive Engine",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p256.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 85,
+      "post": 50,
+      "ft": 80,
+      "mid": 85,
+      "three": 80,
+      "fades": 80,
+      "passing": 85,
+      "dribbling": 70,
+      "paintDef": 70,
+      "perimeterDef": 55,
+      "block": 65,
+      "steal": 55,
+      "rebound": 90,
+      "strength": 90,
+      "speed": 70,
+      "iq": 85,
+      "teamwork": 90,
+      "stamina": 79
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.53,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p257",
+    "name": "Zach Vine",
+    "positions": [
+      "SF",
+      "PF"
+    ],
+    "heightInches": 78,
+    "archetype": "2-Way Slasher",
+    "overall": 79,
+    "weight": 0,
+    "image": "/images/p257.webp",
+    "stats": {
+      "layup": 84,
+      "dunk": 88,
+      "post": 50,
+      "ft": 79,
+      "mid": 70,
+      "three": 70,
+      "fades": 20,
+      "passing": 75,
+      "dribbling": 65,
+      "paintDef": 80,
+      "perimeterDef": 85,
+      "block": 85,
+      "steal": 85,
+      "rebound": 70,
+      "strength": 90,
+      "speed": 79,
+      "iq": 85,
+      "teamwork": 90,
+      "stamina": 81
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.42,
+        "top": 0,
+        "width": 0.45
+      }
+    }
+  },
+  {
+    "id": "p258",
+    "name": "De’bonté Crow",
+    "positions": [
+      "PF",
+      "SF"
+    ],
+    "heightInches": 80,
+    "archetype": "2-Way Walking Bucket",
+    "overall": 84,
+    "weight": 0,
+    "image": "/images/p258.webp",
+    "stats": {
+      "layup": 87,
+      "dunk": 87,
+      "post": 77,
+      "ft": 72,
+      "mid": 82,
+      "three": 82,
+      "fades": 82,
+      "passing": 65,
+      "dribbling": 85,
+      "paintDef": 85,
+      "perimeterDef": 80,
+      "block": 80,
+      "steal": 80,
+      "rebound": 65,
+      "strength": 80,
+      "speed": 84,
+      "iq": 84,
+      "teamwork": 94,
+      "stamina": 84
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.46,
+        "top": 0,
+        "width": 0.42
+      }
+    }
+  },
+  {
+    "id": "p259",
+    "name": "Martin Brown",
+    "positions": [
+      "PG"
+    ],
+    "heightInches": 75,
+    "archetype": "2-Way Slashing Playmaker",
+    "overall": 79,
+    "weight": 0,
+    "image": "/images/p259.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 0,
+      "post": 50,
+      "ft": 80,
+      "mid": 65,
+      "three": 65,
+      "fades": 40,
+      "passing": 89,
+      "dribbling": 81,
+      "paintDef": 70,
+      "perimeterDef": 85,
+      "block": 75,
+      "steal": 85,
+      "rebound": 60,
+      "strength": 50,
+      "speed": 78,
+      "iq": 88,
+      "teamwork": 88,
+      "stamina": 79
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.46,
+        "top": 0,
+        "width": 0.41
+      }
+    }
+  },
+  {
+    "id": "p260",
+    "name": "Igor The Mountain",
+    "positions": [
+      "C"
+    ],
+    "heightInches": 85,
+    "archetype": "Sharpshooting Paint Beast",
+    "overall": 87,
+    "weight": 0,
+    "image": "/images/p260.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 85,
+      "post": 85,
+      "ft": 90,
+      "mid": 80,
+      "three": 90,
+      "fades": 80,
+      "passing": 79,
+      "dribbling": 50,
+      "paintDef": 85,
+      "perimeterDef": 70,
+      "block": 90,
+      "steal": 40,
+      "rebound": 88,
+      "strength": 94,
+      "speed": 68,
+      "iq": 89,
+      "teamwork": 80,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.48,
+        "top": 0,
+        "width": 0.45
+      }
+    }
+  },
+  {
+    "id": "p261",
+    "name": "Todd Techeeeeeee",
+    "positions": [
+      "SF",
+      "SG"
+    ],
+    "heightInches": 77,
+    "archetype": "Mid-Range Master",
+    "overall": 77,
+    "weight": 0,
+    "image": "/images/p261.webp",
+    "stats": {
+      "layup": 70,
+      "dunk": 70,
+      "post": 40,
+      "ft": 75,
+      "mid": 89,
+      "three": 75,
+      "fades": 89,
+      "passing": 78,
+      "dribbling": 74,
+      "paintDef": 70,
+      "perimeterDef": 75,
+      "block": 50,
+      "steal": 65,
+      "rebound": 50,
+      "strength": 70,
+      "speed": 75,
+      "iq": 85,
+      "teamwork": 85,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.55,
+        "top": 0,
+        "width": 0.46
+      }
+    }
+  },
+  {
+    "id": "p262",
+    "name": "Buzz The Bee",
+    "positions": [
+      "SF",
+      "PF",
+      "PG",
+      "SG"
+    ],
+    "heightInches": 78,
+    "archetype": "Offensive Engine",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p262.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 99,
+      "post": 40,
+      "ft": 85,
+      "mid": 80,
+      "three": 75,
+      "fades": 70,
+      "passing": 88,
+      "dribbling": 89,
+      "paintDef": 55,
+      "perimeterDef": 55,
+      "block": 50,
+      "steal": 100,
+      "rebound": 40,
+      "strength": 58,
+      "speed": 88,
+      "iq": 78,
+      "teamwork": 91,
+      "stamina": 81
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.49,
+        "top": 0.1,
+        "width": 0.52
+      }
+    }
+  },
+  {
+    "id": "p263",
+    "name": "DeVonte White",
+    "positions": [
+      "C",
+      "PF"
+    ],
+    "heightInches": 83,
+    "archetype": "2-Way Slasher",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p263.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 85,
+      "post": 60,
+      "ft": 50,
+      "mid": 65,
+      "three": 50,
+      "fades": 40,
+      "passing": 71,
+      "dribbling": 40,
+      "paintDef": 89,
+      "perimeterDef": 80,
+      "block": 89,
+      "steal": 60,
+      "rebound": 91,
+      "strength": 91,
+      "speed": 75,
+      "iq": 90,
+      "teamwork": 89,
+      "stamina": 81
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.41,
+        "top": 0,
+        "width": 0.47
+      }
+    }
+  },
+  {
+    "id": "p264",
+    "name": "Matt Noon",
+    "positions": [
+      "SF",
+      "PG"
+    ],
+    "heightInches": 77,
+    "archetype": "2-Way Playmaker",
+    "overall": 84,
+    "weight": 0,
+    "image": "/images/p264.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 75,
+      "post": 50,
+      "ft": 80,
+      "mid": 70,
+      "three": 70,
+      "fades": 50,
+      "passing": 100,
+      "dribbling": 79,
+      "paintDef": 80,
+      "perimeterDef": 85,
+      "block": 60,
+      "steal": 75,
+      "rebound": 90,
+      "strength": 80,
+      "speed": 85,
+      "iq": 90,
+      "teamwork": 100,
+      "stamina": 80
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.35,
+        "top": 0,
+        "width": 0.48
+      }
+    }
+  },
+  {
+    "id": "p265",
+    "name": "Omar Houston",
+    "positions": [
+      "SF",
+      "PF"
+    ],
+    "heightInches": 80,
+    "archetype": "Well-Rounded Lockdown",
+    "overall": 82,
+    "weight": 0,
+    "image": "/images/p265.webp",
+    "stats": {
+      "layup": 80,
+      "dunk": 81,
+      "post": 40,
+      "ft": 50,
+      "mid": 75,
+      "three": 75,
+      "fades": 40,
+      "passing": 79,
+      "dribbling": 78,
+      "paintDef": 89,
+      "perimeterDef": 81,
+      "block": 85,
+      "steal": 89,
+      "rebound": 75,
+      "strength": 80,
+      "speed": 89,
+      "iq": 79,
+      "teamwork": 90,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.52,
+        "top": 0,
+        "width": 0.47
+      }
+    }
+  },
+  {
+    "id": "p266",
+    "name": "Charlie Hawn",
+    "positions": [
+      "PG"
+    ],
+    "heightInches": 71,
+    "archetype": "Playmaker",
+    "overall": 74,
+    "weight": 0,
+    "image": "/images/p266.webp",
+    "stats": {
+      "layup": 50,
+      "dunk": 0,
+      "post": 40,
+      "ft": 75,
+      "mid": 71,
+      "three": 71,
+      "fades": 41,
+      "passing": 95,
+      "dribbling": 75,
+      "paintDef": 40,
+      "perimeterDef": 59,
+      "block": 20,
+      "steal": 50,
+      "rebound": 30,
+      "strength": 35,
+      "speed": 80,
+      "iq": 65,
+      "teamwork": 99,
+      "stamina": 99
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.48,
+        "top": 0,
+        "width": 0.39
+      }
+    }
+  },
+  {
+    "id": "p267",
+    "name": "Buddy Beal",
+    "positions": [
+      "C",
+      "PF"
+    ],
+    "heightInches": 84,
+    "archetype": "Paint Beast",
+    "overall": 80,
+    "weight": 0,
+    "image": "/images/p267.webp",
+    "stats": {
+      "layup": 83,
+      "dunk": 83,
+      "post": 73,
+      "ft": 40,
+      "mid": 65,
+      "three": 65,
+      "fades": 40,
+      "passing": 80,
+      "dribbling": 60,
+      "paintDef": 89,
+      "perimeterDef": 65,
+      "block": 85,
+      "steal": 50,
+      "rebound": 89,
+      "strength": 89,
+      "speed": 50,
+      "iq": 85,
+      "teamwork": 90,
+      "stamina": 70
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.51,
+        "top": 0,
+        "width": 0.54
+      }
+    }
+  },
+  {
+    "id": "p268",
+    "name": "Clop The Clown",
+    "positions": [
+      "PG"
+    ],
+    "heightInches": 72,
+    "archetype": "Offensive Engine",
+    "overall": 87,
+    "weight": 0,
+    "image": "/images/p268.webp",
+    "stats": {
+      "layup": 50,
+      "dunk": 99,
+      "post": 40,
+      "ft": 99,
+      "mid": 90,
+      "three": 90,
+      "fades": 100,
+      "passing": 99,
+      "dribbling": 89,
+      "paintDef": 60,
+      "perimeterDef": 70,
+      "block": 60,
+      "steal": 65,
+      "rebound": 50,
+      "strength": 50,
+      "speed": 65,
+      "iq": 89,
+      "teamwork": 99,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.48,
+        "top": 0.18,
+        "width": 0.6
+      }
+    }
   }
 ]

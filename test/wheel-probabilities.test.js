@@ -137,3 +137,22 @@ test('217-player admin backups survive a zero-weight roster expansion without ch
   assert.equal(selectWeighted(published.map(p=>p.id),rebalanced.snapshot(),()=>.999999),'p250');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test('250-player admin odds and backups survive the 18-player zero-weight expansion',()=>{
+ const root=mkdtempSync(path.join(os.tmpdir(),'cc-wheel-batch3-'));
+ try{
+  const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
+  const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+  const prior=[...original,...expansion.slice(0,50)];
+  const all=[...original,...expansion];
+  const store=createWheelStore({root,players:prior,preferPublishedDefaults:true});
+  const old=store.snapshot();old.p201=.19;old.p202=.31;store.save(data(old));
+  const expected={...old,...Object.fromEntries(expansion.slice(50).map(p=>[p.id,0]))};
+  const next=createWheelStore({root,players:all,preferPublishedDefaults:true});
+  assert.deepEqual(next.snapshot(),expected);
+  assert.deepEqual(next.save(data(old)).weights,expected);
+  assert.equal(selectWeighted(all.map(p=>p.id),next.snapshot(),()=>.999999),'p250');
+  assert.equal(Object.keys(expected).length,268);
+  assert.throws(()=>next.save(data({...old,unknown:0})),/player IDs/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

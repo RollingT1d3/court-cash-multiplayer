@@ -44,9 +44,9 @@ test('fade limits follow approved brackets and existing maximums',()=>{
  assert.ok(fadeChance({type:'mid',fades:100,defense:100,heightGap:12,iq:100,shotClockRemaining:1})<=.5);
  assert.ok(fadeChance({type:'layup',fades:100,defense:100,heightGap:12,iq:100,shotClockRemaining:1})<=.34);
 });
-test('all 250 profiles across strategic targets have finite, normalized selections',()=>{
+test('all 268 profiles across strategic targets have finite, normalized selections',()=>{
  const players=['players.json','players-3.json'].flatMap(p=>JSON.parse(readFileSync(new URL('../data/'+p,import.meta.url),'utf8')));
- assert.equal(players.length,250);
+ assert.equal(players.length,268);
  const plans=[[.32,.56,null],[.29,.56,null],[.68,.38,'three'],[.11,.82,'paint'],[.36,.60,null],[.81,.13,'three'],[.10,.13,'mid'],[.98,.58,'three'],[.08,.90,'paint'],[.08,.58,'paint']];
  for(const p of players)for(const [threeTarget,paintTarget,protectedRange] of plans)for(const adherence of [.15,.5,1]){
   const o={threeTarget,paintTarget,protectedRange,adherence,stats:p.stats};
