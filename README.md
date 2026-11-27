@@ -136,3 +136,7 @@ See [UPDATE_V09.md](UPDATE_V09.md). The main-menu-only blue lock opens a server-
 ## v0.9.1 — automatic $1 opening bid
 
 See [UPDATE_V091.md](UPDATE_V091.md). Every normal auction now begins with a $1 bid automatically placed by the designated opener. Their opponent acts first; passing or timing out awards the opener that player for $1. Higher bids, alternating openers and free-selection cases work as before.
+
+## Individual defensive contest rebalance
+
+Paint Defense and Perimeter Defense now always apply a nonnegative individual shot-contest deduction. The previous neutral-75 linear formula has been replaced with the approved rating brackets in `defense-contest.js`, ranging from 0.10 to 6.00 percentage points. The existing fatigue and position adjustments determine the effective rating, which is rounded to the nearest integer for the bracket. Height, team strategy modifiers, fadeaway relief, blocks, steals and offensive bonuses remain unchanged.

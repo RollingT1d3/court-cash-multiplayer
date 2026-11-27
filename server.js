@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt } from 'node:crypto';
 import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules.js';
 import { heightContestAdjustment, heightBlockAdjustment } from './height-rules-v083.js';
+import { individualDefenseContest } from './defense-contest.js';
 import { fatiguedSkill, timeoutRecovery, fatigueAttributePreview } from './fatigue-v084.js';
 import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, threePointBaseChance, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
@@ -440,7 +441,7 @@ function simulatePlay(room){
       effectiveOnCourt(room,offense,shooter,'mid');
     value=effective(shooter,ot,value,inPaint&&!fading?'finishing':'shooting');
     const defensiveRating=defensiveSkill(room,def,defender,inPaint?'paintDef':'perimeterDef');
-    let defenseBump=(defensiveRating-75)*.0018;
+    let defenseBump=individualDefenseContest(defensiveRating);
     if(dscheme===DEFENSE[2]&&inPaint)defenseBump+=.11;
     if(dscheme===DEFENSE[3]&&isThree)defenseBump+=.105;
     if(dscheme===DEFENSE[1]&&shooter===high[0])defenseBump+=.11;
