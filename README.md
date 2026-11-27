@@ -37,7 +37,7 @@ For a friend on another computer on the **same home network**, they can open `ht
 
 ## Adding custom players and pictures
 
-Edit `data/players.json` (original 200) or `data/players-3.json` (expansion players). The server loads both into a single roster. Each player object has:
+Edit `data/players.json` (original 200) or `data/players-3.json` (players #201–268) or `data/players-4.json` (players #269–300). The server loads all three into a single roster. Each player object has:
 
 ```json
 {
@@ -85,7 +85,7 @@ Run `npm test`. Automated integration tests exercise a real two-player game serv
 - `public/index.html`: user interface.
 - `public/style.css`: desktop-first visual styling.
 - `public/app.js`: synchronized client rendering, player stats, wheel, roster drag/click interactions, and animated full-court canvas.
-- `data/players.json` and `data/players-3.json`: original and expansion roster, attributes, weights and image references. The roster contains 268 players, all with positive published odds totaling exactly 100%. Players #218–250 have a combined starting weight of 7.85%; players #251–268 have a combined starting weight of 5.85%. Complete 200-, 217- and 250-player probability backups remain importable and add new IDs at zero. Zero-weight roster additions preserve matching previously saved admin odds. A new published default probability set supersedes older saved admin settings; subsequent admin edits persist across restarts on the same published baseline.
+- `data/players.json`, `data/players-3.json` and `data/players-4.json`: original and expansion roster, attributes, weights and image references. The roster contains 300 players: the original 268 have positive published odds totaling exactly 100%; players #269–300 begin at 0% until assigned odds in the admin panel. Players #218–250 have a combined starting weight of 7.85%; players #251–268 have a combined starting weight of 5.85%. Complete 200-, 217-, 250- and 268-player probability backups remain importable and add new IDs at zero. Zero-weight roster additions preserve matching previously saved admin odds. A new published default probability set supersedes older saved admin settings; subsequent admin edits persist across restarts on the same published baseline.
 - `test/game.test.js`: full-match integration test.
 
 ## November 2026 gameplay update (v0.2)

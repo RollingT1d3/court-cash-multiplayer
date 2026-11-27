@@ -18,12 +18,12 @@ export function validateWeights(weights,players){
   if(positive<16)throw Error('At least 16 players must have a positive probability.');
   return next;
 }
-// Complete historical 200-, 217- and 250-player backups remain usable. New IDs
+// Complete historical 200-, 217-, 250- and 268-player backups remain usable. New IDs
 // are initialized to zero; all other incomplete backups remain invalid.
 export function expandLegacyWeights(weights,players){
   if(!weights||typeof weights!=='object'||Array.isArray(weights)||players.length<=200)return weights;
   const count=Object.keys(weights).length;
-  if(![200,217,250].includes(count)||count>=players.length)return weights;
+  if(![200,217,250,268].includes(count)||count>=players.length)return weights;
   const legacy=Array.from({length:count},(_,i)=>'p'+String(i+1).padStart(3,'0'));
   if(Object.keys(weights).length!==legacy.length||legacy.some(id=>!Object.hasOwn(weights,id)))return weights;
   const ids=new Set(players.map(p=>p.id));

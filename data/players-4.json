@@ -1,0 +1,1311 @@
+[
+  {
+    "id": "p269",
+    "name": "Daniello Pasto",
+    "positions": [
+      "PF",
+      "SF"
+    ],
+    "heightInches": 81,
+    "archetype": "2-Way Playmaking Slasher",
+    "overall": 84,
+    "weight": 0,
+    "image": "/images/p269.webp",
+    "stats": {
+      "layup": 88,
+      "dunk": 88,
+      "post": 78,
+      "ft": 60,
+      "mid": 79,
+      "three": 70,
+      "fades": 30,
+      "passing": 90,
+      "dribbling": 80,
+      "paintDef": 85,
+      "perimeterDef": 80,
+      "block": 85,
+      "steal": 75,
+      "rebound": 75,
+      "strength": 85,
+      "speed": 79,
+      "iq": 80,
+      "teamwork": 90,
+      "stamina": 81
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p270",
+    "name": "Cason “BANG!” Cooper",
+    "positions": [
+      "SG"
+    ],
+    "heightInches": 78,
+    "archetype": "2-Way Sharpshooter",
+    "overall": 84,
+    "weight": 0,
+    "image": "/images/p270.webp",
+    "stats": {
+      "layup": 60,
+      "dunk": 70,
+      "post": 50,
+      "ft": 79,
+      "mid": 79,
+      "three": 99,
+      "fades": 89,
+      "passing": 75,
+      "dribbling": 70,
+      "paintDef": 70,
+      "perimeterDef": 89,
+      "block": 79,
+      "steal": 89,
+      "rebound": 60,
+      "strength": 65,
+      "speed": 75,
+      "iq": 82,
+      "teamwork": 92,
+      "stamina": 92
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p271",
+    "name": "De’Ko Ko’De",
+    "positions": [
+      "C"
+    ],
+    "heightInches": 88,
+    "archetype": "Paint Beast",
+    "overall": 84,
+    "weight": 0,
+    "image": "/images/p271.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 85,
+      "post": 80,
+      "ft": 60,
+      "mid": 40,
+      "three": 40,
+      "fades": 40,
+      "passing": 79,
+      "dribbling": 59,
+      "paintDef": 90,
+      "perimeterDef": 70,
+      "block": 99,
+      "steal": 40,
+      "rebound": 91,
+      "strength": 90,
+      "speed": 60,
+      "iq": 85,
+      "teamwork": 89,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p272",
+    "name": "Grant Ball",
+    "positions": [
+      "SF",
+      "SG"
+    ],
+    "heightInches": 76,
+    "archetype": "Slasher",
+    "overall": 78,
+    "weight": 0,
+    "image": "/images/p272.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 95,
+      "post": 80,
+      "ft": 90,
+      "mid": 79,
+      "three": 75,
+      "fades": 40,
+      "passing": 78,
+      "dribbling": 74,
+      "paintDef": 60,
+      "perimeterDef": 70,
+      "block": 70,
+      "steal": 70,
+      "rebound": 50,
+      "strength": 70,
+      "speed": 80,
+      "iq": 80,
+      "teamwork": 85,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p273",
+    "name": "Khris Hen",
+    "positions": [
+      "C"
+    ],
+    "heightInches": 87,
+    "archetype": "Sharpshooting Paint Beast",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p273.webp",
+    "stats": {
+      "layup": 50,
+      "dunk": 81,
+      "post": 80,
+      "ft": 70,
+      "mid": 71,
+      "three": 81,
+      "fades": 81,
+      "passing": 78,
+      "dribbling": 48,
+      "paintDef": 81,
+      "perimeterDef": 71,
+      "block": 85,
+      "steal": 50,
+      "rebound": 89,
+      "strength": 89,
+      "speed": 69,
+      "iq": 85,
+      "teamwork": 85,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p274",
+    "name": "Pinky",
+    "positions": [
+      "SF",
+      "SG",
+      "PF"
+    ],
+    "heightInches": 77,
+    "archetype": "Well-Rounded Lockdown",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p274.webp",
+    "stats": {
+      "layup": 77,
+      "dunk": 77,
+      "post": 57,
+      "ft": 75,
+      "mid": 75,
+      "three": 79,
+      "fades": 50,
+      "passing": 79,
+      "dribbling": 78,
+      "paintDef": 81,
+      "perimeterDef": 85,
+      "block": 85,
+      "steal": 85,
+      "rebound": 75,
+      "strength": 75,
+      "speed": 79,
+      "iq": 79,
+      "teamwork": 89,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p275",
+    "name": "Morty Montay",
+    "positions": [
+      "C",
+      "PF"
+    ],
+    "heightInches": 84,
+    "archetype": "Paint Beast",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p275.webp",
+    "stats": {
+      "layup": 81,
+      "dunk": 81,
+      "post": 81,
+      "ft": 81,
+      "mid": 75,
+      "three": 50,
+      "fades": 50,
+      "passing": 75,
+      "dribbling": 55,
+      "paintDef": 82,
+      "perimeterDef": 72,
+      "block": 84,
+      "steal": 62,
+      "rebound": 80,
+      "strength": 85,
+      "speed": 65,
+      "iq": 89,
+      "teamwork": 81,
+      "stamina": 91
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p276",
+    "name": "Nawz Jawz",
+    "positions": [
+      "PF",
+      "C"
+    ],
+    "heightInches": 83,
+    "archetype": "2-Way Stretch Big",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p276.webp",
+    "stats": {
+      "layup": 78,
+      "dunk": 78,
+      "post": 48,
+      "ft": 75,
+      "mid": 82,
+      "three": 88,
+      "fades": 50,
+      "passing": 78,
+      "dribbling": 54,
+      "paintDef": 85,
+      "perimeterDef": 80,
+      "block": 89,
+      "steal": 80,
+      "rebound": 85,
+      "strength": 79,
+      "speed": 75,
+      "iq": 89,
+      "teamwork": 79,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p277",
+    "name": "Tristan Jazz",
+    "positions": [
+      "SF",
+      "PF"
+    ],
+    "heightInches": 80,
+    "archetype": "2-Way Three Level Scorer",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p277.webp",
+    "stats": {
+      "layup": 82,
+      "dunk": 82,
+      "post": 41,
+      "ft": 71,
+      "mid": 81,
+      "three": 81,
+      "fades": 81,
+      "passing": 68,
+      "dribbling": 68,
+      "paintDef": 79,
+      "perimeterDef": 84,
+      "block": 82,
+      "steal": 80,
+      "rebound": 70,
+      "strength": 80,
+      "speed": 80,
+      "iq": 79,
+      "teamwork": 90,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p278",
+    "name": "Pat Beaver",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 77,
+    "archetype": "Lockdown",
+    "overall": 78,
+    "weight": 0,
+    "image": "/images/p278.webp",
+    "stats": {
+      "layup": 73,
+      "dunk": 73,
+      "post": 33,
+      "ft": 74,
+      "mid": 72,
+      "three": 72,
+      "fades": 40,
+      "passing": 74,
+      "dribbling": 72,
+      "paintDef": 80,
+      "perimeterDef": 80,
+      "block": 75,
+      "steal": 89,
+      "rebound": 59,
+      "strength": 59,
+      "speed": 75,
+      "iq": 75,
+      "teamwork": 90,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p279",
+    "name": "Scott Brownie",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 76,
+    "archetype": "Sharpshooter",
+    "overall": 77,
+    "weight": 0,
+    "image": "/images/p279.webp",
+    "stats": {
+      "layup": 70,
+      "dunk": 0,
+      "post": 35,
+      "ft": 80,
+      "mid": 80,
+      "three": 90,
+      "fades": 80,
+      "passing": 78,
+      "dribbling": 68,
+      "paintDef": 65,
+      "perimeterDef": 70,
+      "block": 40,
+      "steal": 45,
+      "rebound": 70,
+      "strength": 65,
+      "speed": 75,
+      "iq": 75,
+      "teamwork": 89,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p280",
+    "name": "Steph Moo",
+    "positions": [
+      "PG",
+      "SG"
+    ],
+    "heightInches": 75,
+    "archetype": "2-Way Playmaking Shot Creator",
+    "overall": 82,
+    "weight": 0,
+    "image": "/images/p280.webp",
+    "stats": {
+      "layup": 55,
+      "dunk": 0,
+      "post": 35,
+      "ft": 75,
+      "mid": 85,
+      "three": 87,
+      "fades": 88,
+      "passing": 85,
+      "dribbling": 80,
+      "paintDef": 60,
+      "perimeterDef": 85,
+      "block": 75,
+      "steal": 85,
+      "rebound": 60,
+      "strength": 55,
+      "speed": 80,
+      "iq": 88,
+      "teamwork": 88,
+      "stamina": 88
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p281",
+    "name": "Thomas Mitchell",
+    "positions": [
+      "PG",
+      "SG"
+    ],
+    "heightInches": 73,
+    "archetype": "Playmaking Shot Creator",
+    "overall": 79,
+    "weight": 0,
+    "image": "/images/p281.webp",
+    "stats": {
+      "layup": 60,
+      "dunk": 0,
+      "post": 50,
+      "ft": 73,
+      "mid": 83,
+      "three": 83,
+      "fades": 83,
+      "passing": 82,
+      "dribbling": 81,
+      "paintDef": 45,
+      "perimeterDef": 70,
+      "block": 55,
+      "steal": 70,
+      "rebound": 50,
+      "strength": 50,
+      "speed": 80,
+      "iq": 85,
+      "teamwork": 90,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p282",
+    "name": "Greg Allen",
+    "positions": [
+      "SF",
+      "PF",
+      "SG"
+    ],
+    "heightInches": 80,
+    "archetype": "2-Way Mid-Range Master",
+    "overall": 80,
+    "weight": 0,
+    "image": "/images/p282.webp",
+    "stats": {
+      "layup": 70,
+      "dunk": 0,
+      "post": 50,
+      "ft": 75,
+      "mid": 89,
+      "three": 80,
+      "fades": 80,
+      "passing": 71,
+      "dribbling": 79,
+      "paintDef": 75,
+      "perimeterDef": 85,
+      "block": 80,
+      "steal": 80,
+      "rebound": 70,
+      "strength": 65,
+      "speed": 79,
+      "iq": 82,
+      "teamwork": 82,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p283",
+    "name": "Patriot The Bald Eagle",
+    "positions": [
+      "PG",
+      "SG"
+    ],
+    "heightInches": 76,
+    "archetype": "Playmaking Slasher",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p283.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 95,
+      "post": 75,
+      "ft": 80,
+      "mid": 80,
+      "three": 70,
+      "fades": 50,
+      "passing": 90,
+      "dribbling": 85,
+      "paintDef": 70,
+      "perimeterDef": 78,
+      "block": 60,
+      "steal": 68,
+      "rebound": 65,
+      "strength": 65,
+      "speed": 78,
+      "iq": 88,
+      "teamwork": 89,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p284",
+    "name": "Christ Bash",
+    "positions": [
+      "PF",
+      "C"
+    ],
+    "heightInches": 83,
+    "archetype": "2-Way Stretch Big",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p284.webp",
+    "stats": {
+      "layup": 78,
+      "dunk": 78,
+      "post": 40,
+      "ft": 79,
+      "mid": 85,
+      "three": 85,
+      "fades": 60,
+      "passing": 79,
+      "dribbling": 60,
+      "paintDef": 85,
+      "perimeterDef": 85,
+      "block": 85,
+      "steal": 75,
+      "rebound": 80,
+      "strength": 80,
+      "speed": 75,
+      "iq": 85,
+      "teamwork": 91,
+      "stamina": 91
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p285",
+    "name": "Jace Kidd",
+    "positions": [
+      "PG",
+      "SG"
+    ],
+    "heightInches": 77,
+    "archetype": "2-Way Playmaking Slasher",
+    "overall": 80,
+    "weight": 0,
+    "image": "/images/p285.webp",
+    "stats": {
+      "layup": 89,
+      "dunk": 79,
+      "post": 79,
+      "ft": 70,
+      "mid": 70,
+      "three": 50,
+      "fades": 40,
+      "passing": 90,
+      "dribbling": 79,
+      "paintDef": 70,
+      "perimeterDef": 81,
+      "block": 75,
+      "steal": 75,
+      "rebound": 70,
+      "strength": 65,
+      "speed": 75,
+      "iq": 85,
+      "teamwork": 95,
+      "stamina": 75
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p286",
+    "name": "Brad Mook",
+    "positions": [
+      "SF",
+      "PF"
+    ],
+    "heightInches": 80,
+    "archetype": "Slasher",
+    "overall": 78,
+    "weight": 0,
+    "image": "/images/p286.webp",
+    "stats": {
+      "layup": 80,
+      "dunk": 91,
+      "post": 80,
+      "ft": 85,
+      "mid": 71,
+      "three": 70,
+      "fades": 40,
+      "passing": 75,
+      "dribbling": 65,
+      "paintDef": 65,
+      "perimeterDef": 70,
+      "block": 50,
+      "steal": 80,
+      "rebound": 85,
+      "strength": 60,
+      "speed": 75,
+      "iq": 80,
+      "teamwork": 81,
+      "stamina": 84
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p287",
+    "name": "Scottie Smoothie",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 77,
+    "archetype": "2-Way Playmaking Shot Creator",
+    "overall": 82,
+    "weight": 0,
+    "image": "/images/p287.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 75,
+      "post": 25,
+      "ft": 50,
+      "mid": 81,
+      "three": 81,
+      "fades": 81,
+      "passing": 82,
+      "dribbling": 82,
+      "paintDef": 80,
+      "perimeterDef": 90,
+      "block": 85,
+      "steal": 70,
+      "rebound": 70,
+      "strength": 80,
+      "speed": 85,
+      "iq": 80,
+      "teamwork": 92,
+      "stamina": 92
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p288",
+    "name": "Darron Flowers",
+    "positions": [
+      "PG"
+    ],
+    "heightInches": 75,
+    "archetype": "2-Way Playmaking Mid-Range Master",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p288.webp",
+    "stats": {
+      "layup": 70,
+      "dunk": 0,
+      "post": 70,
+      "ft": 80,
+      "mid": 91,
+      "three": 71,
+      "fades": 50,
+      "passing": 81,
+      "dribbling": 81,
+      "paintDef": 50,
+      "perimeterDef": 85,
+      "block": 70,
+      "steal": 89,
+      "rebound": 45,
+      "strength": 60,
+      "speed": 85,
+      "iq": 90,
+      "teamwork": 90,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p289",
+    "name": "Walter Black",
+    "positions": [
+      "PF",
+      "SF"
+    ],
+    "heightInches": 80,
+    "archetype": "2-Way Sharpshooter",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p289.webp",
+    "stats": {
+      "layup": 70,
+      "dunk": 70,
+      "post": 45,
+      "ft": 50,
+      "mid": 80,
+      "three": 85,
+      "fades": 80,
+      "passing": 80,
+      "dribbling": 65,
+      "paintDef": 85,
+      "perimeterDef": 85,
+      "block": 80,
+      "steal": 85,
+      "rebound": 79,
+      "strength": 75,
+      "speed": 70,
+      "iq": 85,
+      "teamwork": 79,
+      "stamina": 79
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p290",
+    "name": "Timmy Treemen",
+    "positions": [
+      "SF",
+      "SG"
+    ],
+    "heightInches": 76,
+    "archetype": "Mid-Range Master",
+    "overall": 77,
+    "weight": 0,
+    "image": "/images/p290.webp",
+    "stats": {
+      "layup": 70,
+      "dunk": 0,
+      "post": 40,
+      "ft": 85,
+      "mid": 95,
+      "three": 75,
+      "fades": 50,
+      "passing": 75,
+      "dribbling": 65,
+      "paintDef": 62,
+      "perimeterDef": 72,
+      "block": 52,
+      "steal": 72,
+      "rebound": 75,
+      "strength": 70,
+      "speed": 80,
+      "iq": 85,
+      "teamwork": 99,
+      "stamina": 80
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p291",
+    "name": "Pin Pistol",
+    "positions": [
+      "SG",
+      "PG"
+    ],
+    "heightInches": 74,
+    "archetype": "Playmaking Shot Creator",
+    "overall": 91,
+    "weight": 0,
+    "image": "/images/p291.webp",
+    "stats": {
+      "layup": 50,
+      "dunk": 80,
+      "post": 50,
+      "ft": 98,
+      "mid": 98,
+      "three": 91,
+      "fades": 98,
+      "passing": 91,
+      "dribbling": 100,
+      "paintDef": 70,
+      "perimeterDef": 75,
+      "block": 70,
+      "steal": 75,
+      "rebound": 90,
+      "strength": 65,
+      "speed": 89,
+      "iq": 99,
+      "teamwork": 98,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p292",
+    "name": "Manó Rivers",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 76,
+    "archetype": "Offensive Engine",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p292.webp",
+    "stats": {
+      "layup": 50,
+      "dunk": 89,
+      "post": 75,
+      "ft": 90,
+      "mid": 88,
+      "three": 84,
+      "fades": 80,
+      "passing": 85,
+      "dribbling": 80,
+      "paintDef": 65,
+      "perimeterDef": 75,
+      "block": 50,
+      "steal": 55,
+      "rebound": 40,
+      "strength": 65,
+      "speed": 85,
+      "iq": 89,
+      "teamwork": 90,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p293",
+    "name": "August “Automatic” Streets",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 77,
+    "archetype": "Walking Bucket",
+    "overall": 79,
+    "weight": 0,
+    "image": "/images/p293.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 0,
+      "post": 75,
+      "ft": 65,
+      "mid": 85,
+      "three": 85,
+      "fades": 85,
+      "passing": 65,
+      "dribbling": 85,
+      "paintDef": 71,
+      "perimeterDef": 71,
+      "block": 45,
+      "steal": 55,
+      "rebound": 65,
+      "strength": 60,
+      "speed": 80,
+      "iq": 80,
+      "teamwork": 65,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p294",
+    "name": "Wesley Watson",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 77,
+    "archetype": "Three Level Scorer",
+    "overall": 77,
+    "weight": 0,
+    "image": "/images/p294.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 0,
+      "post": 65,
+      "ft": 90,
+      "mid": 80,
+      "three": 80,
+      "fades": 50,
+      "passing": 75,
+      "dribbling": 50,
+      "paintDef": 60,
+      "perimeterDef": 65,
+      "block": 65,
+      "steal": 50,
+      "rebound": 79,
+      "strength": 50,
+      "speed": 79,
+      "iq": 80,
+      "teamwork": 90,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p295",
+    "name": "Kontavious “I just shoot” Popper",
+    "positions": [
+      "SG"
+    ],
+    "heightInches": 78,
+    "archetype": "Sharpshooter",
+    "overall": 79,
+    "weight": 0,
+    "image": "/images/p295.webp",
+    "stats": {
+      "layup": 0,
+      "dunk": 0,
+      "post": 0,
+      "ft": 90,
+      "mid": 90,
+      "three": 95,
+      "fades": 85,
+      "passing": 75,
+      "dribbling": 50,
+      "paintDef": 65,
+      "perimeterDef": 70,
+      "block": 50,
+      "steal": 65,
+      "rebound": 60,
+      "strength": 60,
+      "speed": 80,
+      "iq": 85,
+      "teamwork": 95,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p296",
+    "name": "Joey Days",
+    "positions": [
+      "PF",
+      "SF"
+    ],
+    "heightInches": 80,
+    "archetype": "Three Level Scorer",
+    "overall": 79,
+    "weight": 0,
+    "image": "/images/p296.webp",
+    "stats": {
+      "layup": 65,
+      "dunk": 85,
+      "post": 80,
+      "ft": 80,
+      "mid": 80,
+      "three": 80,
+      "fades": 80,
+      "passing": 60,
+      "dribbling": 65,
+      "paintDef": 70,
+      "perimeterDef": 70,
+      "block": 45,
+      "steal": 75,
+      "rebound": 85,
+      "strength": 80,
+      "speed": 80,
+      "iq": 89,
+      "teamwork": 89,
+      "stamina": 80
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p297",
+    "name": "Arron Cloud",
+    "positions": [
+      "SF",
+      "PF"
+    ],
+    "heightInches": 79,
+    "archetype": "2-Way Playmaking Slasher",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p297.webp",
+    "stats": {
+      "layup": 85,
+      "dunk": 80,
+      "post": 40,
+      "ft": 40,
+      "mid": 70,
+      "three": 70,
+      "fades": 50,
+      "passing": 90,
+      "dribbling": 75,
+      "paintDef": 81,
+      "perimeterDef": 75,
+      "block": 80,
+      "steal": 75,
+      "rebound": 70,
+      "strength": 70,
+      "speed": 85,
+      "iq": 75,
+      "teamwork": 89,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p298",
+    "name": "Mike Breeze",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 78,
+    "archetype": "Well-Rounded Lockdown",
+    "overall": 82,
+    "weight": 0,
+    "image": "/images/p298.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 75,
+      "post": 50,
+      "ft": 70,
+      "mid": 78,
+      "three": 79,
+      "fades": 40,
+      "passing": 77,
+      "dribbling": 77,
+      "paintDef": 80,
+      "perimeterDef": 90,
+      "block": 80,
+      "steal": 80,
+      "rebound": 75,
+      "strength": 70,
+      "speed": 80,
+      "iq": 85,
+      "teamwork": 90,
+      "stamina": 95
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p299",
+    "name": "Sam Smat",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 75,
+    "archetype": "Slasher",
+    "overall": 77,
+    "weight": 0,
+    "image": "/images/p299.webp",
+    "stats": {
+      "layup": 98,
+      "dunk": 0,
+      "post": 50,
+      "ft": 50,
+      "mid": 70,
+      "three": 70,
+      "fades": 40,
+      "passing": 75,
+      "dribbling": 60,
+      "paintDef": 50,
+      "perimeterDef": 65,
+      "block": 40,
+      "steal": 60,
+      "rebound": 85,
+      "strength": 50,
+      "speed": 90,
+      "iq": 90,
+      "teamwork": 99,
+      "stamina": 99
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  },
+  {
+    "id": "p300",
+    "name": "Lemon Lime",
+    "positions": [
+      "PF",
+      "C"
+    ],
+    "heightInches": 83,
+    "archetype": "Playmaking Titan",
+    "overall": 85,
+    "weight": 0,
+    "image": "/images/p300.webp",
+    "stats": {
+      "layup": 84,
+      "dunk": 84,
+      "post": 84,
+      "ft": 80,
+      "mid": 85,
+      "three": 78,
+      "fades": 40,
+      "passing": 91,
+      "dribbling": 71,
+      "paintDef": 85,
+      "perimeterDef": 75,
+      "block": 89,
+      "steal": 50,
+      "rebound": 92,
+      "strength": 82,
+      "speed": 70,
+      "iq": 90,
+      "teamwork": 90,
+      "stamina": 87
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.5,
+        "top": 0,
+        "width": 0.55
+      }
+    }
+  }
+]
