@@ -125,7 +125,7 @@ test('217-player admin backups survive a zero-weight roster expansion without ch
   oldPlayers[0].weight=(Math.round(oldPlayers[0].weight*100)+missing)/100;
   const combined=[...oldPlayers,...expansion.slice(17).map(p=>({...p,weight:0}))];
   const store=createWheelStore({root,players:oldPlayers,preferPublishedDefaults:true});
-  const old=store.snapshot();old.p201=.19;old.p202=.31;store.save(data(old));
+  const old=store.snapshot();old.p201=Math.round((old.p201-.01)*100)/100;old.p202=Math.round((old.p202+.01)*100)/100;store.save(data(old));
   const next=createWheelStore({root,players:combined,preferPublishedDefaults:true});
   const expected={...old,...Object.fromEntries(expansion.slice(17).map(p=>[p.id,0]))};
   assert.deepEqual(next.snapshot(),expected);
@@ -134,7 +134,7 @@ test('217-player admin backups survive a zero-weight roster expansion without ch
   const published=[...original,...expansion];
   const rebalanced=createWheelStore({root,players:published,preferPublishedDefaults:true});
   assert.deepEqual(rebalanced.snapshot(),Object.fromEntries(published.map(p=>[p.id,p.weight])));
-  assert.equal(selectWeighted(published.map(p=>p.id),rebalanced.snapshot(),()=>.999999),'p250');
+  assert.equal(selectWeighted(published.map(p=>p.id),rebalanced.snapshot(),()=>.999999),'p268');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 
@@ -143,16 +143,22 @@ test('250-player admin odds and backups survive the 18-player zero-weight expans
  try{
   const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
   const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
-  const prior=[...original,...expansion.slice(0,50)];
-  const all=[...original,...expansion];
+  const prior=[...original,...expansion.slice(0,50)].map(p=>({...p}));
+  const missing=10000-prior.reduce((n,p)=>n+Math.round(p.weight*100),0);
+  prior[0].weight=(Math.round(prior[0].weight*100)+missing)/100;
+  const all=[...prior,...expansion.slice(50).map(p=>({...p,weight:0}))];
   const store=createWheelStore({root,players:prior,preferPublishedDefaults:true});
-  const old=store.snapshot();old.p201=.19;old.p202=.31;store.save(data(old));
+  const old=store.snapshot();old.p201=Math.round((old.p201-.01)*100)/100;old.p202=Math.round((old.p202+.01)*100)/100;store.save(data(old));
   const expected={...old,...Object.fromEntries(expansion.slice(50).map(p=>[p.id,0]))};
   const next=createWheelStore({root,players:all,preferPublishedDefaults:true});
   assert.deepEqual(next.snapshot(),expected);
   assert.deepEqual(next.save(data(old)).weights,expected);
   assert.equal(selectWeighted(all.map(p=>p.id),next.snapshot(),()=>.999999),'p250');
   assert.equal(Object.keys(expected).length,268);
+  const published=[...original,...expansion];
+  const rebalanced=createWheelStore({root,players:published,preferPublishedDefaults:true});
+  assert.deepEqual(rebalanced.snapshot(),Object.fromEntries(published.map(p=>[p.id,p.weight])));
+  assert.equal(selectWeighted(published.map(p=>p.id),rebalanced.snapshot(),()=>.999999),'p268');
   assert.throws(()=>next.save(data({...old,unknown:0})),/player IDs/);
  }finally{rmSync(root,{recursive:true,force:true});}
 });

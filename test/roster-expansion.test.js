@@ -12,7 +12,7 @@ test('all 68 approved expansion players have game-ready art and valid stats; com
  const all=[...original,...expansion];
  assert.equal(new Set(all.map(p=>p.id)).size,268);
  for(const p of expansion){
-   assert.ok(Number(p.id.slice(1))<=250?p.weight>0:p.weight===0);
+   assert.ok(p.weight>0);
    assert.deepEqual(Object.keys(p.stats).sort(),Object.keys(original[0].stats).sort());
    assert.ok(Object.values(p.stats).every(n=>Number.isInteger(n)&&n>=0&&n<=100));
    assert.equal(p.image,'/images/'+p.id+'.webp');
@@ -22,12 +22,10 @@ test('all 68 approved expansion players have game-ready art and valid stats; com
    assert.ok(p.courtPortrait.crop.width>0);
  }
  const weights=validateWeights(Object.fromEntries(all.map(p=>[p.id,p.weight])),all);
- assert.deepEqual(expansion.slice(0,17).map(p=>p.weight),[.2,.3,.2,.2,.2,.15,.15,.2,.2,.1,.2,.2,.15,.15,.15,.1,.05]);
- assert.deepEqual(expansion.slice(17,50).map(p=>p.weight),[0.15,0.3,0.25,0.45,0.1,0.2,0.2,0.25,0.15,0.2,0.2,0.1,0.2,0.45,0.25,0.3,0.15,0.25,0.15,0.25,0.05,0.2,0.1,0.1,0.1,0.2,0.05,0.15,0.25,0.1,0.1,0.1,0.1]);
- assert.equal(all.filter(p=>p.weight>0).length,250);
+ assert.equal(all.filter(p=>p.weight>0).length,268);
  assert.equal(expansion.slice(50).length,18);
- assert.ok(expansion.slice(50).every(p=>p.weight===0));
- assert.equal(expansion.reduce((n,p)=>n+Math.round(p.weight*100),0),905);
- assert.equal(selectWeighted(all.map(p=>p.id),weights,()=>.999999),'p250');
+ assert.deepEqual(all.map(p=>p.weight),[0.4,0.4,1.5,0.7,0.12,0.3,0.2,0.7,0.5,0.2,0.5,0.15,0.2,0.6,0.14,0.12,0.2,0.8,0.1,0.17,0.4,0.2,0.5,0.25,0.15,0.4,0.5,0.5,0.3,0.4,0.2,0.2,0.2,0.3,0.3,0.2,0.2,0.4,0.2,0.21,0.5,1.5,0.2,0.4,0.25,0.8,0.3,0.2,0.34,0.2,0.15,1,0.5,0.15,0.5,0.4,0.8,0.3,0.2,0.3,0.2,0.5,0.07,0.3,0.5,0.2,0.2,1,0.5,0.3,0.5,0.5,0.4,0.5,0.2,0.7,0.15,0.4,0.15,0.3,0.8,0.25,0.6,0.4,0.2,0.3,0.3,0.7,0.8,0.45,0.2,0.5,0.71,0.5,0.5,0.5,0.5,0.4,0.7,0.3,1.1,0.45,0.3,0.25,0.5,0.2,0.2,0.4,0.2,0.55,0.3,0.5,0.4,0.5,0.4,0.5,0.7,1,0.4,0.3,0.2,0.3,0.1,0.5,1,0.3,0.3,0.4,0.7,0.75,0.3,0.5,0.5,0.3,0.3,1,0.2,0.4,0.25,0.4,0.9,0.12,0.4,0.7,0.8,0.3,0.3,0.5,0.15,0.3,0.5,0.3,0.3,0.1,0.3,0.4,0.3,0.35,0.2,0.5,0.5,0.5,0.7,0.8,0.75,0.3,0.2,0.25,0.35,0.75,0.9,0.1,0.3,0.75,0.3,0.4,0.4,0.3,0.8,0.5,0.4,0.4,0.7,0.5,0.55,0.15,0.2,0.4,0.5,0.3,0.3,0.4,0.4,0.5,0.2,0.5,1,0.3,0.3,0.4,0.3,0.3,0.4,0.2,0.2,0.35,0.25,0.2,0.2,0.3,0.2,0.3,0.15,0.25,0.15,0.1,0.05,0.15,0.3,0.25,0.45,0.2,0.2,0.2,0.25,0.15,0.2,0.2,0.2,0.2,0.5,0.25,0.4,0.15,0.25,0.15,0.25,0.05,0.2,0.3,0.2,0.2,0.2,0.05,0.15,0.2,0.1,0.1,0.1,0.1,0.25,0.35,0.3,0.25,0.2,0.3,0.25,0.4,0.25,0.2,0.3,0.4,0.3,0.3,0.4,0.1,0.4,0.3]);
+ assert.equal(expansion.reduce((n,p)=>n+Math.round(p.weight*100),0),1600);
+ assert.equal(selectWeighted(all.map(p=>p.id),weights,()=>.999999),'p268');
  assert.match(read('server.js').toString(),/data\/players-3\.json/);
 });
