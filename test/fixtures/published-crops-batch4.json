@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "overrides": {
+    "p269": {
+      "centerX": 0.43,
+      "top": 0,
+      "width": 0.4329
+    },
+    "p270": {
+      "centerX": 0.5,
+      "top": 0.28,
+      "width": 0.2611
+    },
+    "p271": {
+      "centerX": 0.49,
+      "top": 0,
+      "width": 0.6667
+    },
+    "p273": {
+      "centerX": 0.52,
+      "top": 0,
+      "width": 0.4425
+    },
+    "p274": {
+      "centerX": 0.47,
+      "top": 0,
+      "width": 0.4274
+    },
+    "p275": {
+      "centerX": 0.25,
+      "top": 0,
+      "width": 0.4098
+    },
+    "p277": {
+      "centerX": 0.33,
+      "top": 0,
+      "width": 0.3774
+    },
+    "p278": {
+      "centerX": 0.32,
+      "top": 0,
+      "width": 0.3984
+    },
+    "p279": {
+      "centerX": 0.5,
+      "top": 0.22,
+      "width": 0.2809
+    },
+    "p280": {
+      "centerX": 0.41,
+      "top": 0,
+      "width": 0.3846
+    },
+    "p281": {
+      "centerX": 0.27,
+      "top": 0,
+      "width": 0.361
+    },
+    "p282": {
+      "centerX": 0.59,
+      "top": 0.28,
+      "width": 0.2976
+    },
+    "p283": {
+      "centerX": 0.54,
+      "top": 0,
+      "width": 0.4237
+    },
+    "p284": {
+      "centerX": 0.47,
+      "top": 0,
+      "width": 0.3953
+    },
+    "p286": {
+      "centerX": 0.43,
+      "top": 0.06,
+      "width": 0.2564
+    },
+    "p287": {
+      "centerX": 0.54,
+      "top": 0,
+      "width": 0.3817
+    },
+    "p288": {
+      "centerX": 0.56,
+      "top": 0,
+      "width": 0.3984
+    },
+    "p289": {
+      "centerX": 0.59,
+      "top": 0.24,
+      "width": 0.2597
+    },
+    "p290": {
+      "centerX": 0.57,
+      "top": 0.24,
+      "width": 0.277
+    },
+    "p291": {
+      "centerX": 0.56,
+      "top": 0,
+      "width": 0.4274
+    },
+    "p293": {
+      "centerX": 0.38,
+      "top": 0,
+      "width": 0.4274
+    },
+    "p294": {
+      "centerX": 0.56,
+      "top": 0,
+      "width": 0.4808
+    },
+    "p295": {
+      "centerX": 0.45,
+      "top": 0,
+      "width": 0.4878
+    },
+    "p296": {
+      "centerX": 0.46,
+      "top": 0,
+      "width": 0.4587
+    },
+    "p297": {
+      "centerX": 0.53,
+      "top": 0,
+      "width": 0.55
+    },
+    "p298": {
+      "centerX": 0.47,
+      "top": 0,
+      "width": 0.55
+    },
+    "p299": {
+      "centerX": 0.35,
+      "top": 0.16,
+      "width": 0.4
+    },
+    "p300": {
+      "centerX": 0.67,
+      "top": 0,
+      "width": 0.4348
+    }
+  }
+}

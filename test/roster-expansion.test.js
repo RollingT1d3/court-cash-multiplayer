@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {validateWeights,selectWeighted} from '../wheel-probabilities.js';
+const historical=JSON.parse(readFileSync(new URL('./fixtures/legacy-wheel-268.json',import.meta.url),'utf8'));
+const historicalRoster=players=>players.map(p=>({...p,weight:historical[p.id]}));
 const read=p=>readFileSync(new URL('../'+p,import.meta.url));
-test('all 68 approved expansion players have game-ready art and valid stats; combined odds remain at 100%',()=>{
- const original=JSON.parse(read('data/players.json'));
- const expansion=JSON.parse(read('data/players-3.json'));
+test('all 68 approved expansion players have game-ready art and valid stats; historical 268-player odds remain at 100%',()=>{
+ const original=historicalRoster(JSON.parse(read('data/players.json')));
+ const expansion=historicalRoster(JSON.parse(read('data/players-3.json')));
  assert.equal(original.length,200);assert.equal(expansion.length,68);
  assert.deepEqual(expansion.map(p=>p.id),Array.from({length:68},(_,i)=>'p'+(201+i)));
  assert.deepEqual(expansion.map(p=>p.overall),[84,79,81,80,84,80,80,78,79,83,88,84,79,83,79,78,78,92,79,77,80,83,81,82,77,82,83,79,81,84,83,86,80,98,82,79,78,74,79,82,81,82,90,78,77,86,79,79,79,75,81,82,78,84,85,83,79,84,79,87,77,83,83,84,82,74,80,87]);

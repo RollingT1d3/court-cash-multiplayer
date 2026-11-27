@@ -821,7 +821,7 @@ setInterval(()=>{
   if(ms-lastBroadcastAt>=1000)lastBroadcastAt=ms;
 },TICK_MS);
 
-const adminAPI = createAdminAPI({ root: ROOT, players: PLAYERS, wheelStore, publishedCropIds: ["p201","p204","p208","p209","p211","p212","p215","p216","p221","p227","p232","p234","p235","p236","p237","p241","p242","p244","p245"], onUpdate: () => {
+const adminAPI = createAdminAPI({ root: ROOT, players: PLAYERS, wheelStore, publishedCropIds: ["p201","p204","p208","p209","p211","p212","p215","p216","p221","p227","p232","p234","p235","p236","p237","p241","p242","p244","p245","p269","p270","p271","p273","p274","p275","p277","p278","p279","p280","p281","p282","p283","p284","p286","p287","p288","p289","p290","p291","p293","p294","p295","p296","p297","p298","p299","p300"], onUpdate: () => {
   for (const room of ROOMS.values()) broadcast(room);
 } });
 

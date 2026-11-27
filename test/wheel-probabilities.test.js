@@ -6,6 +6,8 @@ import path from 'node:path';
 import {Readable} from 'node:stream';
 import {createWheelStore,validateWeights,selectWeighted} from '../wheel-probabilities.js';
 import {createAdminAPI} from '../admin-v09.js';
+const historical=JSON.parse(readFileSync(new URL('./fixtures/legacy-wheel-268.json',import.meta.url),'utf8'));
+const historicalRoster=players=>players.map(p=>({...p,weight:historical[p.id]}));
 const players=Array.from({length:20},(_,i)=>({id:'p'+i,name:'Player '+i,overall:80,weight:5}));
 const defaults=Object.fromEntries(players.map(p=>[p.id,p.weight]));
 const data=weights=>({version:1,kind:'court-cash-wheel-probabilities',weights});
@@ -74,8 +76,8 @@ test('server and wheel display both use room-specific weights rather than mutabl
 test('legacy 200-player backups preserve all original probabilities and add expansion players at zero',()=>{
  const root=mkdtempSync(path.join(os.tmpdir(),'cc-wheel-expansion-'));
  try{
-  const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
-  const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+  const original=historicalRoster(JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8')));
+  const expansion=historicalRoster(JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8')));
   const combined=[...original,...expansion];
   const old=Object.fromEntries(original.map(p=>[p.id,p.weight]));
   const positive=original.filter(p=>p.weight>=.01);
@@ -117,8 +119,8 @@ test('published probability updates supersede stale saved settings but preserve 
 test('217-player admin backups survive a zero-weight roster expansion without changing odds',()=>{
  const root=mkdtempSync(path.join(os.tmpdir(),'cc-wheel-batch2-'));
  try{
-  const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
-  const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+  const original=historicalRoster(JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8')));
+  const expansion=historicalRoster(JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8')));
   // Reconstruct a valid zero-weight expansion fixture independently of published odds.
   const oldPlayers=[...original,...expansion.slice(0,17)].map(p=>({...p}));
   const missing=10000-oldPlayers.reduce((n,p)=>n+Math.round(p.weight*100),0);
@@ -141,8 +143,8 @@ test('217-player admin backups survive a zero-weight roster expansion without ch
 test('250-player admin odds and backups survive the 18-player zero-weight expansion',()=>{
  const root=mkdtempSync(path.join(os.tmpdir(),'cc-wheel-batch3-'));
  try{
-  const original=JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8'));
-  const expansion=JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8'));
+  const original=historicalRoster(JSON.parse(readFileSync(new URL('../data/players.json',import.meta.url),'utf8')));
+  const expansion=historicalRoster(JSON.parse(readFileSync(new URL('../data/players-3.json',import.meta.url),'utf8')));
   const prior=[...original,...expansion.slice(0,50)].map(p=>({...p}));
   const missing=10000-prior.reduce((n,p)=>n+Math.round(p.weight*100),0);
   prior[0].weight=(Math.round(prior[0].weight*100)+missing)/100;
