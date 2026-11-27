@@ -7,8 +7,16 @@
   <meta name="description" content="Live two-player basketball auction draft and animated simulation." />
   <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/admin-v09.css" />
+  <link rel="stylesheet" href="/splash.css" />
 </head>
 <body>
+  <section id="splash-screen" aria-label="Court Cash welcome screen" hidden>
+    <div id="splash-art" class="splash-art">
+      <img id="splash-base" class="splash-base" src="/images/splash-base.webp" width="1675" height="939" alt="" fetchpriority="high" />
+      <img id="splash-cast" class="splash-cast" src="/images/splash-full.webp" width="1675" height="939" alt="" />
+      <button id="splash-play" class="splash-play" type="button" aria-label="Play Court Cash"><span>PLAY</span></button>
+    </div>
+  </section>
   <div id="shell">
     <header class="topbar">
       <div class="brand"><span class="brand-icon">🏀</span> COURT <b>CASH</b> <small>ALPHA v1.1</small></div>
@@ -167,6 +175,7 @@
     </dialog>
     <div id="toast" role="status" aria-live="polite"></div>
   </div>
+  <script src="/splash.js"></script>
   <script type="module" src="/home-phrases.js"></script>
   <!-- Load the reusable head-only court portrait cropping code before gameplay. -->
   <script src="/court-designs.js" defer></script>
