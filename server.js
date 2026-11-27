@@ -19,7 +19,7 @@ import { shootingFoulChance, shootFreeThrows, eligibleBench } from './foul-rules
 import { heightContestAdjustment, heightBlockAdjustment } from './height-rules-v083.js';
 import { individualDefenseContest } from './defense-contest.js';
 import { fatiguedSkill, timeoutRecovery, fatigueAttributePreview } from './fatigue-v084.js';
-import { offenseRoles, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, threePointBaseChance, isDeepThree } from './offense-v04.js';
+import { offenseRoles, runGunCandidates, RUN_AND_GUN, OLD_SCHOOL_BUCKETS, threeDistanceFeet, longThreePenalty, threePointBaseChance, isDeepThree } from './offense-v04.js';
 import { determineTipoff } from './tipoff-v041.js';
 import { chooseCourtStyle } from './court-styles.js';
 import { ankleBreaks, ANKLE_OPEN_SHOT_BONUS } from './ankle-rules-v07.js';
@@ -274,7 +274,7 @@ function simulatePlay(room){
   const screenQuality=screeners.reduce((sum,id)=>sum+(rating(id,'teamwork')*.65+rating(id,'strength')*.20+rating(id,'passing')*.15),0)/screeners.length;
   const openLook=oldSchool && rnd()<clamp(.13+(screenQuality-65)*.004, .08,.32);
   const kickout=oldSchool && (shotClockRemaining<=5||openLook) && rnd()<clamp(teamAdherence,.20,.98);
-  const candidates=runGun?shooters.filter(id=>!roles.screenOnly.includes(id)):shooters;
+  const candidates=runGun?runGunCandidates(roles,rating):shooters;
   const shooter=quickBreak?fastBreak.shooter:point?pointAction.shooter:hills?hillsPlay.shooter:weightedId(candidates,id=> {
     const discipline=planDiscipline(id);
     const baseline=1;
@@ -292,7 +292,7 @@ function simulatePlay(room){
       // The two best 3PT shooters take nearly all shots; the third player seeks
       // open mid-rangers only if their MID attribute is 80 or above.
       desired=roles.runShooters.includes(id)?12+rating(id,'three')/16:
-        id===roles.runThird?(rating(id,'mid')>=80?3.7:.15):0;
+        id===roles.runThird?3.7:0;
     } else if(oldSchool){
       // The best three-point shooter camps at the arc for open/late kickouts.
       // The remaining three move and cut; the big crashes the glass.
@@ -314,7 +314,7 @@ function simulatePlay(room){
     runGun?(roles.runShooters.includes(shooter)?'three':'mid'):
     oldSchool?(shooter===roles.oldShooter?'three':'paint'):null;
   const shotRange=quickBreak?(fastBreak.type==='three'?'three':fastBreak.type==='mid'?'mid':'paint'):
-    point?pointAction.range:hills?(hillsPlay.perimeterShot?(rating(shooter,'three')>=rating(shooter,'mid')?'three':'mid'):'paint'):
+    runGun&&shooter===roles.runThird?'mid':point?pointAction.range:hills?(hillsPlay.perimeterShot?(rating(shooter,'three')>=rating(shooter,'mid')?'three':'mid'):'paint'):
     chooseShotRange({threeTarget,paintTarget,adherence,protectedRange,stats:{
       three:rating(shooter,'three'),mid:rating(shooter,'mid'),layup:rating(shooter,'layup'),dunk:rating(shooter,'dunk')
     }},rnd);
@@ -575,7 +575,7 @@ function simulatePlay(room){
   // Presentation only: a tight 230ms gather for actual mid-range/three-point jumpers.
   const jumperSetupMs=['mid','three'].includes(type)&&!['eight-second-violation','illegal-screen','pass-out-of-bounds','interception','steal'].includes(event)?230:0;
   g.event={id:g.possessions,quarter:g.quarter,transition,fadeSetupMs,jumperSetupMs,postFade,fastBreak,breakTargets:quickBreak?fastBreak.targets:null,breakDefense:quickBreak?fastBreak.recoveryTargets:null,stealAt:event==='steal'?(quickBreak?fastBreak.shotTarget:{x:clamp(.926-shotDistanceFt/94,.14,.92),y:.5}):null,type,displayEvent:event,offense,shooter,defender,assistId,reboundId,stealId,blockId,made,points,posterDunk,ankleBreaker,ankleBreakerHandler:ankleBreaker?shooter:null,ankleBreakerDefender:ankleBreaker?defender:null,deepThree,shotDistanceFt,shotClockRemaining,inboundAfterTimeout,
-    screen,screenSetterId,screenBonus,illegalScreen,mismatch:huntMismatch&&!illegalScreen,kickout,
+    screen,screenSetterId,screenBonus,illegalScreen,defenseStar:high[0],screenHandlerId:screen?(point?pointAction.pg:shooter):null,mismatch:huntMismatch&&!illegalScreen,kickout,
     passerId:illegalScreen||eightSecondViolation?null:passerId,passFrom:illegalScreen||eightSecondViolation?null:passFrom,
     passTo:illegalScreen||eightSecondViolation?null:passTo,passDurationMs:illegalScreen||eightSecondViolation?0:passDurationMs,
     passOutcome: eightSecondViolation?null:passOutcome,interceptorId,interceptionAt,

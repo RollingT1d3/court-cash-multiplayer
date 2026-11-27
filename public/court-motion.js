@@ -120,6 +120,56 @@
    return {...next,x:toAttack(Math.max(desired,minimum))};
  }
  // Only the actual current ball carrier receives the dribbling modifier.
+
+ // Presentation assignments use the authoritative contest defender where relevant,
+ // swapping slots rather than leaving an opponent unguarded. Double teams leave
+ // exactly three defenders to cover the other four opponents.
+ function tacticalAssignments(scheme,attackers,defenders,star,shooter,contest){
+   const assigned=Object.fromEntries(defenders.map((id,i)=>[id,attackers[i]]));
+   const swapTo=(id,target)=>{
+     if(!defenders.includes(id)||!attackers.includes(target))return;
+     const old=assigned[id],other=defenders.find(d=>assigned[d]===target);
+     assigned[id]=target;if(other&&other!==id)assigned[other]=old;
+   };
+   swapTo(contest,shooter);
+   if(scheme==='Double the Star'&&attackers.includes(star)){
+     const primary=defenders.find(id=>assigned[id]===star);
+     const reserve=defenders.filter(id=>id!==primary&&(shooter===star||id!==contest));
+     const extra=reserve.sort((a,b)=>Math.abs(defenders.indexOf(a)-defenders.indexOf(primary))-Math.abs(defenders.indexOf(b)-defenders.indexOf(primary)))[0];
+     if(extra)assigned[extra]=star;
+   }
+   return assigned;
+ }
+ function tacticalDefenseTarget({scheme,slot,id,assigned,star,attackers,defenders,at,anchor,W,H,settled,shooter,contest,shotType}){
+   const tracked=at(assigned[id]);
+   const follow=(p,offsetY=0)=>p?{x:clamp(p.x+48,.51*W,.96*W),y:clamp(p.y+offsetY,30,H-30)}:{x:anchor.x*W,y:anchor.y*H};
+   if(scheme==='Man-to-Man'||scheme==='Double the Star'){
+     if(!settled||!tracked||tracked.x<.50*W)return {x:anchor.x*W,y:anchor.y*H};
+     const doubles=scheme==='Double the Star'&&assigned[id]===star?defenders.filter(d=>assigned[d]===star):[];
+     const dy=doubles.length===2?(doubles[0]===id?-36:36):0;
+     return follow(tracked,dy);
+   }
+   if(scheme==='Protect the Paint'||scheme==='Perimeter Secured'){
+     const paint=scheme==='Protect the Paint';
+     const spots=paint?[[.82,.34],[.82,.66],[.88,.30],[.88,.70],[.91,.50]]:[[.66,.19],[.64,.38],[.64,.62],[.66,.81],[.72,.50]];
+     let [x,y]=spots[slot];
+     // Close out on the actual scorer without collapsing the whole formation.
+     const p=at(shooter),inside=['layup','dunk','putback'].includes(shotType);
+     if(settled&&id===contest&&p&&p.x>=.50*W&&(paint?inside:shotType==='three')){
+       return follow(p);
+     }
+     return {x:x*W,y:y*H};
+   }
+   return null;
+ }
+ // The actual screen setter approaches the ball handler's shoulder, not an
+ // unrelated random movement. The setter releases to their route afterward.
+ function screenTarget(handler,slot,W,H){
+   if(!handler||handler.x<.52*W)return null;
+   const dy=handler.y<H*.27?54:handler.y>H*.73?-54:slot%2?54:-54;
+   return {x:clamp(handler.x+26,.56*W,.94*W),y:clamp(handler.y+dy,30,H-30)};
+ }
+
  function ballCarrier(e,rawAge,passFrame){
    if(!e)return null;
    const tr=e.transition,lead=tr?.durationMs||0,age=rawAge-lead;
@@ -186,5 +236,5 @@
    if(frame.flying)return between(from,target,frame.progress,8);
    return target;
  }
- root.CourtMotion=Object.freeze({fadeBall,jumperBall,shotSetup,setupBall,shotStart,movementFactor,movePlayer,frontcourtSupportTarget,moveSupportPlayer,advanceOffensiveMarker,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
+ root.CourtMotion=Object.freeze({fadeBall,jumperBall,shotSetup,setupBall,shotStart,movementFactor,movePlayer,frontcourtSupportTarget,moveSupportPlayer,advanceOffensiveMarker,tacticalAssignments,tacticalDefenseTarget,screenTarget,ballCarrier,passFrame,passBall,transitionPosition,transitionBall,SHOT_MS,BOUNCE_MS,REBOUND_MS,PUTBACK_MS,FT_START,FT_STEP,TIP_MS,shotEnd,bounces,reboundEnd,putbackEnd,rimBounce,normalBall,freeThrowFrame,tipFrame});
 })(typeof window==='undefined'?globalThis:window);

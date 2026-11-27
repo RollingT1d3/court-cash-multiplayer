@@ -694,6 +694,7 @@
     const isOldSchool=scheme==='Old-School Buckets';
     const isHills=scheme==='Run For The Hills';
     const isPoint=scheme==='Play Through Point';
+    const defenseScheme=quickBreak?'Man-to-Man':state.teams[1-offense].defense;
     const isClog=!quickBreak&&state.teams[1-offense].defense==='Clog The Lanes';
     const isPress=!quickBreak&&state.teams[1-offense].defense==='Full Court Press';
     const isZone=!quickBreak&&state.teams[1-offense].defense==='3-2 Zone';
@@ -726,6 +727,12 @@
     const topShotEffect=ankleBanner||posterBanner||!!event?.made&&(['mid','three','fade'].includes(event.displayEvent)&&shotEffectAge>=0&&shotEffectAge<850||event.deepThree&&shotEffectAge>=0&&shotEffectAge<1250);
     const carrier=motion.ballCarrier(event,rawAge,passFrame);
     const present=new Set();
+    const attackers=game.active[offense],defenders=game.active[1-offense];
+    const defenseStar=event?.defenseStar||attackers.slice().sort((a,b)=>(player(b)?.overall||0)-(player(a)?.overall||0))[0];
+    const assignments=motion.tacticalAssignments(defenseScheme,attackers,defenders,defenseStar,event?.shooter,event?.defender);
+    // Read the previous completed frame, so targeting is independent of team iteration order.
+    const priorPositions=new Map(canvasPositions);
+    const canonicalAt=id=>{const p=priorPositions.get(id);return p?{x:attackRight?p.x:W-p.x,y:p.y}:null;};
     for(let side=0;side<2;side++){
       for(let pos=0;pos<5;pos++){
         const id=game.active[side][pos];if(!id)continue;present.add(id);
@@ -808,7 +815,27 @@
           const feet=event.shotDistanceFt??(event.type==='three'?25:12);
           x=quickBreak?fb.shotTarget.x*W:Math.max(.14*W,W-(17+5.25*(W/94))-feet*(W/94));y=H*(quickBreak?fb.shotTarget.y:.50);
         }
-        if(!quickBreak&&event?.defender===id&&!attacking&&event.displayEvent!=='interception'&&!isPress&&!isClog&&!isBox){x=.85*W;y=H*.53;}
+        // Distinct defensive strategies and real assigned-player tracking.
+        if(!attacking&&!quickBreak){
+          const target=motion.tacticalDefenseTarget({scheme:defenseScheme,slot:pos,id,assigned:assignments,star:defenseStar,attackers,defenders,at:canonicalAt,anchor,W,H,settled:!transitioning,shooter:event?.shooter,contest:event?.defender,shotType:event?.type});
+          if(target){x=target.x;y=target.y;}
+          else if(event?.defender===id&&event.displayEvent!=='interception'&&!isPress&&!isClog&&!isBox&&!isTwoTwoOne){
+            const at=canonicalAt(event.shooter);
+            if(!transitioning&&at&&at.x>=.5*W){x=Math.min(.96*W,at.x+48);y=at.y;}
+          }
+        }
+        // Screen the actual handler before the shot; never displace an active
+        // inbounder or a player currently sending/receiving a pass.
+        const screenHandler=event?.screenHandlerId||(isPoint?event?.pointPG:event?.shooter);
+        const screenEnd=event?.screenSetterId===event?.shooter?0:Math.max(300,(event?.passDurationMs||0)+motion.shotSetup(event||{}));
+        const screenWindow=event?.screen&&event.screenSetterId===id&&screenHandler!==id&&attacking&&
+          rawAge>=Math.max(tr?.kind==='inbound'?650:0,lead-1200)&&eventAge<screenEnd;
+        const screenPassing=!transitioning&&activePass&&(activePass.fromId===id&&!passFrame?.received||activePass.toId===id);
+        let screening=false;
+        if(screenWindow&&!screenPassing&&!freeThrow){
+          const at=canonicalAt(screenHandler),target=motion.screenTarget(at,pos,W,H);
+          if(target){x=target.x;y=target.y;screening=true;}
+        }
         // The chaser tracks the target even off the ball; a zone defender closes out on other shooters.
         if(!attacking&&isBox&&event?.zoneDefense==='Box-and-One'){
           const follow=id===event.boxChaser?event.boxTarget:event.defender===id?event.shooter:null;
@@ -855,7 +882,10 @@
         const start=transitionStarts.get(id)||{x:direction===1?W*.24:W*.76,y:H*(.18+pos*.16)};
         const previous=canvasPositions.get(id)||(transitioning?start:{x,y});
         let prev=previous;
-        if(transitioning){
+        if(screening){
+          // Screen approach is a direct run rather than an eased transition.
+          prev=motion.movePlayer(previous,{x,y},frameDelta,moveFactor,true);
+        }else if(transitioning){
           // Inbound staging is synchronized to the pass release/catch. After
           // the catch every runner advances at their own movement factor.
           const target=motion.transitionPosition(tr,rawAge,start,{x,y},side,offense,pos,id,W,H,direction,moveFactor);

@@ -22,6 +22,12 @@ export function offenseRoles(ids,stat){
   return {runShooters,screenOnly,runThird,oldShooter,oldRebounder,oldCutters};
 }
 
+// The third specialist may shoot only when the listed mid-range rating qualifies.
+// The two best three-point shooters always remain eligible.
+export function runGunCandidates(roles,stat){
+  return [...roles.runShooters,...(roles.runThird&&stat(roles.runThird,'mid')>=80?[roles.runThird]:[])];
+}
+
 // Half court is ~47 feet from the basket on a 94-foot floor.
 // 36+ feet represents near-half-court, at-half-court and beyond-half-court threes.
 export function threeDistanceFeet(threeRating,shotClockRemaining,random=Math.random){
