@@ -1026,7 +1026,7 @@
         ctx.beginPath();ctx.arc(prev.x,prev.y,24,0,2*Math.PI);ctx.lineWidth=7;ctx.strokeStyle='#f2f6fa';ctx.stroke();ctx.lineWidth=4;ctx.strokeStyle=colors.hex(colorFor(side));ctx.stroke();
         ctx.restore(); // keep names and comic reaction emojis upright
         ctx.textAlign='center';ctx.font='bold 12px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#122136';ctx.fillStyle='#fff';
-        const first=p.name.split(' ')[0];ctx.strokeText(first,prev.x,prev.y+39);ctx.fillText(first,prev.x,prev.y+39);
+        const label=courtPlayerLabel(p.name);ctx.strokeText(label,prev.x,prev.y+39,120);ctx.fillText(label,prev.x,prev.y+39,120);
         const e=state.teams[side].energy[id]??100;
         if(e<60){
           // Tiny upper-right badge straddles the circular portrait border.
@@ -1233,6 +1233,13 @@
     }
     if(['sim','timeout','foulout'].includes(state.phase))requestAnimationFrame(drawCourt);
     else frameRunning=false;
+  }
+  function courtPlayerLabel(name){
+    const value=String(name??'').trim();
+    // Only a paired double-quoted nickname overrides the existing first-name label.
+    // Apostrophes in names (and inside nicknames) are not nickname delimiters.
+    const nickname=value.match(/"([^"]+)"|“([^”]+)”/);
+    return (nickname?.[1]??nickname?.[2])?.trim()||value.split(/\s+/)[0]||'PLAYER';
   }
   function drawInitials(ctx,p,x,y,ink='#fff'){ctx.textAlign='center';ctx.fillStyle=ink;ctx.font='900 17px system-ui';ctx.fillText(p.name.split(' ').map(a=>a[0]).slice(0,2).join(''),x,y+6);}
   $('court').addEventListener('click',e=>{
