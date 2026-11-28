@@ -50,7 +50,7 @@ test('v0.9.1: automatic $1 opener, pass and timeout awards, alternating opening 
         try { const r = await fetch(root + '/health'); return r.ok ? await r.json() : null; }
         catch { return null; }
       });
-      assert.equal(health.version, '1.1.0');
+      assert.equal(health.version, '1.2.0');
       const first = await post('/api/create', { name: 'Opening Team', format: 1 });
       const second = await post('/api/join', { code: first.code, name: 'Response Team' });
       const users = [first, second];

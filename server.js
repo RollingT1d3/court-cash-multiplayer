@@ -669,6 +669,7 @@ function leaveRoom(room,i,confirmed){
   else broadcast(room);
 }
 function action(room,i,data){
+  if(expireTrade(room,now()))broadcast(room);
   const t=room.teams[i],a=room.auction,SLOTS=Object.keys(t.slots);
   switch(data.type){
     case 'leave':{leaveRoom(room,i,data.confirmForfeit);break;}

@@ -5,9 +5,15 @@ export const TRADE_BUFFER_MS=3000,TRADE_DECISION_MS=20000;
 export const modeRules=mode=>mode==='advanced'?{mode:'advanced',spins:18,cap:10,min:8,slots:ADVANCED_SLOTS,gatorades:2}:{mode:'basic',spins:16,cap:8,min:8,slots:BASIC_SLOTS,gatorades:0};
 export function compactSlots(team){
  const keys=Object.keys(team.slots),owned=new Set(team.roster),seen=new Set();
- const occupied=keys.map(k=>team.slots[k]).filter(id=>owned.has(id)&&!seen.has(id)&&seen.add(id));
- for(const id of team.roster)if(!seen.has(id)){occupied.push(id);seen.add(id);}
- for(const [i,k] of keys.entries())team.slots[k]=occupied[i]||null;
+ // Preserve surviving players' assigned positions wherever possible; fill holes
+ // from the unassigned players and overflow bench slots.
+ for(const [i,k] of keys.entries()){
+  const id=team.slots[k];
+  if(i<team.roster.length&&owned.has(id)&&!seen.has(id))seen.add(id);
+  else team.slots[k]=null;
+ }
+ const unassigned=team.roster.filter(id=>!seen.has(id));
+ for(const k of keys.slice(0,team.roster.length))if(!team.slots[k])team.slots[k]=unassigned.shift();
 }
 function checkTradePhase(room){if(room.mode!=='advanced'||room.phase!=='lineup'||room.gameNumber!==0)throw Error('Trades are only available before the first Advanced game.');}
 function validateTrade(room,offer){

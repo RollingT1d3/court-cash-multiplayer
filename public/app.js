@@ -447,14 +447,14 @@
       return;
     }
     if(state.phase==='wheel'){
-      center.innerHTML=`<div class="smallcaps">SPIN ${state.spinIndex+1}</div><h2 class="auction-heading">THE WHEEL IS SPINNING</h2><p class="auction-sub">${state.remaining.length} players left in the pool</p>${wheelMarkup()}
+      center.innerHTML=`<div class="smallcaps">SPIN ${state.spinIndex+1}/${advanced()?18:16}</div><h2 class="auction-heading">THE WHEEL IS SPINNING</h2><p class="auction-sub">${state.remaining.length} players left in the pool</p>${wheelMarkup()}
       <p class="wheel-caption">Each player is weighted by their configured wheel probability.</p>`;
       drawWheel();return;
     }
     if(state.phase==='auction'){
       const p=player(state.auction?.playerId);
       if(!p)return;
-      center.innerHTML=`<div class="smallcaps">SPIN ${state.spinIndex+1} • PLAYER ON THE BLOCK</div><h2 class="auction-heading">THE AUCTION</h2>
+      center.innerHTML=`<div class="smallcaps">SPIN ${state.spinIndex+1}/${advanced()?18:16} • PLAYER ON THE BLOCK</div><h2 class="auction-heading">THE AUCTION</h2>
         ${playerCard(p)}${bidUI(state.auction)}`;
       for(const d of center.querySelectorAll('[data-cat]'))d.addEventListener('toggle',()=>{if(d.open)expanded.add(d.dataset.cat);else expanded.delete(d.dataset.cat);});
       $('submit-bid')?.addEventListener('click',()=>{
@@ -469,7 +469,7 @@
     }
     if(state.phase==='placement'){
       const p=player(state.pending.playerId);const owner=state.pending.winner;
-      center.innerHTML=`<div class="smallcaps">SOLD • SPIN ${state.spinIndex}</div><h2 class="auction-heading">${esc(state.teams[owner].name)} GETS THE PICK!</h2>
+      center.innerHTML=`<div class="smallcaps">SOLD • SPIN ${state.spinIndex}/${advanced()?18:16}</div><h2 class="auction-heading">${esc(state.teams[owner].name)} GETS THE PICK!</h2>
         <button class="pick-player" id="pick-new" type="button" ${isMine(owner)?'':'disabled'} style="position:relative;background:transparent;padding:0">${portrait(p,'xl',owner===0?'blue':'red',true)}${badge(p)}</button>
         <h2 style="margin:10px 0">${esc(p.name)}</h2><p class="auction-sub">${isMine(owner)?'Drag this player into a position circle, or click the portrait and then the circle. Occupied spots send the replaced player to an empty bench spot first. Drag existing headshots to swap.':'Waiting for the drafting team to place their player.'}</p>
         ${isMine(owner)?'<button id="next-spin" class="primary">NEXT SPIN →</button>':''}
