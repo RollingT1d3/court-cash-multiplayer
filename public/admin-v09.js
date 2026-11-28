@@ -354,7 +354,7 @@
     const legacyCount=Object.keys(weights).length;
     const legacy=Array.from({length:legacyCount},(_,i)=>'p'+String(i+1).padStart(3,'0'));
     const ids=new Set(roster.map(p=>p.id));
-    if([200,217,250,268].includes(legacyCount)&&legacyCount<roster.length&&legacy.every(id=>ids.has(id)&&Object.hasOwn(weights,id))){
+    if([200,217,250,268,300].includes(legacyCount)&&legacyCount<roster.length&&legacy.every(id=>ids.has(id)&&Object.hasOwn(weights,id))){
       weights=Object.fromEntries(roster.map(p=>[p.id,Object.hasOwn(weights,p.id)?weights[p.id]:0]));
     }
     if(Object.keys(weights).length!==roster.length||roster.some(p=>!Object.hasOwn(weights,p.id)||units(weights[p.id])===null))throw Error('Backup does not match the current roster or contains invalid odds.');

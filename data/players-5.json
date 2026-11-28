@@ -1,0 +1,370 @@
+[
+  {
+    "id": "p301",
+    "name": "Buddy",
+    "positions": [
+      "SF",
+      "PF"
+    ],
+    "heightInches": 81,
+    "archetype": "Your Friend",
+    "overall": 84,
+    "weight": 0,
+    "image": "/images/p301.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 0,
+      "post": 40,
+      "ft": 90,
+      "mid": 95,
+      "three": 75,
+      "fades": 30,
+      "passing": 100,
+      "dribbling": 70,
+      "paintDef": 85,
+      "perimeterDef": 85,
+      "block": 65,
+      "steal": 50,
+      "rebound": 99,
+      "strength": 65,
+      "speed": 99,
+      "iq": 90,
+      "teamwork": 90,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.49,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p302",
+    "name": "Zade “Big Dukey” Grey",
+    "positions": [
+      "PF",
+      "SF"
+    ],
+    "heightInches": 78,
+    "archetype": "Playmaking Slasher",
+    "overall": 83,
+    "weight": 0,
+    "image": "/images/p302.webp",
+    "stats": {
+      "layup": 88,
+      "dunk": 98,
+      "post": 88,
+      "ft": 75,
+      "mid": 70,
+      "three": 65,
+      "fades": 80,
+      "passing": 88,
+      "dribbling": 79,
+      "paintDef": 75,
+      "perimeterDef": 75,
+      "block": 75,
+      "steal": 45,
+      "rebound": 80,
+      "strength": 89,
+      "speed": 89,
+      "iq": 75,
+      "teamwork": 90,
+      "stamina": 79
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.46,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p303",
+    "name": "Dame Tino",
+    "positions": [
+      "SF",
+      "SG"
+    ],
+    "heightInches": 77,
+    "archetype": "2-Way Playmaker",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p303.webp",
+    "stats": {
+      "layup": 0,
+      "dunk": 0,
+      "post": 0,
+      "ft": 99,
+      "mid": 75,
+      "three": 75,
+      "fades": 50,
+      "passing": 90,
+      "dribbling": 85,
+      "paintDef": 80,
+      "perimeterDef": 90,
+      "block": 75,
+      "steal": 90,
+      "rebound": 75,
+      "strength": 70,
+      "speed": 80,
+      "iq": 85,
+      "teamwork": 90,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.43,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p304",
+    "name": "Martin Bogg",
+    "positions": [
+      "PF",
+      "C"
+    ],
+    "heightInches": 82,
+    "archetype": "2-Way Stretch Big",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p304.webp",
+    "stats": {
+      "layup": 50,
+      "dunk": 70,
+      "post": 70,
+      "ft": 75,
+      "mid": 75,
+      "three": 85,
+      "fades": 50,
+      "passing": 75,
+      "dribbling": 45,
+      "paintDef": 89,
+      "perimeterDef": 79,
+      "block": 85,
+      "steal": 75,
+      "rebound": 89,
+      "strength": 85,
+      "speed": 65,
+      "iq": 90,
+      "teamwork": 80,
+      "stamina": 80
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.49,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p305",
+    "name": "Che Lee",
+    "positions": [
+      "SF",
+      "SG"
+    ],
+    "heightInches": 75,
+    "archetype": "2-Way Slasher",
+    "overall": 77,
+    "weight": 0,
+    "image": "/images/p305.webp",
+    "stats": {
+      "layup": 90,
+      "dunk": 0,
+      "post": 70,
+      "ft": 90,
+      "mid": 71,
+      "three": 60,
+      "fades": 50,
+      "passing": 79,
+      "dribbling": 73,
+      "paintDef": 65,
+      "perimeterDef": 85,
+      "block": 75,
+      "steal": 85,
+      "rebound": 75,
+      "strength": 70,
+      "speed": 79,
+      "iq": 79,
+      "teamwork": 90,
+      "stamina": 80
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.48,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p306",
+    "name": "Subunés Thompson",
+    "positions": [
+      "PF",
+      "C"
+    ],
+    "heightInches": 83,
+    "archetype": "Stretch Big",
+    "overall": 79,
+    "weight": 0,
+    "image": "/images/p306.webp",
+    "stats": {
+      "layup": 60,
+      "dunk": 75,
+      "post": 75,
+      "ft": 85,
+      "mid": 85,
+      "three": 85,
+      "fades": 80,
+      "passing": 78,
+      "dribbling": 58,
+      "paintDef": 75,
+      "perimeterDef": 70,
+      "block": 79,
+      "steal": 60,
+      "rebound": 80,
+      "strength": 80,
+      "speed": 65,
+      "iq": 87,
+      "teamwork": 88,
+      "stamina": 89
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.44,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p307",
+    "name": "Luke Toot",
+    "positions": [
+      "SG",
+      "SF"
+    ],
+    "heightInches": 78,
+    "archetype": "2-Way Mid-Range Master",
+    "overall": 81,
+    "weight": 0,
+    "image": "/images/p307.webp",
+    "stats": {
+      "layup": 50,
+      "dunk": 75,
+      "post": 50,
+      "ft": 89,
+      "mid": 90,
+      "three": 80,
+      "fades": 50,
+      "passing": 79,
+      "dribbling": 79,
+      "paintDef": 80,
+      "perimeterDef": 87,
+      "block": 77,
+      "steal": 77,
+      "rebound": 80,
+      "strength": 70,
+      "speed": 75,
+      "iq": 79,
+      "teamwork": 89,
+      "stamina": 80
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.47,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p308",
+    "name": "Bob Macc",
+    "positions": [
+      "SG"
+    ],
+    "heightInches": 76,
+    "archetype": "Mid-Range Master",
+    "overall": 76,
+    "weight": 0,
+    "image": "/images/p308.webp",
+    "stats": {
+      "layup": 75,
+      "dunk": 0,
+      "post": 55,
+      "ft": 85,
+      "mid": 98,
+      "three": 75,
+      "fades": 40,
+      "passing": 75,
+      "dribbling": 65,
+      "paintDef": 50,
+      "perimeterDef": 65,
+      "block": 50,
+      "steal": 70,
+      "rebound": 65,
+      "strength": 40,
+      "speed": 80,
+      "iq": 70,
+      "teamwork": 98,
+      "stamina": 85
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.48,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  },
+  {
+    "id": "p309",
+    "name": "Hunter “Shotgun” Williams",
+    "positions": [
+      "SF",
+      "PF"
+    ],
+    "heightInches": 80,
+    "archetype": "2-Way Playmaking Mid-Range Master",
+    "overall": 88,
+    "weight": 0,
+    "image": "/images/p309.webp",
+    "stats": {
+      "layup": 73,
+      "dunk": 73,
+      "post": 50,
+      "ft": 79,
+      "mid": 100,
+      "three": 79,
+      "fades": 40,
+      "passing": 95,
+      "dribbling": 85,
+      "paintDef": 83,
+      "perimeterDef": 93,
+      "block": 83,
+      "steal": 83,
+      "rebound": 85,
+      "strength": 80,
+      "speed": 79,
+      "iq": 90,
+      "teamwork": 95,
+      "stamina": 90
+    },
+    "courtPortrait": {
+      "crop": {
+        "centerX": 0.48,
+        "top": 0,
+        "width": 0.44
+      }
+    }
+  }
+]
