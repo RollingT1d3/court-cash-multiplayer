@@ -1,7 +1,7 @@
 // V1.2 mode and resource rules. All mutations are server authoritative.
 export const BASIC_SLOTS=['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
 export const ADVANCED_SLOTS=[...BASIC_SLOTS,'Bench 3','Bench 4'];
-export const TRADE_BUFFER_MS=3000,TRADE_DECISION_MS=20000;
+export const TRADE_BUFFER_MS=3000,TRADE_DECISION_MS=30000;
 export const modeRules=mode=>mode==='advanced'?{mode:'advanced',spins:18,cap:10,min:8,slots:ADVANCED_SLOTS,gatorades:2}:{mode:'basic',spins:16,cap:8,min:8,slots:BASIC_SLOTS,gatorades:0};
 export function compactSlots(team){
  const keys=Object.keys(team.slots),owned=new Set(team.roster),seen=new Set();

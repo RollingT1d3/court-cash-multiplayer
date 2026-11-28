@@ -507,17 +507,32 @@
     if(!canChange) $('ready-btn').disabled=true;
   }
   let tradeDraft={give:new Set(),get:new Set(),giveG:0,getG:0},tradeRoom=null;
+  function tradeDetailsButton(p){
+    return `<button type="button" class="bench-details-button trade-details-button" data-trade-details="${esc(p.id)}" aria-label="View ${esc(p.name)}'s player details" title="Player details">⋯</button>`;
+  }
+  function showTradeDetails(id){
+    const p=player(id);if(!p||state.phase!=='lineup'||!advanced())return;
+    const dialog=$('trade-details-dialog');
+    $('trade-details-title').textContent=p.name;
+    $('trade-details-content').innerHTML=`<div class="profile"><div style="position:relative;flex:none">${portrait(p,'med','blue',true)}${badge(p)}</div><div class="profile-details"><p><strong>OVR:</strong> ${p.overall} • <strong>POS:</strong> ${esc(p.positions.join('/'))}</p><p><strong>HEIGHT:</strong> ${formatHeight(p.heightInches)}</p><p>${esc(p.archetype)}</p></div></div>${weightedRows(p,true)}`;
+    if(!dialog.open)dialog.showModal();
+    dialog.scrollTop=0;
+    updateTradeClock();
+  }
+  $('trade-details-close').addEventListener('click',()=>$('trade-details-dialog').close());
+  $('trade-details-dialog').addEventListener('click',e=>{if(e.target===$('trade-details-dialog'))$('trade-details-dialog').close();});
   function tradeMarkup(){
     if(tradeRoom!==state.code){tradeRoom=state.code;tradeDraft={give:new Set(),get:new Set(),giveG:0,getG:0};}
     const t=state.trade,notice=state.tradeNotice?'<p class="tiny">'+esc(state.tradeNotice)+'</p>':'';
     if(state.tradeUsed)return '<section class="trade-panel"><h3>TRADING CLOSED</h3>'+notice+'<p class="tiny">One accepted trade per draft.</p></section>';
-    const assets=a=>[...a.players.map(id=>esc(player(id)?.name)),a.gatorades?a.gatorades+' Gatorade(s)':''].filter(Boolean).join(', ')||'Nothing';
-    if(t)return `<section class="trade-panel"><h3>${t.from===state.you?'TRADE SENT':'INCOMING TRADE'}</h3><p><b>${esc(state.teams[t.from].name)} gives:</b> ${assets(t.give)}</p><p><b>${esc(state.teams[1-t.from].name)} gives:</b> ${assets(t.get)}</p><p class="tiny" data-trade-clock></p>${t.from!==state.you?'<div class="flex-row"><button class="primary" id="trade-accept" disabled>ACCEPT</button><button class="danger" id="trade-deny" disabled>DENY</button></div>':'<p class="tiny">Waiting for opponent.</p>'}</section>`;
-    const options=(side,team,selected,g)=>`<div><strong>${side==='give'?'YOU OFFER':'YOU REQUEST'}</strong><div class="trade-options">${team.roster.map(id=>`<label><input type="checkbox" data-trade-side="${side}" value="${esc(id)}" ${selected.has(id)?'checked':''}> ${esc(player(id).name)} · ${player(id).overall}</label>`).join('')}</div><label>GATORADES<select data-trade-g="${side}">${Array.from({length:team.gatorades+1},(_,i)=>`<option value="${i}" ${i===g?'selected':''}>${i}</option>`).join('')}</select></label></div>`;
-    return `<section class="trade-panel"><h3>REQUEST TRADE</h3>${notice}<p class="tiny">One accepted trade total. Each team must retain 8–10 players.</p><div class="trade-columns">${options('give',my(),tradeDraft.give,tradeDraft.giveG)}${options('get',state.teams[1-state.you],tradeDraft.get,tradeDraft.getG)}</div><button class="secondary full" id="trade-send">SEND TRADE REQUEST</button></section>`;
+    const assets=a=>[...a.players.map(id=>{const p=player(id);return p?`<div class="trade-player-row"><span>${esc(p.name)} · ${p.overall} OVR</span>${tradeDetailsButton(p)}</div>`:'';}),a.gatorades?`<div class="trade-asset">⚡ ${a.gatorades} Gatorade(s)</div>`:''].filter(Boolean).join('')||'<div class="tiny">Nothing</div>';
+    if(t)return `<section class="trade-panel"><h3>${t.from===state.you?'TRADE SENT':'INCOMING TRADE'}</h3><div class="trade-offer-assets"><b>${esc(state.teams[t.from].name)} gives:</b>${assets(t.give)}</div><div class="trade-offer-assets"><b>${esc(state.teams[1-t.from].name)} gives:</b>${assets(t.get)}</div><p class="tiny" data-trade-clock></p>${t.from!==state.you?'<div class="flex-row"><button class="primary" id="trade-accept" disabled>ACCEPT</button><button class="danger" id="trade-deny" disabled>DENY</button></div>':'<p class="tiny">Waiting for opponent.</p>'}</section>`;
+    const options=(side,team,selected,g)=>`<div><strong>${side==='give'?'YOU OFFER':'YOU REQUEST'}</strong><div class="trade-options">${team.roster.map(id=>{const p=player(id);return `<div class="trade-player-row"><label><input type="checkbox" data-trade-side="${side}" value="${esc(id)}" ${selected.has(id)?'checked':''}><span>${esc(p.name)} · ${p.overall}</span></label>${tradeDetailsButton(p)}</div>`;}).join('')}</div><label>GATORADES<select data-trade-g="${side}">${Array.from({length:team.gatorades+1},(_,i)=>`<option value="${i}" ${i===g?'selected':''}>${i}</option>`).join('')}</select></label></div>`;
+    return `<section class="trade-panel"><h3>REQUEST TRADE</h3>${notice}<p class="tiny">One accepted trade total. Each team must retain 8–10 players. Click ⋯ to inspect any player. Recipients have 30 seconds to decide after a 3-second buffer.</p><div class="trade-columns">${options('give',my(),tradeDraft.give,tradeDraft.giveG)}${options('get',state.teams[1-state.you],tradeDraft.get,tradeDraft.getG)}</div><button class="secondary full" id="trade-send">SEND TRADE REQUEST</button></section>`;
   }
   function bindTrade(){
     const panel=$('schemes-center');
+    for(const btn of panel.querySelectorAll('[data-trade-details]'))btn.addEventListener('click',e=>{e.stopPropagation();showTradeDetails(btn.dataset.tradeDetails);});
     for(const input of panel.querySelectorAll('[data-trade-side]'))input.addEventListener('change',()=>{const set=tradeDraft[input.dataset.tradeSide];input.checked?set.add(input.value):set.delete(input.value);});
     for(const input of panel.querySelectorAll('[data-trade-g]'))input.addEventListener('change',()=>{tradeDraft[input.dataset.tradeG+'G']=Number(input.value);});
     $('trade-send')?.addEventListener('click',()=>act('tradeOffer',{give:{players:[...tradeDraft.give],gatorades:tradeDraft.giveG},get:{players:[...tradeDraft.get],gatorades:tradeDraft.getG}}));
@@ -525,9 +540,11 @@
     updateTradeClock();
   }
   function updateTradeClock(){
-    const t=state?.trade,label=document.querySelector('[data-trade-clock]');if(!t||!label)return;
+    const t=state?.trade,labels=document.querySelectorAll('[data-trade-clock]');
+    if(!t){for(const label of labels){label.hidden=true;label.textContent='';}return;}
     const ms=Date.now()-syncOffset,buffer=ms<t.acceptAt;
-    label.textContent=buffer?'Review buffer: '+Math.ceil((t.acceptAt-ms)/1000)+'s':'Decision time: '+Math.max(0,Math.ceil((t.expiresAt-ms)/1000))+'s';
+    const message=buffer?'Review buffer: '+Math.ceil((t.acceptAt-ms)/1000)+'s':'Decision time: '+Math.max(0,Math.ceil((t.expiresAt-ms)/1000))+'s';
+    for(const label of labels){label.hidden=false;label.textContent=message;label.classList.toggle('urgent',!buffer&&t.expiresAt-ms<=10000);}
     for(const id of ['trade-accept','trade-deny'])if($(id))$(id).disabled=buffer||ms>=t.expiresAt;
   }
   function updateTimeoutButton(){
@@ -700,6 +717,7 @@
   function render(force=false){
     if(!state)return;
     SLOTS=advanced()?ADVANCED_SLOTS:BASIC_SLOTS;
+    if($('trade-details-dialog').open&&(state.phase!=='lineup'||!advanced()||state.tradeUsed))$('trade-details-dialog').close();
     if(lastRoomPhase!==state.phase){currentPicked=null;if($('gatorade-dialog').open)$('gatorade-dialog').close();}
     if($('bench-details-dialog').open)refreshBenchDetails();
     if(state.phase==='intermission'&&lastRoomPhase!=='intermission')intermissionPrep=false;

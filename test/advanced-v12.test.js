@@ -10,11 +10,11 @@ test('trade buffer, rejection, expiry, ownership and one accepted trade',()=>{
  assert.throws(()=>offerTrade(fixture('basic',[8,8]),0,offer,100,'x'),/Advanced/);
  assert.throws(()=>offerTrade(r,0,{give:{players:[],gatorades:0},get:{players:['1p0'],gatorades:0}},100,'bad'),/8–10/);
  assert.throws(()=>offerTrade(r,0,{give:{players:['1p0'],gatorades:0}},100,'bad'),/Invalid trade players/);
- offerTrade(r,0,offer,100,'x');assert.ok(r.teams.every(t=>!t.ready));assert.throws(()=>answerTrade(r,1,{tradeId:'x',accept:true},3099),/buffer/);
+ const first=offerTrade(r,0,offer,100,'x');assert.equal(first.acceptAt,3100);assert.equal(first.expiresAt,33100);assert.ok(r.teams.every(t=>!t.ready));assert.throws(()=>answerTrade(r,1,{tradeId:'x',accept:true},3099),/buffer/);
  assert.throws(()=>answerTrade(r,0,{tradeId:'x',accept:true},3100),/recipient/);
  assert.equal(answerTrade(r,1,{tradeId:'x',accept:false},3100),false);assert.equal(r.tradeUsed,false);
- offerTrade(r,0,offer,4000,'y');assert.equal(expireTrade(r,27000),true);assert.equal(r.tradeUsed,false);
- offerTrade(r,0,offer,30000,'z');assert.equal(answerTrade(r,1,{tradeId:'z',accept:true},33000),true);assert.deepEqual(r.teams.map(t=>t.roster.length),[9,9]);assert.deepEqual(r.teams.map(t=>t.gatorades),[1,3]);assert.equal(new Set(r.teams.flatMap(t=>t.roster)).size,18);
+ offerTrade(r,0,offer,4000,'y');assert.equal(expireTrade(r,36999),false);assert.equal(expireTrade(r,37000),true);assert.equal(r.tradeUsed,false);
+ offerTrade(r,0,offer,30000,'z');assert.equal(answerTrade(r,1,{tradeId:'z',accept:true},62999),true);assert.deepEqual(r.teams.map(t=>t.roster.length),[9,9]);assert.deepEqual(r.teams.map(t=>t.gatorades),[1,3]);assert.equal(new Set(r.teams.flatMap(t=>t.roster)).size,18);
  for(const t of r.teams)assert.deepEqual(new Set(Object.values(t.slots).filter(Boolean)),new Set(t.roster));
  assert.throws(()=>offerTrade(r,0,offer,34000,'again'),/already been used/);
 });

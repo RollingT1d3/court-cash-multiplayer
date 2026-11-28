@@ -27,7 +27,7 @@ test('Advanced room drafts 18, trades two for one with Gatorade and plays with f
   }
   let x=await state(a);assert.equal(x.phase,'lineup');assert.equal(x.spinIndex,18);assert.deepEqual(x.teams.map(t=>t.roster.length),[10,8]);assert.deepEqual(x.teams.map(t=>t.gatorades),[2,2]);
   const offer={give:{players:x.teams[0].roster.slice(-2),gatorades:1},get:{players:x.teams[1].roster.slice(-1),gatorades:0}};
-  await act(a,'tradeOffer',offer);x=await state(a);const id=x.trade.id;assert.equal(x.trade.expiresAt-x.trade.acceptAt,20000);
+  await act(a,'tradeOffer',offer);x=await state(a);const id=x.trade.id;assert.equal(x.trade.expiresAt-x.trade.acceptAt,30000);
   await assert.rejects(()=>act(b,'tradeAnswer',{tradeId:id,accept:true}),/buffer/);
   await assert.rejects(()=>act(a,'ready'),/pending trade/);
   await delay(3050);await act(b,'tradeAnswer',{tradeId:id,accept:false});assert.equal((await state(a)).tradeUsed,false);
