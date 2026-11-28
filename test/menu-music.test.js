@@ -21,3 +21,24 @@ test('music uses one loop across splash and menu, fades in rooms, follows master
  e.setMuted(true);assert.equal(gains[0].gain.value,0);e.setMuted(false);e.setVolume(.5);assert.equal(gains[0].gain.value,.325);
  const app=read('public/app.js');assert.match(app,/function connect\(\)\{\s*audio\?\.setMenuMusic\(false\)/);assert.match(app,/if\(!identity\)\{audio\?\.setMenuMusic\(true\);audio\?\.unlock\(\);\}/);
 });
+
+test('suspended title music can be unlocked by a separate gesture, and persisted mute is respected',async()=>{
+ let ctx,allowed=false;const states=[],sources=[],saved=new Map();
+ class Audio{constructor(){ctx=this;this.sampleRate=22050;this.currentTime=0;this.state='suspended';this.destination={};}
+ addEventListener(k,f){this.changed=f;}
+ createGain(){return {gain:{value:0,setTargetAtTime(v){this.value=v}},connect(){},disconnect(){}};}
+ createBuffer(...args){return buffer(...args);}
+ createBufferSource(){const s={connect(){},start(){},disconnect(){}};sources.push(s);return s;}
+ resume(){if(!allowed)return Promise.reject(new Error('autoplay blocked'));this.state='running';this.changed?.();return Promise.resolve();}
+ }
+ const e=createEngine({AudioContext:Audio,localStorage:{getItem:k=>saved.get(k),setItem:(k,v)=>saved.set(k,v)},clearTimeout(){}});
+ e.onMusicStatus(s=>states.push(s));e.setMenuMusic(true);e.unlock();await Promise.resolve();
+ assert.equal(e.musicStatus(),'blocked');assert.equal(ctx.state,'suspended');
+ allowed=true;e.enableMusic();await Promise.resolve();assert.equal(e.musicStatus(),'playing');assert.equal(sources.length,1);
+ e.setMuted(true);assert.equal(e.musicStatus(),'muted');e.unlock();assert.equal(e.musicStatus(),'muted');
+ e.enableMusic();assert.equal(e.musicStatus(),'playing');assert.equal(sources.length,1);
+ e.setVolume(0);assert.equal(e.musicStatus(),'muted');e.enableMusic();assert.equal(e.getSettings().volume,.45);
+ assert.ok(states.includes('blocked')&&states.includes('playing')&&states.includes('muted'));
+ assert.match(read('public/index.html'),/id="splash-sound"/);
+ assert.match(read('public/app.js'),/titleSound\?\.addEventListener\('click'/);
+});

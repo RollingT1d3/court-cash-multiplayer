@@ -84,11 +84,27 @@
     $('sound-mute').setAttribute('aria-pressed',String(s.muted));
   }
   if(audio){
+    const titleSound=$('splash-sound');
+    function syncTitleSound(status){
+      if(!titleSound)return;
+      titleSound.hidden=status==='unavailable';
+      titleSound.textContent=status==='playing'?'🔊 Mute music':status==='muted'?'🔇 Enable music':'♫ Enable music';
+      titleSound.setAttribute('aria-label',status==='playing'?'Mute title music':'Enable title music');
+    }
+    audio.onMusicStatus(syncTitleSound);
+    titleSound?.addEventListener('click',()=>{
+      if(audio.musicStatus()==='playing')audio.setMuted(true);
+      else audio.enableMusic();
+      syncAudioControls();
+    });
     syncAudioControls();
     $('sound-volume').addEventListener('input',e=>{audio.unlock();audio.setVolume(Number(e.target.value)/100);syncAudioControls();});
     $('sound-mute').addEventListener('click',()=>{audio.unlock();audio.setMuted(!audio.getSettings().muted);syncAudioControls();});
-    document.addEventListener('pointerdown',()=>audio.unlock(),{passive:true});
-    document.addEventListener('keydown',()=>audio.unlock());
+    const unlockOnGesture=e=>{if(titleSound&&titleSound.contains(e.target))return;audio.unlock();};
+    document.addEventListener('pointerdown',unlockOnGesture,{passive:true});
+    document.addEventListener('pointerup',unlockOnGesture,{passive:true});
+    document.addEventListener('click',unlockOnGesture);
+    document.addEventListener('keydown',unlockOnGesture);
   }
   const ANKLE_STUMBLE_MS=1050, ANKLE_REACTIONS_MS=1150, ANKLE_BANNER_MS=1900, POSTER_REACTIONS_MS=1900;
   // Fixed normalized positions for short comic reactions along the sidelines;
@@ -135,7 +151,6 @@
   function connect(){
     audio?.setMenuMusic(false);
     audio?.reset();
-    audio?.setMenuMusic(false);
     if(stream)stream.close();
     $('status-label').textContent='Connecting…';
     stream=new EventSource(`/events?code=${encodeURIComponent(identity.code)}&token=${encodeURIComponent(identity.token)}`);

@@ -115,33 +115,46 @@
   function createEngine(win){
     let prefs;try{prefs=settings(win.localStorage);}catch{prefs={volume:.45,muted:false};}
     let ctx=null,master=null,previous=null,noiseBuffer=null;
-    let menuEnabled=false,musicSource=null,musicGain=null;
+    let menuEnabled=false,musicSource=null,musicGain=null,musicListener=null;
+    function musicStatus(){
+      if(!(win.AudioContext||win.webkitAudioContext))return 'unavailable';
+      if(prefs.muted||!prefs.volume)return 'muted';
+      return ctx?.state==='running'&&musicSource&&menuEnabled?'playing':'blocked';
+    }
+    function notifyMusic(){try{musicListener?.(musicStatus());}catch{}}
+    function onMusicStatus(listener){musicListener=listener;notifyMusic();}
+    function enableMusic(){if(prefs.muted)setMuted(false);if(!prefs.volume)setVolume(.45);unlock();}
     const sources=new Set(),timers=new Set();
     function updateGain(){if(master&&ctx)master.gain.setTargetAtTime(prefs.muted?0:prefs.volume*.65,ctx.currentTime,.012);}
-    function persist(){try{win.localStorage.setItem(KEY,JSON.stringify(prefs));}catch{}updateGain();}
+    function persist(){try{win.localStorage.setItem(KEY,JSON.stringify(prefs));}catch{}updateGain();notifyMusic();}
     function syncMusic(){
       if(!ctx||!master)return;
       if(menuEnabled&&!musicSource){
         musicGain=ctx.createGain();musicGain.gain.value=0;musicGain.connect(master);
-        musicSource=ctx.createBufferSource();musicSource.buffer=menuLoop(ctx);musicSource.loop=true;musicSource.connect(musicGain);musicSource.start();
+        const source=ctx.createBufferSource();source.buffer=menuLoop(ctx);source.loop=true;source.connect(musicGain);
+        try{source.start();musicSource=source;}catch(error){try{source.disconnect();musicGain.disconnect();}catch{}musicGain=null;throw error;}
       }
       if(musicGain)musicGain.gain.setTargetAtTime(menuEnabled?.38:0,ctx.currentTime,.16);
     }
-    function setMenuMusic(enabled){menuEnabled=!!enabled;try{syncMusic();}catch{}}
+    function setMenuMusic(enabled){menuEnabled=!!enabled;try{syncMusic();}catch{}notifyMusic();}
     function unlock(){
       try{
         if(!ctx){
           const Audio=win.AudioContext||win.webkitAudioContext;if(!Audio)return;
           ctx=new Audio();master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);
+          ctx.addEventListener?.('statechange',notifyMusic);
           const count=ctx.sampleRate*3;
           noiseBuffer=ctx.createBuffer(1,count,ctx.sampleRate);
           const d=noiseBuffer.getChannelData(0);let last=0;
           for(let i=0;i<d.length;i++){last=.08*(Math.random()*2-1)+.92*last;d[i]=.72*(Math.random()*2-1)+.28*last;}
           updateGain();
         }
-        if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+        if(ctx.state==='suspended'||ctx.state==='interrupted'){
+          // Invoke resume synchronously inside each eligible user gesture. Do not await a prior blocked attempt.
+          Promise.resolve(ctx.resume()).then(notifyMusic,notifyMusic);
+        }
         syncMusic();
-      }catch{}
+      }catch{}finally{notifyMusic();}
     }
     function attach(source,chain,start,stop){
       sources.add(source);source.onended=()=>{sources.delete(source);for(const node of chain)try{node.disconnect();}catch{}};
@@ -204,7 +217,7 @@
     function setVolume(v){prefs.volume=clamp(Number(v)||0,0,1);if(!prefs.volume)cancel();persist();return {...prefs};}
     function setMuted(v){prefs.muted=!!v;if(prefs.muted)cancel();persist();return {...prefs};}
     function reset(){cancel();previous=null;}
-    return Object.freeze({unlock,observe,reset,play,setVolume,setMuted,setMenuMusic,getSettings:()=>({...prefs})});
+    return Object.freeze({unlock,observe,reset,play,setVolume,setMuted,setMenuMusic,musicStatus,onMusicStatus,enableMusic,getSettings:()=>({...prefs})});
   }
   root.CourtCashAudio=Object.freeze({plan,settings,createEngine,menuLoop,names:Object.freeze(names)});
 })(typeof window==='undefined'?globalThis:window);

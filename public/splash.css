@@ -31,3 +31,7 @@ body.splash-open #shell{visibility:hidden}
 .splash-art.fallback .splash-play{background:#d0ff62;color:#080c14;font-size:clamp(14px,3vw,32px);font-weight:950}
 .splash-art.fallback .splash-play span{position:static;clip-path:none;width:auto;height:auto}
 @media(prefers-reduced-motion:reduce){.splash-art.reveal .splash-character{animation:none;opacity:0}.splash-art.reveal .splash-cast{animation:none;opacity:1}}
+
+.splash-sound[hidden]{display:none}
+.splash-sound{position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:4;background:#101824e8;border:1px solid #52647c;color:#d0ff62;font-size:12px;font-weight:800;padding:9px 12px;border-radius:9px;box-shadow:0 3px 12px #0005}
+.splash-sound:focus-visible{outline:3px solid #d0ff62;outline-offset:3px}
