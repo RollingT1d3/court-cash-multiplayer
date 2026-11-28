@@ -337,7 +337,7 @@
     "heightInches": 83,
     "archetype": "Rebounder",
     "overall": 79,
-    "weight": 0.21,
+    "weight": 0.31,
     "image": "/images/p209.webp",
     "stats": {
       "layup": 81,
@@ -623,7 +623,7 @@
     "heightInches": 76,
     "archetype": "Playmaking Shot Creator",
     "overall": 78,
-    "weight": 0.1,
+    "weight": 0.2,
     "image": "/images/p216.webp",
     "stats": {
       "layup": 70,
@@ -664,7 +664,7 @@
     "heightInches": 80,
     "archetype": "Well-Rounded Lockdown",
     "overall": 78,
-    "weight": 0.05,
+    "weight": 0.15,
     "image": "/images/p217.webp",
     "stats": {
       "layup": 75,
@@ -1444,7 +1444,7 @@
     "heightInches": 80,
     "archetype": "Playmaking Shot Creator",
     "overall": 79,
-    "weight": 0.2,
+    "weight": 0.3,
     "image": "/images/p236.webp",
     "stats": {
       "layup": 50,
@@ -1485,7 +1485,7 @@
     "heightInches": 77,
     "archetype": "Sharpshooter",
     "overall": 78,
-    "weight": 0.25,
+    "weight": 0.35,
     "image": "/images/p237.webp",
     "stats": {
       "layup": 75,
@@ -1568,7 +1568,7 @@
     "heightInches": 77,
     "archetype": "Lockdown",
     "overall": 79,
-    "weight": 0.25,
+    "weight": 0.3,
     "image": "/images/p239.webp",
     "stats": {
       "layup": 70,
@@ -1771,7 +1771,7 @@
     "heightInches": 74,
     "archetype": "2-Way Playmaker",
     "overall": 78,
-    "weight": 0.05,
+    "weight": 0.15,
     "image": "/images/p244.webp",
     "stats": {
       "layup": 70,
@@ -1893,7 +1893,7 @@
     "heightInches": 82,
     "archetype": "Stretch Big",
     "overall": 79,
-    "weight": 0.1,
+    "weight": 0.2,
     "image": "/images/p247.webp",
     "stats": {
       "layup": 70,
@@ -2056,7 +2056,7 @@
     "heightInches": 76,
     "archetype": "2-Way Three Level Scorer",
     "overall": 81,
-    "weight": 0.45,
+    "weight": 0.25,
     "image": "/images/p251.webp",
     "stats": {
       "layup": 80,
@@ -2507,7 +2507,7 @@
     "heightInches": 78,
     "archetype": "Offensive Engine",
     "overall": 83,
-    "weight": 0.4,
+    "weight": 0.3,
     "image": "/images/p262.webp",
     "stats": {
       "layup": 75,

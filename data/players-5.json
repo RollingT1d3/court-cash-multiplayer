@@ -9,7 +9,7 @@
     "heightInches": 81,
     "archetype": "Your Friend",
     "overall": 84,
-    "weight": 0,
+    "weight": 0.3,
     "image": "/images/p301.webp",
     "stats": {
       "layup": 75,
@@ -50,7 +50,7 @@
     "heightInches": 78,
     "archetype": "Playmaking Slasher",
     "overall": 83,
-    "weight": 0,
+    "weight": 0.2,
     "image": "/images/p302.webp",
     "stats": {
       "layup": 88,
@@ -91,7 +91,7 @@
     "heightInches": 77,
     "archetype": "2-Way Playmaker",
     "overall": 81,
-    "weight": 0,
+    "weight": 0.2,
     "image": "/images/p303.webp",
     "stats": {
       "layup": 0,
@@ -132,7 +132,7 @@
     "heightInches": 82,
     "archetype": "2-Way Stretch Big",
     "overall": 81,
-    "weight": 0,
+    "weight": 0.2,
     "image": "/images/p304.webp",
     "stats": {
       "layup": 50,
@@ -173,7 +173,7 @@
     "heightInches": 75,
     "archetype": "2-Way Slasher",
     "overall": 77,
-    "weight": 0,
+    "weight": 0.3,
     "image": "/images/p305.webp",
     "stats": {
       "layup": 90,
@@ -214,7 +214,7 @@
     "heightInches": 83,
     "archetype": "Stretch Big",
     "overall": 79,
-    "weight": 0,
+    "weight": 0.3,
     "image": "/images/p306.webp",
     "stats": {
       "layup": 60,
@@ -255,7 +255,7 @@
     "heightInches": 78,
     "archetype": "2-Way Mid-Range Master",
     "overall": 81,
-    "weight": 0,
+    "weight": 0.3,
     "image": "/images/p307.webp",
     "stats": {
       "layup": 50,
@@ -295,7 +295,7 @@
     "heightInches": 76,
     "archetype": "Mid-Range Master",
     "overall": 76,
-    "weight": 0,
+    "weight": 0.3,
     "image": "/images/p308.webp",
     "stats": {
       "layup": 75,
@@ -336,7 +336,7 @@
     "heightInches": 80,
     "archetype": "2-Way Playmaking Mid-Range Master",
     "overall": 88,
-    "weight": 0,
+    "weight": 0.3,
     "image": "/images/p309.webp",
     "stats": {
       "layup": 73,
