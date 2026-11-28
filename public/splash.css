@@ -1,4 +1,4 @@
-/* Opening screen: the two registered layers preserve the supplied composition. */
+/* Registered artwork layers and nine individually timed, clipped character regions. */
 #splash-screen[hidden]{display:none}
 #splash-screen{position:fixed;inset:0;z-index:500;display:grid;place-items:center;background:#080c14;overflow:hidden;isolation:isolate}
 body.splash-open{overflow:hidden}
@@ -6,8 +6,23 @@ body.splash-open #shell{visibility:hidden}
 .splash-art{position:relative;width:min(100vw,calc(100dvh * 1675 / 939));aspect-ratio:1675/939;max-height:100dvh}
 .splash-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
 .splash-cast{opacity:0}
-.splash-art.reveal .splash-cast{animation:cast-reveal 3000ms linear both}
-@keyframes cast-reveal{from{opacity:0}to{opacity:1}}
+.splash-character{position:absolute;inset:0;background:url('/images/splash-full.webp') center / 100% 100% no-repeat;pointer-events:none;opacity:0}
+.splash-art.reveal .splash-character{animation:character-reveal var(--duration) ease-in-out var(--delay) both}
+@keyframes character-reveal{from{opacity:0}to{opacity:1}}
+.splash-upper-left{--delay:0ms;--duration:2200ms;clip-path:polygon(0.00% 0.00%,13.50% 0.00%,13.50% 40.11%,8.40% 42.42%,0.00% 51.16%)}
+.splash-gorilla{--delay:250ms;--duration:2350ms;clip-path:polygon(13.50% 0.00%,35.00% 0.00%,35.00% 41.53%,13.50% 41.53%)}
+.splash-airborne{--delay:550ms;--duration:2450ms;clip-path:polygon(65.00% 0.00%,86.90% 0.00%,86.90% 34.22%,85.20% 38.68%,82.60% 42.25%,81.50% 42.42%,80.60% 40.64%,79.80% 39.57%,78.40% 38.68%,77.00% 38.50%,75.30% 39.75%,65.00% 40.82%)}
+.splash-upper-right{--delay:850ms;--duration:2500ms;clip-path:polygon(86.90% 0.00%,100.00% 0.00%,100.00% 39.93%,98.00% 39.93%,96.80% 38.15%,95.10% 37.25%,93.70% 36.01%,92.20% 34.58%,86.90% 34.22%)}
+.splash-blue-jersey{--delay:200ms;--duration:2600ms;clip-path:polygon(0.00% 51.16%,8.40% 42.42%,13.50% 41.53%,21.30% 41.53%,22.30% 62.75%,20.60% 66.49%,19.40% 70.41%,18.90% 75.04%,18.20% 80.93%,18.90% 86.81%,18.70% 92.16%,18.70% 100.00%,0.00% 100.00%)}
+.splash-black-jersey{--delay:900ms;--duration:2900ms;clip-path:polygon(21.30% 41.53%,38.90% 41.53%,42.40% 60.43%,42.50% 69.34%,41.00% 72.55%,39.70% 75.04%,38.70% 79.14%,38.60% 82.89%,39.20% 86.99%,37.60% 89.13%,35.90% 90.55%,35.00% 94.47%,35.30% 100.00%,18.70% 100.00%,18.70% 92.16%,18.90% 86.81%,18.20% 80.93%,18.90% 75.04%,19.40% 70.41%,20.60% 66.49%,22.30% 62.75%)}
+.splash-green-shirt{--delay:1450ms;--duration:2800ms;clip-path:polygon(58.20% 42.07%,73.40% 42.25%,75.00% 52.41%,75.70% 60.96%,76.00% 71.12%,75.30% 81.11%,76.00% 100.00%,61.60% 100.00%,61.10% 94.83%,61.50% 89.66%,61.40% 83.78%,60.00% 79.86%,58.50% 75.04%,58.50% 70.23%,57.80% 63.81%)}
+.splash-afro{--delay:1800ms;--duration:3000ms;clip-path:polygon(73.40% 42.25%,75.00% 39.75%,77.00% 38.50%,78.40% 38.68%,79.80% 39.57%,80.60% 40.64%,81.50% 42.42%,82.60% 42.25%,85.20% 38.68%,86.90% 34.22%,92.20% 34.58%,93.70% 36.01%,95.10% 37.25%,96.80% 38.15%,98.00% 39.93%,100.00% 39.93%,100.00% 100.00%,76.00% 100.00%,75.30% 81.11%,76.00% 71.12%,75.70% 60.96%,75.00% 52.41%)}
+.splash-clown{--delay:2350ms;--duration:3150ms;clip-path:polygon(38.90% 41.53%,42.40% 44.92%,58.20% 42.07%,57.80% 63.81%,58.50% 70.23%,58.50% 75.04%,60.00% 79.86%,61.40% 83.78%,61.50% 89.66%,61.10% 94.83%,61.60% 100.00%,35.30% 100.00%,35.00% 94.47%,35.90% 90.55%,37.60% 89.13%,39.20% 86.99%,38.60% 82.89%,38.70% 79.14%,39.70% 75.04%,41.00% 72.55%,42.50% 69.34%,42.40% 60.43%)}
+/* Once the final character finishes, display the exact uncut original to remove any clip-edge seams. */
+.splash-art.reveal .splash-cast{z-index:1;animation:cast-complete 5500ms steps(1,end) both}
+@keyframes cast-complete{from{opacity:0}to{opacity:1}}
+.splash-art.fallback.reveal .splash-cast{animation:none;opacity:1}
+.splash-art.fallback .splash-character{animation:none;opacity:0}
 /* The button follows the basketball's exact location in the image. */
 .splash-play{position:absolute;z-index:2;left:44.6%;top:13.6%;width:10.7%;height:18.8%;padding:0;border:0;background:transparent;border-radius:50%;cursor:pointer;transition:box-shadow .15s}
 .splash-play:hover{box-shadow:0 0 24px 4px #d0ff6255}
@@ -15,4 +30,4 @@ body.splash-open #shell{visibility:hidden}
 .splash-play span{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
 .splash-art.fallback .splash-play{background:#d0ff62;color:#080c14;font-size:clamp(14px,3vw,32px);font-weight:950}
 .splash-art.fallback .splash-play span{position:static;clip-path:none;width:auto;height:auto}
-@media(prefers-reduced-motion:reduce){.splash-art.reveal .splash-cast{animation-duration:1ms}}
+@media(prefers-reduced-motion:reduce){.splash-art.reveal .splash-character{animation:none;opacity:0}.splash-art.reveal .splash-cast{animation:none;opacity:1}}
