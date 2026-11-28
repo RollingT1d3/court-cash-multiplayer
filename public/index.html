@@ -29,7 +29,7 @@
   </section>
   <div id="shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-icon">🏀</span> COURT <b>CASH</b> <small>ALPHA v1.1</small></div>
+      <div class="brand"><span class="brand-icon">🏀</span> COURT <b>CASH</b> <small>ALPHA v1.2</small></div>
       <div class="topbar-tools"><div class="sound-controls" role="group" aria-label="Sound settings"><button id="sound-mute" type="button" aria-pressed="false">🔊 Mute</button><label for="sound-volume">Volume</label><input id="sound-volume" type="range" min="0" max="100" step="1" value="45" aria-label="Master volume"><output id="sound-value" for="sound-volume">45%</output></div><div class="status"><span id="status-dot" class="dot"></span><span id="status-label">Not in a room</span></div></div>
     </header>
     <main id="app">
@@ -51,6 +51,7 @@
           <form id="create-form" class="card">
             <h2>Create a room</h2>
             <label>YOUR TEAM NAME <input id="create-name" maxlength="28" required placeholder="e.g. The Rim Reapers" /></label>
+            <label>GAME MODE <select id="game-mode"><option value="basic">Basic — Classic Court Cash</option><option value="advanced">Advanced — Trades, 18 picks &amp; Gatorades</option></select></label>
             <label>MATCH FORMAT <select id="format"><option value="1">One game</option><option value="7">Best of 7</option></select></label>
             <button class="primary full" type="submit">CREATE PRIVATE ROOM →</button>
           </form>
@@ -61,7 +62,7 @@
             <button class="secondary full" type="submit">JOIN ROOM →</button>
           </form>
         </div>
-        <p class="tip">Draft from 200 official Court Cash players. Sound effects begin after your first interaction.</p>
+        <p class="tip">Draft from 300 official Court Cash players. Sound effects begin after your first interaction.</p>
       </section>
       <section id="gameview" class="hide" aria-live="polite">
         <div class="room-navigation"><button id="leave-room" class="leave-room" type="button">← Leave Room</button></div>
@@ -85,7 +86,7 @@
           <div id="scoreboard" class="scoreboard"></div>
           <div class="sim-layout">
             <div class="court-wrap"><canvas id="court" width="940" height="525" aria-label="Animated basketball court showing players as portrait markers"></canvas><p class="court-hint">Click a player on the court for live statistics. Four 10-minute quarters, with 3-minute overtime periods if tied.</p></div>
-            <aside class="sim-sidebar"><section id="player-focus" class="card compact"></section><section id="sim-events" class="card compact events"></section></aside>
+            <aside class="sim-sidebar"><section id="player-focus" class="card compact"></section><section id="sim-events" class="card compact events"></section><section id="advanced-game-roster" class="card compact" hidden></section></aside>
           </div>
           <div id="timeout-panel" class="hide"></div>
           <div id="foulout-panel" class="hide"></div>
@@ -183,6 +184,7 @@
       <div class="bench-details-header"><h2 id="bench-details-title">Player details</h2><button type="button" id="bench-details-close" class="ghost" aria-label="Close player details">✕</button></div>
       <div id="bench-details-content"></div>
     </dialog>
+    <dialog id="gatorade-dialog"><h3 id="gatorade-question"></h3><p id="gatorade-energy" class="gatorade-energy"></p><div class="flex-row"><button id="gatorade-confirm" class="primary" type="button">CONFIRM</button><button id="gatorade-cancel" class="secondary" type="button">CANCEL</button></div></dialog>
     <div id="toast" role="status" aria-live="polite"></div>
   </div>
   <script src="/splash.js"></script>

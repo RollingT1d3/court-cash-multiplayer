@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {modeRules,compactSlots,offerTrade,answerTrade,expireTrade,useGatorade} from './advanced-v12.js';
 import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-rules.js';
 import { fastBreakPlan } from './fast-break-rules.js';
 import { passCount, passPath, touchPriority, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
@@ -68,8 +69,8 @@ const sk = (id,keys) => keys.reduce((n,[key,w]) => n + rating(id,key)*w,0) / key
 const safeName = s => String(s || '').trim().slice(0,28).replace(/[<>]/g,'') || 'Team';
 const fmt = x => x === 7 ? 7 : 1;
 const other = i => 1-i;
-const isFilled = team => team.roster.length === 8;
-const account = room => room.teams.every(t=>t && isFilled(t));
+const isFilled = (team,room) => team.roster.length >= modeRules(room.mode).cap;
+const account = room => room.spinIndex>=modeRules(room.mode).spins && room.teams.every(t=>t&&t.roster.length>=8);
 const auth = (code,key) => {
   const room = ROOMS.get(String(code||'').toUpperCase());
   if (!room) throw Error('Room not found.');
@@ -77,13 +78,15 @@ const auth = (code,key) => {
   if (i<0) throw Error('Not authorized for this room.');
   return {room,i};
 };
-const teamNew = (name,key,color) => ({name:safeName(name),color,token:key,budget:5000,roster:[],slots:Object.fromEntries(SLOTS.map(s=>[s,null])),offense:OFFENSE[0],defense:DEFENSE[0],ready:false,wins:0,timeouts:TIMEOUTS_PER_GAME,connected:false,disconnectedAt:null,energy:{}});
-function create(name,format,color) {
+const teamNew = (name,key,color,mode='basic') => ({name:safeName(name),color,token:key,budget:5000,roster:[],slots:Object.fromEntries(modeRules(mode).slots.map(s=>[s,null])),gatorades:modeRules(mode).gatorades,gatoradeAllocation:modeRules(mode).gatorades,offense:OFFENSE[0],defense:DEFENSE[0],ready:false,wins:0,timeouts:TIMEOUTS_PER_GAME,connected:false,disconnectedAt:null,energy:{}});
+function create(name,format,color,requestedMode) {
+  const {mode,spins}=modeRules(requestedMode);
   let code;
   do {code=randomBytes(4).toString('hex').slice(0,6).toUpperCase();} while(ROOMS.has(code));
   const key=token();
   const weights=wheelStore.snapshot();
-  const room={weights,code,format:fmt(format),phase:'lobby',teams:[teamNew(name,key,teamColors.choose(color,0)),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.filter(p=>weights[p.id]>0).map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false],departed:[false,false]};
+  if(Object.values(weights).filter(w=>w>0).length<spins)throw Error('Not enough eligible players for this mode.');
+  const room={weights,code,mode,trade:null,tradeUsed:false,tradeNotice:'',format:fmt(format),phase:'lobby',teams:[teamNew(name,key,teamColors.choose(color,0),mode),null],lastActive:now(),listeners:[new Set(),new Set()],coinWinner:null,coinAt:0,spinIndex:0,remaining:PLAYERS.filter(p=>weights[p.id]>0).map(p=>p.id),wheel:null,auction:null,pending:null,play:null,game:null,gameNumber:0,log:[],timeout:null,foulout:null,result:null,rematchReady:[false,false],departed:[false,false]};
   ROOMS.set(code,room);return {code,token:key,teamIndex:0};
 }
 function join(code,name,color){
@@ -91,14 +94,14 @@ function join(code,name,color){
   if(!room)throw Error('That room code does not exist.');
   if(room.teams[1])throw Error('Room is already full.');
   if(room.phase!=='lobby')throw Error('That match has already started.');
-  const key=token();room.teams[1]=teamNew(name,key,teamColors.choose(color,1,room.teams[0].color));
+  const key=token();room.teams[1]=teamNew(name,key,teamColors.choose(color,1,room.teams[0].color),room.mode);
   room.phase='coinflip';room.coinWinner=randomInt(2);room.coinAt=now();room.lastActive=now();
   broadcast(room);
   return {code:room.code,token:key,teamIndex:1};
 }
 function publicState(room,i){
-  const removeSecret=t=>t?({name:t.name,color:t.color,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,connected:t.connected,energy:t.energy,fatigueRatings:Object.fromEntries(t.roster.map(id=>[id,fatigueAttributePreview(getPlayer(id).stats,t.energy[id]??100)]))}):null;
-  return {you:i,code:room.code,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS.map(p=>({...p,weight:room.weights[p.id]})),wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,timeoutControl:room.phase==='sim'?timeoutControl(room.game,room.play,SIM_MS,!!room.finishAnimation):null,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
+  const removeSecret=t=>t?({name:t.name,color:t.color,budget:t.budget,roster:t.roster,slots:t.slots,offense:t.offense,defense:t.defense,ready:t.ready,wins:t.wins,timeouts:t.timeouts,gatorades:t.gatorades,connected:t.connected,energy:t.energy,fatigueRatings:Object.fromEntries(t.roster.map(id=>[id,fatigueAttributePreview(getPlayer(id).stats,t.energy[id]??100)]))}):null;
+  return {you:i,code:room.code,mode:room.mode,trade:room.trade,tradeUsed:room.tradeUsed,tradeNotice:room.tradeNotice,format:room.format,phase:room.phase,teams:room.teams.map(removeSecret),coinWinner:room.coinWinner,coinAt:room.coinAt,spinIndex:room.spinIndex,remaining:room.remaining,players:PLAYERS.map(p=>({...p,weight:room.weights[p.id]})),wheel:room.wheel,auction:room.auction,pending:room.pending,play:room.play,game:room.game,timeoutControl:room.phase==='sim'?timeoutControl(room.game,room.play,SIM_MS,!!room.finishAnimation):null,gameNumber:room.gameNumber,log:room.log.slice(-14),timeout:room.timeout,foulout:room.foulout,result:room.result,rematchReady:room.rematchReady,departed:room.departed,serverTime:now()};
 }
 function broadcast(room){room.lastActive=now();for(let i=0;i<2;i++)for(let res of room.listeners[i]){try{res.write(`data: ${JSON.stringify(publicState(room,i))}\n\n`);}catch{room.listeners[i].delete(res);}}}
 function log(room,msg){room.log.push(msg);if(room.log.length>120)room.log.shift();}
@@ -114,7 +117,7 @@ function startSpin(room){
 function startAuction(room){
   const id=room.wheel.id;const [a,b]=room.teams;
   const open=(room.coinWinner + room.spinIndex)%2;
-  const available=room.teams.map(t=>!isFilled(t));
+  const available=room.teams.map(t=>!isFilled(t,room));
   let mode,chooser=null,recipient=null;
   if(!available[0]||!available[1]){mode='auto';recipient=available.indexOf(true);}
   else if(a.budget<100&&b.budget<100){mode='auto';recipient=open;}
@@ -130,7 +133,7 @@ function startAuction(room){
 }
 function award(room,winner,cents){
   const id=room.auction.playerId,t=room.teams[winner];
-  if(!t||t.roster.length>=8||t.budget<cents)throw Error('Invalid roster or funds.');
+  if(!t||t.roster.length>=modeRules(room.mode).cap||t.budget<cents)throw Error('Invalid roster or funds.');
   t.roster.push(id);t.budget-=cents;
   room.remaining=room.remaining.filter(x=>x!==id);
   room.spinIndex++;
@@ -139,7 +142,8 @@ function award(room,winner,cents){
   broadcast(room);
 }
 function assignSlot(t,id,slot,duringDraft=false){
-  if(!SLOTS.includes(slot)||!t.roster.includes(id))throw Error('Invalid player/slot.');
+  const SLOTS=Object.keys(t.slots);
+  if(!SLOTS.slice(0,duringDraft?SLOTS.length:t.roster.length).includes(slot)||!t.roster.includes(id))throw Error('Invalid player/slot.');
   const current=Object.entries(t.slots).find(([,value])=>value===id)?.[0];
   const displaced=t.slots[slot];
   if(current)t.slots[current]=displaced||null;
@@ -153,6 +157,7 @@ function assignSlot(t,id,slot,duringDraft=false){
   t.slots[slot]=id;
 }
 function fillSlots(t){
+  const SLOTS=Object.keys(t.slots);
   const assigned=new Set(Object.values(t.slots));
   for(const id of t.roster)if(!assigned.has(id)){
     const free=SLOTS.find(s=>!t.slots[s]);if(free){t.slots[free]=id;assigned.add(id);}
@@ -160,7 +165,7 @@ function fillSlots(t){
 }
 function finishDraft(room){
   room.phase='lineup';room.pending=null;room.auction=null;room.wheel=null;
-  room.teams.forEach(t=>{fillSlots(t);t.ready=false;});
+  room.teams.forEach(t=>{fillSlots(t);if(room.mode==='advanced')compactSlots(t);t.ready=false;});
   log(room,'Draft complete. Set lineups and schemes.');broadcast(room);
 }
 function freshStats(){return {pts:0,reb:0,ast:0,stl:0,blk:0,tov:0,fga:0,fgm:0,threeM:0,threeA:0,ftm:0,fta:0,pf:0,ankleBreaks:0,seconds:0};}
@@ -169,7 +174,7 @@ function startGame(room){
   for(const t of room.teams){t.timeouts=TIMEOUTS_PER_GAME;t.ready=false;t.energy=Object.fromEntries(t.roster.map(id=>[id,100]));}
   const stats=Object.fromEntries(room.teams.flatMap(t=>t.roster.map(id=>[id,freshStats()])));
   const active=room.teams.map(t=>SLOTS.slice(0,5).map(s=>t.slots[s]));
-  const bench=room.teams.map(t=>SLOTS.slice(5).map(s=>t.slots[s]));
+  const bench=room.teams.map(t=>Object.keys(t.slots).slice(5).map(s=>t.slots[s]).filter(Boolean));
   // Both starting C-slot players contest the opening tip. Other stats have no effect.
   const centerIds=active.map(five=>five[4]);
   const centerHeights=centerIds.map(id=>getPlayer(id)?.heightInches);
@@ -664,7 +669,7 @@ function leaveRoom(room,i,confirmed){
   else broadcast(room);
 }
 function action(room,i,data){
-  const t=room.teams[i],a=room.auction;
+  const t=room.teams[i],a=room.auction,SLOTS=Object.keys(t.slots);
   switch(data.type){
     case 'leave':{leaveRoom(room,i,data.confirmForfeit);break;}
     case 'bid':{
@@ -690,7 +695,7 @@ function action(room,i,data){
       const id=t.roster.find(pid=>String(pid)===String(data.playerId)),slot=String(data.slot);
       if(room.phase==='timeout'){
         const g=room.game;
-        if(!t.roster.includes(id) || !SLOTS.includes(slot))throw Error('Invalid lineup change.');
+        if(!t.roster.includes(id) || !SLOTS.slice(0,t.roster.length).includes(slot))throw Error('Invalid lineup change.');
         const slotIdx=SLOTS.indexOf(slot);
         // Keep the exact bench order, including swaps between two reserves.
         const slotPlayers=g.active[i].concat(g.bench[i]);
@@ -717,9 +722,14 @@ function action(room,i,data){
       if(data.defense!==undefined){if(!DEFENSE.includes(data.defense))throw Error('Unknown defense.');t.defense=data.defense;}
       broadcast(room);break;
     }
+    case 'tradeOffer':{offerTrade(room,i,data,now(),token());log(room,t.name+' sent a trade offer.');broadcast(room);break;}
+    case 'tradeAnswer':{answerTrade(room,i,data,now());log(room,room.tradeNotice);broadcast(room);break;}
+    case 'gatorade':{useGatorade(room,i,data.playerId,data.timeoutUntil,now());log(room,t.name+' gives '+getPlayer(data.playerId).name+' a Gatorade (+3 energy, capped at 100).');broadcast(room);break;}
     case 'ready':{
       if(!['lineup','intermission'].includes(room.phase))throw Error('Not preparing for a game.');
-      fillSlots(t);if(SLOTS.some(s=>!t.slots[s]))throw Error('Place all eight players first.');
+      if(room.trade)throw Error('Resolve the pending trade before starting.');
+      fillSlots(t);if(room.mode==='advanced')compactSlots(t);
+      if(t.roster.length<8||SLOTS.slice(0,t.roster.length).some(s=>!t.slots[s]))throw Error('Place all rostered players first.');
       t.ready=true;
       if(room.teams.every(x=>x.ready))startGame(room);else broadcast(room);break;
     }
@@ -730,7 +740,7 @@ function action(room,i,data){
       if(room.rematchReady.every(Boolean)){
         // Rematch keeps the drafted players, starts a fresh game/series and
         // resets the teams' series wins, timeouts, energy and game statistics.
-        room.teams.forEach(t=>{t.wins=0;t.ready=false;});
+        room.teams.forEach(t=>{t.wins=0;t.ready=false;t.gatorades=t.gatoradeAllocation;});
         room.gameNumber=0;
         startGame(room);
       }else broadcast(room);
@@ -791,6 +801,7 @@ setInterval(()=>{
   const ms=now();
   for(const room of ROOMS.values()){
     if(ms-room.lastActive>4*60*60*1000){ROOMS.delete(room.code);continue;}
+    if(expireTrade(room,ms))broadcast(room);
     if(room.phase==='coinflip'&&ms>=room.coinAt+COIN_MS)startSpin(room);
     if(room.phase==='wheel' && ms>=room.wheel.until)startAuction(room);
     if(room.phase==='auction'&&ms>=room.auction.deadline){
@@ -833,7 +844,7 @@ const server=http.createServer(async(req,res)=>{
   try{
     if(await adminAPI(req,res,url))return;
     if(req.method==='GET'&&url.pathname==='/health')return json(res,200,{ok:true,rooms:ROOMS.size,players:PLAYERS.length,version:BUILD_VERSION,gitCommit:process.env.RENDER_GIT_COMMIT||null});
-    if(req.method==='POST'&&url.pathname==='/api/create'){const v=await body(req);return json(res,200,create(v.name,v.format,v.color));}
+    if(req.method==='POST'&&url.pathname==='/api/create'){const v=await body(req);return json(res,200,create(v.name,v.format,v.color,v.mode));}
     if(req.method==='POST'&&url.pathname==='/api/join'){const v=await body(req);return json(res,200,join(v.code,v.name,v.color));}
     if(req.method==='POST'&&url.pathname==='/api/action'){
       const v=await body(req);const {room,i}=auth(v.code,v.token);action(room,i,v);return json(res,200,{ok:true});

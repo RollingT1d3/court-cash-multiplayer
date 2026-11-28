@@ -35,7 +35,10 @@
   $('team-color-auto').addEventListener('click',()=>chooseColor(null));
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('team-color-picker').hidden){toggleColorPicker(false);$('team-color-open').focus();}});
   document.addEventListener('click',e=>{if(!$('team-color-picker').hidden&&!$('team-color-picker').contains(e.target)&&!$('team-color-open').contains(e.target))toggleColorPicker(false);});
-  const SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
+  const BASIC_SLOTS = ['PG','SG','SF','PF','C','Sixth','Bench 1','Bench 2'];
+  const ADVANCED_SLOTS=[...BASIC_SLOTS,'Bench 3','Bench 4'];
+  let SLOTS=BASIC_SLOTS;
+  const advanced=()=>state?.mode==='advanced';
   const OFFENSE = ['Play Through Superstar','Play Through Stars','Team Ball','Live By the 3, Die by the 3','Paint Mash','Pure Chaos','Run & Gun','Old-School Buckets','Run For The Hills','Play Through Point'];
   const DEFENSE = ['Man-to-Man','Double the Star','Protect the Paint','Perimeter Secured','3-2 Zone','Full Court Press','Clog The Lanes','4-1 Zone','2-2-1 Zone','Box-and-One'];
   const OFFENSE_INFO = {
@@ -161,7 +164,7 @@
     };
   }
   $('create-form').addEventListener('submit',async e=>{
-    e.preventDefault();try{const result=await api('/api/create',{name:$('create-name').value,format:Number($('format').value),color:preferredColor});saveIdentity(result);}catch(err){toast(err.message);}
+    e.preventDefault();try{const result=await api('/api/create',{name:$('create-name').value,format:Number($('format').value),mode:$('game-mode').value,color:preferredColor});saveIdentity(result);}catch(err){toast(err.message);}
   });
   $('join-form').addEventListener('submit',async e=>{
     e.preventDefault();try{const result=await api('/api/join',{name:$('join-name').value,code:$('join-code').value.toUpperCase(),color:preferredColor});saveIdentity(result);}catch(err){toast(err.message);}
@@ -222,7 +225,7 @@
   }
   function rosterDisplaySlots(i){
     const t=state.teams[i];if(!t)return {};
-    if(state.phase==='timeout'&&state.game){
+    if(['sim','timeout','foulout'].includes(state.phase)&&state.game){
       const floor=state.game.active[i];const bench=state.game.bench?.[i]??t.roster.filter(id=>!floor.includes(id));
       return Object.fromEntries(SLOTS.map((s,j)=>[s,[...floor,...bench][j]||null]));
     }
@@ -264,7 +267,8 @@
     const t=state.teams[i];if(!t)return '<div class="team-panel">Waiting for a team…</div>';
     const side=i===0?'left':'right';const change=eligible()&&isMine(i);
     const roster=rosterDisplaySlots(i);
-    const rows=SLOTS.map(s=>{
+    const shownSlots=['lobby','coinflip','wheel','auction','placement'].includes(state.phase)?SLOTS:SLOTS.slice(0,t.roster.length);
+    const rows=shownSlots.map(s=>{
       const id=roster[s],p=player(id);
       const selected=id&&currentPicked===id&&change?'selected-slot':'';
       const row=`<button class="slot ${side} ${id?'owned':''} ${selected}" type="button" data-slot="${esc(s)}" data-team="${i}" ${change?'':'disabled'} aria-label="${esc(s)}: ${p?esc(p.name):'Empty'}">
@@ -273,8 +277,9 @@
       return p&&SLOTS.indexOf(s)>=5?`<div class="bench-roster-row">${row}${benchDetailsButton(p)}</div>`:row;
     }).join('');
     return `<div class="team-title"><strong>${esc(t.name)}</strong><span class="team-money">${money(t.budget)}</span></div>
-      <div class="smallcaps">${t.roster.length}/8 DRAFTED ${isMine(i)?' • YOUR TEAM':''}</div>
+      <div class="smallcaps">${t.roster.length}/${advanced()?10:8} DRAFTED ${isMine(i)?' • YOUR TEAM':''}</div>
       <div class="roster-list">${rows}</div>
+      ${advanced()&&isMine(i)&&state.game&&['sim','timeout','foulout'].includes(state.phase)?gatoradeMarkup():''}
       ${t.ready?'<p class="ready-state">✓ READY</p>':''}`;
   }
   function rosterClickSelection(selected,id){
@@ -286,10 +291,12 @@
     if(!container)return;
     paintRosterHeadshots(container);
     bindBenchDetails(container);
+    bindGatorades(container);
     for(const slot of container.querySelectorAll('[data-slot]')){
       if(slot.disabled)continue;
       slot.addEventListener('click',()=>{
         const id=rosterDisplaySlots(state.you)[slot.dataset.slot];
+        if(currentPicked==='gatorade'){currentPicked=null;confirmGatorade(id);render(true);return;}
         const choice=rosterClickSelection(currentPicked,id);
         currentPicked=choice.next;
         if(choice.swap)act('place',{playerId:choice.swap,slot:slot.dataset.slot});
@@ -299,9 +306,31 @@
       if(id){const p=player(id);if(p)bindDragHeadshot(slot,p,state.you===0?'blue':'red');}
       slot.addEventListener('dragover',e=>{e.preventDefault();slot.classList.add('drop-target');});
       slot.addEventListener('dragleave',()=>slot.classList.remove('drop-target'));
-      slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drop-target');const dragging=e.dataTransfer.getData('text/plain')||currentPicked;if(dragging){currentPicked=null;act('place',{playerId:dragging,slot:slot.dataset.slot});render(true);}});
+      slot.addEventListener('drop',e=>{e.preventDefault();slot.classList.remove('drop-target');const dragging=e.dataTransfer.getData('text/plain')||currentPicked;if(dragging){currentPicked=null;if(dragging==='gatorade')confirmGatorade(rosterDisplaySlots(state.you)[slot.dataset.slot]);else act('place',{playerId:dragging,slot:slot.dataset.slot});render(true);}});
     }
   }
+  function gatoradeMarkup(){
+    const canUse=state.phase==='timeout'&&state.timeout?.caller===state.you&&my().gatorades>0;
+    return `<div class="gatorade-stock"><span>GATORADES × ${my().gatorades}</span><div class="gatorade-bottles">${Array.from({length:my().gatorades},(_,i)=>`<button type="button" class="gatorade-bottle ${currentPicked==='gatorade'?'selected-slot':''}" data-gatorade draggable="${canUse}" ${canUse?'':'disabled'} aria-label="Use Gatorade ${i+1}" title="+3 energy"><svg viewBox="0 0 24 34" width="24" height="34" aria-hidden="true"><rect x="7" y="1" width="10" height="5" rx="1" fill="#ff9a38"/><path d="M8 6H16L20 12V30Q20 33 17 33H7Q4 33 4 30V12Z" fill="#65bf70" stroke="#d4eacb"/><path d="M4 14H20V25H4Z" fill="#172031"/><path d="M13 14L8 21H12L10 26L17 18H13Z" fill="#ff9a38"/></svg></button>`).join('')||'<span class="tiny">None remaining</span>'}</div><p class="tiny">${canUse?'Drag onto a player or click a bottle, then a player. +3 energy.':'Usable only during your own timeout.'}</p></div>`;
+  }
+  function bindGatorades(container){
+    for(const b of container.querySelectorAll('[data-gatorade]')){
+      if(b.disabled)continue;
+      b.addEventListener('dragstart',e=>{currentPicked='gatorade';e.dataTransfer.setData('text/plain','gatorade');e.dataTransfer.effectAllowed='move';});
+      b.addEventListener('click',()=>{currentPicked=currentPicked==='gatorade'?null:'gatorade';render(true);});
+    }
+  }
+  function confirmGatorade(id){
+    if(!id||!advanced()||state.phase!=='timeout'||state.timeout.caller!==state.you||!my().gatorades)return;
+    if(state.game.fouledOut.includes(id)){toast('Choose an eligible player.');return;}
+    const energy=my().energy[id]??100;if(energy>=100){toast('Player already has full energy.');return;}
+    const until=state.timeout.until,dlg=$('gatorade-dialog');
+    $('gatorade-question').textContent='Are you sure you want to give '+player(id).name+' a Gatorade?';
+    $('gatorade-energy').textContent=energy.toFixed(1)+'% → '+Math.min(100,energy+3).toFixed(1)+'%';
+    $('gatorade-confirm').onclick=()=>{dlg.close();act('gatorade',{playerId:id,timeoutUntil:until});};
+    if(!dlg.open)dlg.showModal();
+  }
+  $('gatorade-cancel').addEventListener('click',()=>$('gatorade-dialog').close());
   function allTeamPanels(where){
     $(where+'-left').innerHTML=teamPanel(0);$(where+'-right').innerHTML=teamPanel(1);
     bindRoster($(where+'-left'));bindRoster($(where+'-right'));
@@ -463,17 +492,43 @@
     allTeamPanels('setup-team');const center=$('schemes-center');const canChange=['lineup','intermission'].includes(state.phase);
     center.innerHTML=`<div class="smallcaps">${state.phase==='intermission'?'BETWEEN GAMES':'PREGAME PREPARATION'}</div>
       <h2>${state.phase==='intermission'?'SET UP NEXT GAME':'SET YOUR STRATEGY'}</h2>
-      <p class="subtle">${state.phase==='intermission'?'Both teams may change offensive and defensive schemes. The next game begins when both are ready.':'Arrange your eight players and choose your game plans. Click a rostered player, then click the destination slot—or drag and drop.'}</p>
+      <p class="subtle">${state.phase==='intermission'?'Both teams may change offensive and defensive schemes. The next game begins when both are ready.':'Arrange your roster and choose your game plans. Click a rostered player, then click the destination slot—or drag and drop.'}</p>
       <label>OFFENSIVE SCHEME<select id="offense-select">${OFFENSE.map(o=>`<option value="${esc(o)}" ${o===my().offense?'selected':''}>${esc(o)}</option>`).join('')}</select></label>
       <label>DEFENSIVE SCHEME<select id="defense-select">${DEFENSE.map(o=>`<option value="${esc(o)}" ${o===my().defense?'selected':''}>${esc(o)}</option>`).join('')}</select></label>
       <div class="scheme-explainer" aria-live="polite"><span class="smallcaps">YOUR OFFENSIVE GAME PLAN</span><div id="offense-description">${strategyInfo(my().offense,'offense')}</div>
       <span class="smallcaps">YOUR DEFENSIVE GAME PLAN</span><div id="defense-description">${strategyInfo(my().defense,'defense')}</div>
       <p class="tiny">Players with higher Teamwork execute the chosen offense more reliably. ${state.phase==='lineup'?'Listed positions have no OVR penalty; other positions are matchup-adjusted.':''}</p></div>
-      <button class="primary full" id="ready-btn" ${my().ready?'disabled':''}>${my().ready?'✓ WAITING FOR OPPONENT': 'READY TO PLAY →'}</button>`;
+      ${advanced()&&state.phase==='lineup'?tradeMarkup():''}
+      <button class="primary full" id="ready-btn" ${my().ready||state.trade?'disabled':''}>${my().ready?'✓ WAITING FOR OPPONENT': 'READY TO PLAY →'}</button>`;
     $('offense-select')?.addEventListener('change',e=>{$('offense-description').innerHTML=strategyInfo(e.target.value,'offense');act('scheme',{offense:e.target.value});});
     $('defense-select')?.addEventListener('change',e=>{$('defense-description').innerHTML=strategyInfo(e.target.value,'defense');act('scheme',{defense:e.target.value});});
     $('ready-btn')?.addEventListener('click',()=>act('ready'));
+    bindTrade();
     if(!canChange) $('ready-btn').disabled=true;
+  }
+  let tradeDraft={give:new Set(),get:new Set(),giveG:0,getG:0},tradeRoom=null;
+  function tradeMarkup(){
+    if(tradeRoom!==state.code){tradeRoom=state.code;tradeDraft={give:new Set(),get:new Set(),giveG:0,getG:0};}
+    const t=state.trade,notice=state.tradeNotice?'<p class="tiny">'+esc(state.tradeNotice)+'</p>':'';
+    if(state.tradeUsed)return '<section class="trade-panel"><h3>TRADING CLOSED</h3>'+notice+'<p class="tiny">One accepted trade per draft.</p></section>';
+    const assets=a=>[...a.players.map(id=>esc(player(id)?.name)),a.gatorades?a.gatorades+' Gatorade(s)':''].filter(Boolean).join(', ')||'Nothing';
+    if(t)return `<section class="trade-panel"><h3>${t.from===state.you?'TRADE SENT':'INCOMING TRADE'}</h3><p><b>${esc(state.teams[t.from].name)} gives:</b> ${assets(t.give)}</p><p><b>${esc(state.teams[1-t.from].name)} gives:</b> ${assets(t.get)}</p><p class="tiny" data-trade-clock></p>${t.from!==state.you?'<div class="flex-row"><button class="primary" id="trade-accept" disabled>ACCEPT</button><button class="danger" id="trade-deny" disabled>DENY</button></div>':'<p class="tiny">Waiting for opponent.</p>'}</section>`;
+    const options=(side,team,selected,g)=>`<div><strong>${side==='give'?'YOU OFFER':'YOU REQUEST'}</strong><div class="trade-options">${team.roster.map(id=>`<label><input type="checkbox" data-trade-side="${side}" value="${esc(id)}" ${selected.has(id)?'checked':''}> ${esc(player(id).name)} · ${player(id).overall}</label>`).join('')}</div><label>GATORADES<select data-trade-g="${side}">${Array.from({length:team.gatorades+1},(_,i)=>`<option value="${i}" ${i===g?'selected':''}>${i}</option>`).join('')}</select></label></div>`;
+    return `<section class="trade-panel"><h3>REQUEST TRADE</h3>${notice}<p class="tiny">One accepted trade total. Each team must retain 8–10 players.</p><div class="trade-columns">${options('give',my(),tradeDraft.give,tradeDraft.giveG)}${options('get',state.teams[1-state.you],tradeDraft.get,tradeDraft.getG)}</div><button class="secondary full" id="trade-send">SEND TRADE REQUEST</button></section>`;
+  }
+  function bindTrade(){
+    const panel=$('schemes-center');
+    for(const input of panel.querySelectorAll('[data-trade-side]'))input.addEventListener('change',()=>{const set=tradeDraft[input.dataset.tradeSide];input.checked?set.add(input.value):set.delete(input.value);});
+    for(const input of panel.querySelectorAll('[data-trade-g]'))input.addEventListener('change',()=>{tradeDraft[input.dataset.tradeG+'G']=Number(input.value);});
+    $('trade-send')?.addEventListener('click',()=>act('tradeOffer',{give:{players:[...tradeDraft.give],gatorades:tradeDraft.giveG},get:{players:[...tradeDraft.get],gatorades:tradeDraft.getG}}));
+    for(const [id,accept] of [['trade-accept',true],['trade-deny',false]])$(id)?.addEventListener('click',()=>act('tradeAnswer',{tradeId:state.trade?.id,accept}));
+    updateTradeClock();
+  }
+  function updateTradeClock(){
+    const t=state?.trade,label=document.querySelector('[data-trade-clock]');if(!t||!label)return;
+    const ms=Date.now()-syncOffset,buffer=ms<t.acceptAt;
+    label.textContent=buffer?'Review buffer: '+Math.ceil((t.acceptAt-ms)/1000)+'s':'Decision time: '+Math.max(0,Math.ceil((t.expiresAt-ms)/1000))+'s';
+    for(const id of ['trade-accept','trade-deny'])if($(id))$(id).disabled=buffer||ms>=t.expiresAt;
   }
   function updateTimeoutButton(){
     const btn=$('call-timeout'),label=$('possession-label');
@@ -507,6 +562,9 @@
     $('player-focus').innerHTML=`<div class="smallcaps">CLICK ANY PLAYER TO INSPECT</div>
       <div style="display:flex;align-items:center;gap:12px;margin:10px 0">${portrait(p,'med',owner?'red':'blue')}<div><b>${esc(p.name)}</b><p class="tiny">${esc(p.positions.join('/'))} • ${p.overall} OVR</p><p class="tiny">⚡ Energy: ${Math.round(state.teams[owner].energy[id]??100)}%</p></div></div>
       <div class="data-grid">${[['PTS',stats.pts],['REB',stats.reb],['AST',stats.ast],['STL',stats.stl],['AB',stats.ankleBreaks??0],['BLK',stats.blk],['PF',stats.pf],['FT',stats.ftm+'/'+stats.fta],['TOV',stats.tov],['FG',stats.fgm+'/'+stats.fga],['3PT',stats.threeM+'/'+stats.threeA],['MIN',Math.round(stats.seconds/60)]].map(([k,v])=>`<div class="data-cell"><b>${esc(v)}</b><span>${k}</span></div>`).join('')}</div>`;
+    const roster=$('advanced-game-roster');
+    roster.hidden=!advanced()||(state.phase==='timeout'&&state.timeout?.caller===state.you);
+    if(!roster.hidden){roster.innerHTML=teamPanel(state.you);bindRoster(roster);}
     $('sim-events').innerHTML=`<h3>LIVE PLAY-BY-PLAY</h3>${[...state.log].reverse().slice(0,12).map(x=>`<p>${esc(x)}</p>`).join('')}`;
   }
   function timeoutPanel(){
@@ -523,7 +581,7 @@
     </div>
     <div class="timeout-strategies" aria-live="polite"><div><span class="smallcaps">OFFENSE</span><div id="timeout-offense-description">${strategyInfo(my().offense,'offense')}</div></div>
     <div><span class="smallcaps">DEFENSE</span><div id="timeout-defense-description">${strategyInfo(my().defense,'defense')}</div></div></div>
-    ${caller===state.you?`<p class="subtle" style="margin-top:15px">Your active five and three bench players are below. Click a player, then another player to swap them. Click the selected player again to deselect. You can also drag and drop.</p><div id="timeout-team" class="team-panel ${state.you===0?'left':'right'}"></div>`:''}
+    ${caller===state.you?`<p class="subtle" style="margin-top:15px">Your active five and bench players are below. Click a player, then another player to swap them. Click the selected player again to deselect. You can also drag and drop.</p><div id="timeout-team" class="team-panel ${state.you===0?'left':'right'}"></div>`:''}
     </div>`;
     $('timeout-offense')?.addEventListener('change',e=>{$('timeout-offense-description').innerHTML=strategyInfo(e.target.value,'offense');act('scheme',{offense:e.target.value});});
     $('timeout-defense')?.addEventListener('change',e=>{$('timeout-defense-description').innerHTML=strategyInfo(e.target.value,'defense');act('scheme',{defense:e.target.value});});
@@ -641,7 +699,8 @@
   }
   function render(force=false){
     if(!state)return;
-    if(lastRoomPhase!==state.phase)currentPicked=null;
+    SLOTS=advanced()?ADVANCED_SLOTS:BASIC_SLOTS;
+    if(lastRoomPhase!==state.phase){currentPicked=null;if($('gatorade-dialog').open)$('gatorade-dialog').close();}
     if($('bench-details-dialog').open)refreshBenchDetails();
     if(state.phase==='intermission'&&lastRoomPhase!=='intermission')intermissionPrep=false;
     $('welcome').classList.add('hide');$('gameview').classList.remove('hide');
@@ -650,10 +709,10 @@
     }
     $('room-header').innerHTML=`<span class="room-title">PRIVATE ROOM <span class="room-code" title="Share this code with your friend">${esc(state.code)}</span></span>
       <div class="room-versus"><span>${esc(state.teams[0]?.name)}</span><span class="vs">VS</span><span>${esc(state.teams[1]?.name||'WAITING...')}</span></div>
-      <span class="smallcaps">${state.format===7?'BEST OF 7':'SINGLE GAME'} • ${state.teams.filter(Boolean).length}/2 PLAYERS</span>`;
+      <span class="smallcaps">${advanced()?'ADVANCED':'BASIC'} • ${state.format===7?'BEST OF 7':'SINGLE GAME'} • ${state.teams.filter(Boolean).length}/2 PLAYERS</span>`;
     const banners={lobby:'Share your room code with your friend. The game starts once they join.',coinflip:'🪙 The coin determines who places the first opening bid.',wheel:'🎡 Spinning the weighted player wheel…',auction:'💰 Bid in $0.50 increments. Your turn lasts 30 seconds and resets after each new bid.',placement:'🃏 The drafted player can be placed into any roster slot, then the next spin begins.',lineup:'🧠 Set both game plans and organize your team before clicking Ready.',sim:'🏀 Live game • each marker is a player • the ball and sweat icons reflect gameplay.',timeout:'⏸ Timeout • both teams may change schemes, but only the caller may substitute.',foulout:'🚫 SIX FOULS • Game paused until the affected team selects an eligible bench replacement.',intermission:'🔁 Series break • both teams may adjust their schemes before the next game.',finished:'🏆 Final results.'};
     $('phase-banner').textContent=banners[state.phase]||'';
-    const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.color,t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy]),
+    const sig=JSON.stringify({phase:state.phase,team:state.teams.map(t=>t&&[t.color,t.roster,t.slots,t.budget,t.ready,t.offense,t.defense,t.wins,t.timeouts,t.energy,t.gatorades]),trade:state.trade,tradeUsed:state.tradeUsed,tradeNotice:state.tradeNotice,
       coin:state.coinWinner,wheel:state.wheel?.spinId,auction:state.auction?.bid+'_'+state.auction?.turn+'_'+state.auction?.mode+'_'+state.auction?.deadline,
       appearance:state.teams.flatMap(t=>(t?.roster||[]).map(id=>{const p=player(id);return [id,p?.image,p?.courtPortrait];})),
       pending:state.pending,gameId:state.gameNumber,event:state.game?.event?.id,active:state.game?.active,bench:state.game?.bench,time:state.timeout?.until,timeoutReady:state.timeout?.ready,foulout:state.foulout,fouledOut:state.game?.fouledOut,focus:selectedFocus,picked:currentPicked,rematch:state.rematchReady,departed:state.departed,intermissionPrep});
@@ -668,7 +727,7 @@
   }
   function updateClocks(){
     const corrected=Date.now()-syncOffset;
-    updateTimeoutButton();
+    updateTimeoutButton();updateTradeClock();
     if(state?.phase==='auction'&&state.auction?.deadline){
       const x=Math.max(0,Math.ceil((state.auction.deadline-corrected)/1000));
       for(const label of document.querySelectorAll('[data-countdown]')){label.textContent=x+'s';label.classList.toggle('urgent',x<=10);}
