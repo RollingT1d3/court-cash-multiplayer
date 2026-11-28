@@ -35,6 +35,7 @@ test('Advanced room drafts 18, trades two for one with Gatorade and plays with f
   x=await state(a);assert.deepEqual(x.teams.map(t=>t.roster.length),[9,9]);assert.deepEqual(x.teams.map(t=>t.gatorades),[1,3]);assert.equal(x.tradeUsed,true);
   await assert.rejects(()=>act(a,'tradeOffer',offer),/already been used/);
   await act(a,'ready');await act(b,'ready');x=await until(async()=>{const s=await state(a);return s.phase==='sim'?s:null;});
+  assert.equal(x.game.quarter,1);assert.equal(x.game.periodLength,720);assert.ok(x.game.secondsLeft>0&&x.game.secondsLeft<=720);
   assert.deepEqual(x.game.bench.map(t=>t.length),[4,4]);assert.ok(x.game.active.flat().every(Boolean));assert.equal(Object.keys(x.game.stats).length,18);
   x=await until(async()=>{const s=await state(a);if(s.phase!=='sim'||s.game.possessions<8)return false;try{await act(clients[s.game.offense],'timeout');return await state(a);}catch{return false;}});
   const side=x.timeout.caller,t=x.teams[side],pid=t.roster.filter(id=>!x.game.fouledOut.includes(id)).sort((a,b)=>t.energy[a]-t.energy[b])[0];

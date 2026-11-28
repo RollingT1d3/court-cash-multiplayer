@@ -4,7 +4,7 @@ import { fadeChance, fadeValue, fadeContestRelief, FADE_SETUP_MS } from './fade-
 import { fastBreakPlan } from './fast-break-rules.js';
 import { passCount, passPath, touchPriority, resolvePassChain, immediatePassShotBonus, boostedShotChance } from './passing-rules.js';
 import { possessionTransition, possessionWindow, timeoutControl } from './transition-rules.js';
-import { advancePeriod, REGULATION_QUARTER_SECONDS } from './period-rules.js';
+import { advancePeriod, regulationQuarterSeconds } from './period-rules.js';
 import './public/team-colors.js';
 const teamColors=globalThis.CourtTeamColors;
 import { createAdminAPI } from './admin-v09.js';
@@ -182,7 +182,8 @@ function startGame(room){
   const tipoff={...result,centerIds,centerHeights,at:now()};
   // Exactly one uniform 25%-each court selection per game, shared by both browsers.
   const courtStyle=chooseCourtStyle(rnd);
-  room.game={score:[0,0],secondsLeft:REGULATION_QUARTER_SECONDS,quarter:1,periodLength:REGULATION_QUARTER_SECONDS,offense:result.winningTeam,active,bench,stats,touchDrought:{},possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
+  const quarterSeconds=regulationQuarterSeconds(room.mode);
+  room.game={score:[0,0],secondsLeft:quarterSeconds,quarter:1,periodLength:quarterSeconds,offense:result.winningTeam,active,bench,stats,touchDrought:{},possessions:0,event:null,fouledOut:[],startedAt:now(),period:'Q1',tipoff,courtStyle};
   room.phase='sim';room.play={at:now()};room.finishAnimation=null;room.log=[];room.timeout=null;room.foulout=null;room.rematchReady=[false,false];room.result=null;
   const heights=centerHeights.map(h=>`${Math.floor(h/12)}'${h%12}\"`);
   const favored=result.probabilities.map(p=>Math.round(p*100));
@@ -604,7 +605,7 @@ function simulatePlay(room){
   // All voluntary substitutions are manual and require a timeout.
   g.offense=!putbackMade&&reboundId&&g.active[offense].includes(reboundId)?offense:other(offense);
   if(g.secondsLeft<=0){
-    const nextPeriod=advancePeriod(g,room.teams);
+    const nextPeriod=advancePeriod(g,room.teams,room.mode);
     if(nextPeriod==='regulation')log(room,`Start of quarter ${g.quarter}.`);
     else if(nextPeriod==='overtime')log(room,'Overtime! Both teams receive one additional timeout.');
     else {finishAfterAnimation(room,()=>completeGame(room));return;}

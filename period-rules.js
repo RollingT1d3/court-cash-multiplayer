@@ -1,14 +1,17 @@
-// Four 10-minute quarters; each tied finish starts a three-minute OT.
+// Basic: four 10-minute quarters. Advanced: four 12-minute quarters.
+// Each tied finish starts a three-minute OT in either mode.
 export const REGULATION_QUARTER_SECONDS = 600;
+export const ADVANCED_REGULATION_QUARTER_SECONDS = 720;
 export const OVERTIME_SECONDS = 180;
+export const regulationQuarterSeconds = mode => mode==='advanced'?ADVANCED_REGULATION_QUARTER_SECONDS:REGULATION_QUARTER_SECONDS;
 
 // Every overtime grants both teams +1 timeout.
-export function advancePeriod(game,teams){
+export function advancePeriod(game,teams,mode='basic'){
   if(game.secondsLeft>0)return 'playing';
   if(game.quarter<4){
     game.quarter++;
-    game.secondsLeft=REGULATION_QUARTER_SECONDS;
-    game.periodLength=REGULATION_QUARTER_SECONDS;
+    game.secondsLeft=regulationQuarterSeconds(mode);
+    game.periodLength=game.secondsLeft;
     game.period='Q'+game.quarter;
     return 'regulation';
   }

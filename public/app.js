@@ -619,7 +619,7 @@
     </div>`;
     panel.querySelectorAll('[data-foulout-sub]').forEach(btn=>btn.addEventListener('click',()=>act('fouloutSub',{playerId:btn.dataset.fouloutSub})));
   }
-  function renderSim(){showScore();focusPanel();timeoutPanel();fouloutPanel();startCourtAnimation();}
+  function renderSim(){$('court-hint').textContent='Click a player on the court for live statistics. Four '+(advanced()?12:10)+'-minute quarters, with 3-minute overtime periods if tied.';showScore();focusPanel();timeoutPanel();fouloutPanel();startCourtAnimation();}
   function boxTable(i){
     const t=state.teams[i];const g=state.game;if(!g)return '';
     return `<h3>${esc(t.name)} — ${g.score[i]} PTS</h3><div style="overflow:auto"><table class="box-table"><thead><tr>${['PLAYER','PTS','REB','AST','STL','BLK','PF','FT','TOV','FG','3PT','MIN'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>

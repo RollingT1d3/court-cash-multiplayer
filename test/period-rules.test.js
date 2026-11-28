@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { advancePeriod } from '../period-rules.js';
+import { advancePeriod, regulationQuarterSeconds } from '../period-rules.js';
 
 test('every overtime awards one timeout per team, preserving unused timeouts',()=>{
   const teams=[{timeouts:0},{timeouts:2}];
@@ -41,4 +41,23 @@ test('regulation transitions and non-tied regulation finishes grant no timeouts'
   game.secondsLeft=0;game.score=[100,99];
   assert.equal(advancePeriod(game,teams),'finished');
   assert.deepEqual(teams.map(t=>t.timeouts),[1,0]);
+});
+
+
+test('all four Advanced quarters last 12 minutes while Basic remains 10 and overtime remains 3',()=>{
+ for(const mode of ['basic','advanced']){
+  const seconds=mode==='advanced'?720:600;
+  assert.equal(regulationQuarterSeconds(mode),seconds);
+  const teams=[{timeouts:6},{timeouts:6}];
+  const game={quarter:1,period:'Q1',secondsLeft:seconds,periodLength:seconds,score:[0,0]};
+  let elapsed=0;
+  for(let q=1;q<=4;q++){
+   assert.equal(game.quarter,q);assert.equal(game.secondsLeft,seconds);assert.equal(game.periodLength,seconds);
+   elapsed+=game.secondsLeft;game.secondsLeft=0;
+   assert.equal(advancePeriod(game,teams,mode),q===4?'overtime':'regulation');
+  }
+  assert.equal(elapsed,mode==='advanced'?2880:2400);
+  assert.equal(game.secondsLeft,180);assert.equal(game.periodLength,180);assert.deepEqual(teams.map(t=>t.timeouts),[7,7]);
+  game.secondsLeft=0;game.score=[100,99];assert.equal(advancePeriod(game,teams,mode),'finished');
+ }
 });

@@ -51,7 +51,7 @@
           <form id="create-form" class="card">
             <h2>Create a room</h2>
             <label>YOUR TEAM NAME <input id="create-name" maxlength="28" required placeholder="e.g. The Rim Reapers" /></label>
-            <label>GAME MODE <select id="game-mode"><option value="basic">Basic — Classic Court Cash</option><option value="advanced">Advanced — Trades, 18 picks &amp; Gatorades</option></select></label>
+            <label>GAME MODE <select id="game-mode"><option value="basic">Basic — Classic Court Cash (10-min quarters)</option><option value="advanced">Advanced — 12-min quarters, trades &amp; Gatorades</option></select></label>
             <label>MATCH FORMAT <select id="format"><option value="1">One game</option><option value="7">Best of 7</option></select></label>
             <button class="primary full" type="submit">CREATE PRIVATE ROOM →</button>
           </form>
@@ -85,7 +85,7 @@
         <div id="sim-view" class="hide">
           <div id="scoreboard" class="scoreboard"></div>
           <div class="sim-layout">
-            <div class="court-wrap"><canvas id="court" width="940" height="525" aria-label="Animated basketball court showing players as portrait markers"></canvas><p class="court-hint">Click a player on the court for live statistics. Four 10-minute quarters, with 3-minute overtime periods if tied.</p></div>
+            <div class="court-wrap"><canvas id="court" width="940" height="525" aria-label="Animated basketball court showing players as portrait markers"></canvas><p id="court-hint" class="court-hint">Click a player on the court for live statistics. Four 10-minute quarters, with 3-minute overtime periods if tied.</p></div>
             <aside class="sim-sidebar"><section id="player-focus" class="card compact"></section><section id="sim-events" class="card compact events"></section><section id="advanced-game-roster" class="card compact" hidden></section></aside>
           </div>
           <div id="timeout-panel" class="hide"></div>
